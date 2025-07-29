@@ -32,9 +32,9 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            <AuthRedirectGuard >
+            {/* <AuthRedirectGuard > */}
               {children}
-            </AuthRedirectGuard>
+            {/* </AuthRedirectGuard> */}
           </AuthProvider>
         </QueryProvider>
       </body>
