@@ -1,0 +1,401 @@
+"use client"
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useUjian, useDeleteUjian, useUjianWithSeparateQueries, useStartUjian } from '@/hooks/use-ujian'
+import { GuruOnlyGuard } from '@/components/auth/role-guard'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu'
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { Plus, Search, MoreVertical, Edit, Trash2, Clock, Users, FileText, Bug } from 'lucide-react'
+import { formatDistanceToNow, format, isAfter, isBefore } from 'date-fns'
+import { id } from 'date-fns/locale'
+
+interface UjianCardProps {
+  ujian: any
+  onDelete: (id: string) => void
+  onStartUjian: (id: string) => void
+}
+
+function UjianCard({ ujian, onDelete, onStartUjian }: UjianCardProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  
+  const getStatus = () => {
+    switch (ujian.status) {
+      case 'draft':
+        return { label: 'Draft', color: 'bg-gray-100 text-gray-800' }
+      case 'active':
+        return { label: 'Berlangsung', color: 'bg-green-100 text-green-800' }
+      case 'completed':
+        return { label: 'Selesai', color: 'bg-blue-100 text-blue-800' }
+      default:
+        return { label: 'Draft', color: 'bg-gray-100 text-gray-800' }
+    }
+  }
+
+  const status = getStatus()
+  const soalCount = ujian.ujian_soal?.length || 0
+
+  // Format durasi ke jam dan menit
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return mins > 0 ? `${hours} jam ${mins} menit` : `${hours} jam`
+    }
+    return `${mins} menit`
+  }
+
+  return (
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-lg">{ujian.name}</CardTitle>
+              <CardDescription className="line-clamp-2">
+                {ujian.description || 'Tidak ada deskripsi'}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className={status.color} variant="secondary">
+                {status.label}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/guru/ujian/${ujian.id}/edit`}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {/* Statistik */}
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              <span>{soalCount} soal</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              <span>0 peserta</span> {/* TODO: implement peserta count */}
+            </div>
+          </div>
+
+          {/* Waktu dan Durasi */}
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">Durasi:</span>
+              <span>{formatDuration(ujian.duration_minutes || 60)}</span>
+            </div>
+            
+            {ujian.start_time && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Dimulai:</span>
+                <span>{format(new Date(ujian.start_time), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
+              </div>
+            )}
+            
+            {ujian.end_time && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Selesai:</span>
+                <span>{format(new Date(ujian.end_time), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
+              </div>
+            )}
+
+            {ujian.status === 'draft' && (
+              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                💡 Ujian belum dimulai. Klik "Mulai Ujian" untuk mengaktifkan.
+              </div>
+            )}
+          </div>
+
+          {/* Tombol Mulai Ujian */}
+          {ujian.status === 'draft' && (
+            <Button 
+              onClick={() => onStartUjian(ujian.id)}
+              className="w-full"
+              size="sm"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Mulai Ujian
+            </Button>
+          )}
+
+          {/* Created info */}
+          <div className="text-xs text-muted-foreground pt-2 border-t">
+            Dibuat {formatDistanceToNow(new Date(ujian.created_at), { 
+              addSuffix: true, 
+              locale: id 
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Ujian</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus ujian &quot;{ujian.name}&quot;? 
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(ujian.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
+function UjianSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+        <Skeleton className="h-3 w-32" />
+      </CardContent>
+    </Card>
+  )
+}
+
+function UjianPageContent() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [useDebugQuery, setUseDebugQuery] = useState(false)
+  const pageSize = 12
+
+  const { data: ujianData, isLoading, error } = useUjian(currentPage, pageSize)
+  // const { data: ujianDataDebug, isLoading: isLoadingDebug, error: errorDebug } = useUjianWithSeparateQueries(currentPage, pageSize)
+  const deleteUjianMutation = useDeleteUjian()
+  const startUjianMutation = useStartUjian()
+
+  // Use debug data if toggle is on, otherwise use normal data
+  // const currentData = useDebugQuery ? ujianDataDebug : ujianData
+  // const currentLoading = useDebugQuery ? isLoadingDebug : isLoading
+  // const currentError = useDebugQuery ? errorDebug : error
+
+  const handleDelete = async (id: string) => {
+    console.log('🗑️ Deleting ujian:', { id })
+    
+    try {
+      await deleteUjianMutation.mutateAsync(id)
+      toast.success('Ujian berhasil dihapus')
+    } catch (error) {
+      console.error('❌ Error deleting ujian:', error)
+      toast.error('Gagal menghapus ujian')
+    }
+  }
+
+  const handleStartUjian = async (id: string) => {
+    console.log('🚀 Starting ujian:', { id })
+    
+    try {
+      await startUjianMutation.mutateAsync(id)
+      toast.success('Ujian berhasil dimulai')
+    } catch (error) {
+      console.error('❌ Error starting ujian:', error)
+      toast.error('Gagal memulai ujian')
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="text-center py-12">
+          <p className="text-red-600">Terjadi kesalahan: {error.message}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline" 
+            className="mt-4"
+          >
+            Coba Lagi
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const filteredUjian = ujianData?.data?.filter(ujian =>
+    ujian.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ujian.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || []
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Ujian</h1>
+          <p className="text-muted-foreground">
+            Kelola ujian yang akan diberikan kepada siswa
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/guru/ujian/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Buat Ujian
+          </Link>
+        </Button>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari ujian..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Content */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <UjianSkeleton key={i} />
+          ))}
+        </div>
+      ) : filteredUjian.length === 0 ? (
+        <div className="text-center py-12">
+          {searchQuery ? (
+            <>
+              <p className="text-muted-foreground text-lg mb-4">
+                Tidak ada ujian yang cocok dengan pencarian &quot;{searchQuery}&quot;
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => setSearchQuery('')}
+              >
+                Hapus Filter
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground text-lg mb-4">
+                Belum ada ujian yang dibuat
+              </p>
+              <Button asChild>
+                <Link href="/guru/ujian/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Buat Ujian Pertama
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Results info */}
+          <div className="text-sm text-muted-foreground">
+            Menampilkan {filteredUjian.length} dari {ujianData?.count || 0} ujian
+          </div>
+
+          {/* Ujian Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredUjian.map((ujian) => (
+              <UjianCard
+                key={ujian.id}
+                ujian={ujian}
+                onDelete={handleDelete}
+                onStartUjian={handleStartUjian}
+              />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {ujianData?.hasMore && (
+            <div className="flex justify-center pt-6">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={isLoading}
+              >
+                Muat Lebih Banyak
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function UjianPage() {
+  return (
+    <GuruOnlyGuard>
+      <UjianPageContent />
+    </GuruOnlyGuard>
+  )
+}
