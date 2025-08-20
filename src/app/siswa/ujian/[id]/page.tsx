@@ -231,6 +231,9 @@ const QuestionCard = memo(({
     )
 })
 
+// Add display name for ESLint
+QuestionCard.displayName = 'QuestionCard'
+
 // Component untuk Question Navigator (mobile-friendly)
 const QuestionNavigator = memo(({ 
     questions, 
@@ -351,6 +354,9 @@ const QuestionNavigator = memo(({
         </>
     )
 })
+
+// Add display name for ESLint
+QuestionNavigator.displayName = 'QuestionNavigator'
 
 function UjianSiswaPageContent() {
     const params = useParams()

@@ -636,6 +636,7 @@ export function useAvailableUjianForSiswa() {
 // Hook untuk mendapatkan ujian yang sedang atau sudah dikerjakan siswa
 export function useUjianSiswa() {
   const { user } = useAuthStore()
+  const supabase = createClient()
 
   return useQuery({
     queryKey: ['ujian-siswa', user?.id],
@@ -677,6 +678,7 @@ export function useUjianSiswa() {
 export function useStartUjianSiswa() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const supabase = createClient()
 
   return useMutation({
     mutationFn: async (ujianId: string) => {
@@ -745,6 +747,7 @@ export function useStartUjianSiswa() {
 export function useSubmitUjianSiswa() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const supabase = createClient()
 
   return useMutation({
     mutationFn: async (ujianId: string) => {
@@ -783,6 +786,7 @@ export function useSubmitUjianSiswa() {
 // Hook untuk mendapatkan detail ujian yang sedang dikerjakan siswa
 export function useActiveUjianSiswa(ujianId: string) {
   const { user } = useAuthStore()
+  const supabase = createClient()
 
   return useQuery({
     queryKey: ['active-ujian-siswa', ujianId, user?.id],
@@ -865,6 +869,7 @@ export function useActiveUjianSiswa(ujianId: string) {
 export function useAutoCompleteExpiredUjianSiswa() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const supabase = createClient()
 
   return useMutation({
     mutationFn: async () => {
@@ -953,6 +958,7 @@ export function useUjianSiswaStatusChecker() {
 // Hook untuk mendapatkan statistik ujian untuk guru
 export function useUjianStatistics(ujianId: string) {
   const { user } = useAuthStore()
+  const supabase = createClient()
 
   return useQuery({
     queryKey: ['ujian-statistics', ujianId],
