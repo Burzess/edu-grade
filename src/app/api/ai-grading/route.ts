@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Get jawaban with related soal
     const { data: jawaban, error: jawabanError } = await supabase
-      .from('jawaban')
+      .from('jawaban_siswa')
       .select(`
         *,
         soal!inner(
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (!jawaban.answer_text || jawaban.answer_text.trim() === '') {
       
       await supabase
-        .from('jawaban')
+        .from('jawaban_siswa')
         .update({
           score: 0,
           ai_feedback: 'Tidak ada jawaban yang diberikan.',
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // Update jawaban with AI grading result
     const { error: updateError } = await supabase
-      .from('jawaban')
+      .from('jawaban_siswa')
       .update({
         score: gradingResult.score,
         ai_feedback: gradingResult.feedback,
@@ -139,7 +139,7 @@ export async function PUT(request: NextRequest) {
 
     // Get all ungraded jawaban for this ujian
     const { data: jawabanList, error: jawabanError } = await supabase
-      .from('jawaban')
+      .from('jawaban_siswa')
       .select(`
         *,
         soal!inner(
@@ -179,7 +179,7 @@ export async function PUT(request: NextRequest) {
         // Skip empty answers
         if (!jawaban.answer_text || jawaban.answer_text.trim() === '') {
           await supabase
-            .from('jawaban')
+            .from('jawaban_siswa')
             .update({
               score: 0,
               ai_feedback: 'Tidak ada jawaban yang diberikan.',
@@ -210,7 +210,7 @@ export async function PUT(request: NextRequest) {
 
         // Update jawaban with AI grading result
         const { error: updateError } = await supabase
-          .from('jawaban')
+          .from('jawaban_siswa')
           .update({
             score: gradingResult.score,
             ai_feedback: gradingResult.feedback,

@@ -6,6 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/components/providers/auth-provider"
+import { AuthRedirectGuard } from "@/components/auth/role-guard"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -76,32 +77,37 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center text-green-600">
-              Pendaftaran Berhasil!
-            </CardTitle>
-            <CardDescription className="text-center">
-              Silakan cek email Anda untuk konfirmasi akun.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="space-y-3 text-sm text-gray-600">
-              <p>📧 Kami telah mengirimkan link konfirmasi ke email Anda.</p>
-              <p>🔗 Klik link tersebut untuk mengaktifkan akun.</p>
-              <p>⏰ Setelah konfirmasi, Anda bisa langsung masuk.</p>
-            </div>
-            <div className="mt-6">
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/login">Kembali ke Login</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthRedirectGuard>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <Card className="w-full max-w-md">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-center text-green-600">
+                Pendaftaran Berhasil!
+              </CardTitle>
+              <CardDescription className="text-center">
+                Silakan cek email Anda untuk konfirmasi akun.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>📧 Kami telah mengirimkan link konfirmasi ke email Anda.</p>
+                <p>🔗 Klik link tersebut untuk mengaktifkan akun.</p>
+                <p>⏰ Setelah konfirmasi, Anda bisa langsung masuk.</p>
+              </div>
+              <div className="mt-6">
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/login">Kembali ke Login</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AuthRedirectGuard>
     )
-  }    return (
+  }
+
+  return (
+    <AuthRedirectGuard>
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
@@ -229,5 +235,6 @@ export default function RegisterPage() {
                 </CardContent>
             </Card>
         </div>
-    )
+    </AuthRedirectGuard>
+  )
 }

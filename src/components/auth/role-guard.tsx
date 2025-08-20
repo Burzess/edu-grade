@@ -2,161 +2,193 @@
 
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
-import { useEffect, ReactNode } from 'react'
+import { useEffect, ReactNode, memo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { AlertCircle, Shield } from 'lucide-react'
+import { Shield, Loader2 } from 'lucide-react'
+
+// Type definitions untuk role system
+type UserRole = 'guru' | 'siswa'
 
 interface RoleGuardProps {
     children: ReactNode
-    allowedRoles: ('guru' | 'siswa')[]
+    allowedRoles: UserRole[]
     fallbackPath?: string
 }
 
+// Komponen loading yang konsisten
+const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Card className="w-full max-w-md shadow-lg border-0">
+            <CardContent className="pt-8 pb-8">
+                <div className="flex flex-col items-center space-y-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <p className="text-sm text-gray-600 font-medium">{message}</p>
+                </div>
+            </CardContent>
+        </Card>
+    </div>
+))
+LoadingScreen.displayName = 'LoadingScreen'
+
+// Komponen access denied yang lebih informatif
+const AccessDeniedScreen = memo(({ currentRole, requiredRoles }: { 
+    currentRole: string
+    requiredRoles: UserRole[] 
+}) => (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-100">
+        <Card className="w-full max-w-md shadow-lg border-0">
+            <CardContent className="pt-8 pb-8">
+                <div className="flex flex-col items-center space-y-6 text-center">
+                    <Shield className="h-16 w-16 text-red-500" />
+                    <div className="space-y-2">
+                        <h3 className="text-xl font-bold text-gray-900">Akses Ditolak</h3>
+                        <p className="text-sm text-gray-600">
+                            Halaman ini hanya dapat diakses oleh: {requiredRoles.join(', ')}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            Role Anda saat ini: <span className="font-semibold text-gray-700">{currentRole}</span>
+                        </p>
+                    </div>
+                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Mengalihkan ke dashboard yang sesuai...</span>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    </div>
+))
+AccessDeniedScreen.displayName = 'AccessDeniedScreen'
+
+// Utility functions untuk redirect logic
+const getDefaultDashboardPath = (role: UserRole): string => {
+    switch (role) {
+        case 'guru':
+            return '/guru/dashboard'
+        case 'siswa':
+            return '/siswa/dashboard'
+        default:
+            return '/login'
+    }
+}
+
+// Custom hook untuk menghandle redirect logic
+const useAuthRedirect = () => {
+    const router = useRouter()
+    
+    const redirectTo = (path: string) => {
+        router.replace(path)
+    }
+    
+    const redirectToDashboard = (role: UserRole) => {
+        const dashboardPath = getDefaultDashboardPath(role)
+        redirectTo(dashboardPath)
+    }
+    
+    return { redirectTo, redirectToDashboard }
+}
+
 // Guard untuk mencegah user yang sudah login mengakses halaman login/register
-export function AuthRedirectGuard({ children }: { children: ReactNode }) {
-    const { user, profile, loading } = useAuthStore();
-    const router = useRouter();
+export const AuthRedirectGuard = memo(({ children }: { children: ReactNode }) => {
+    const { user, profile, loading } = useAuthStore()
+    const { redirectToDashboard } = useAuthRedirect()
 
     useEffect(() => {
-        const role = user?.user_metadata?.role;
-        if (!loading && user && profile) {
-            // Redirect ke dashboard sesuai role
-            if (role === 'guru') {
-                router.replace('/guru/dashboard');
-            } else if (role === 'siswa') {
-                router.replace('/siswa/dashboard');
-            } else {
-                router.replace('/');
-            }
+        // Jika user sudah login dan profile sudah dimuat, redirect ke dashboard sesuai role
+        if (!loading && user && profile?.role) {
+            redirectToDashboard(profile.role as UserRole)
         }
-    }, [user, profile, loading, router]);
+    }, [user, profile, loading, redirectToDashboard])
 
+    // Loading state saat mengecek auth status
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Card className="w-full max-w-md">
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            <p className="text-sm text-muted-foreground">Mengecek apakah sudah login</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
+        return <LoadingScreen message="Mengecek status login..." />
+    }
+
+    // Jika user sudah login, jangan render children (akan redirect)
+    if (user && profile) {
+        return <LoadingScreen message="Mengalihkan ke dashboard..." />
     }
 
     // Jika belum login, render children (halaman login/register)
-    if (!user || !profile) {
-        return <>{children}</>;
-    }
+    return <>{children}</>
+})
+AuthRedirectGuard.displayName = 'AuthRedirectGuard'
 
-    // Jika sudah login, tampilan kosong karena akan redirect
-    return null;
-}
-
-export function RoleGuard({ children, allowedRoles, fallbackPath }: RoleGuardProps) {
+// Main role guard component
+export const RoleGuard = memo(({ children, allowedRoles, fallbackPath }: RoleGuardProps) => {
     const { user, profile, loading } = useAuthStore()
-    const router = useRouter()
+    const { redirectTo, redirectToDashboard } = useAuthRedirect()
+
+    // Cek apakah role user diizinkan mengakses halaman ini
+    const isRoleAllowed = profile?.role && allowedRoles.includes(profile.role as UserRole)
 
     useEffect(() => {
-        if (!loading && user && profile) {
-            // Check if user role is allowed
-            if (!allowedRoles.includes(profile.role as 'guru' | 'siswa')) {
-                // Redirect to appropriate dashboard or fallback
-                if (profile.role === 'guru') {
-                    router.push(fallbackPath || '/guru/dashboard')
-                } else if (profile.role === 'siswa') {
-                    router.push(fallbackPath || '/siswa/dashboard')
-                } else {
-                    router.push(fallbackPath || '/')
-                }
+        // Jika tidak loading dan user belum login, redirect ke halaman login
+        if (!loading && !user) {
+            redirectTo('/login')
+            return
+        }
+
+        // Jika user sudah login tapi role tidak diizinkan, redirect sesuai role
+        if (!loading && user && profile && !isRoleAllowed) {
+            if (fallbackPath) {
+                redirectTo(fallbackPath)
+            } else {
+                redirectToDashboard(profile.role as UserRole)
             }
         }
-    }, [user, profile, loading, allowedRoles, router, fallbackPath])
+    }, [user, profile, loading, isRoleAllowed, redirectTo, redirectToDashboard, fallbackPath])
 
     // Loading state
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Card className="w-full max-w-md">
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            <p className="text-sm text-muted-foreground">Memverifikasi akses...</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        )
+        return <LoadingScreen message="Memverifikasi akses..." />
     }
 
-    // Not authenticated
+    // User belum login
     if (!user) {
-        router.push('/login')
-        return null
+        return <LoadingScreen message="Mengalihkan ke halaman login..." />
     }
 
-    // No profile loaded yet
+    // Profile belum dimuat
     if (!profile) {
+        return <LoadingScreen message="Memuat profil pengguna..." />
+    }
+
+    // Role tidak diizinkan
+    if (!isRoleAllowed) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Card className="w-full max-w-md">
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                            <p className="text-sm text-muted-foreground">Memuat profil pengguna...</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            <AccessDeniedScreen 
+                currentRole={profile.role} 
+                requiredRoles={allowedRoles}
+            />
         )
     }
 
-    // User role not allowed
-    if (!allowedRoles.includes(profile.role as 'guru' | 'siswa')) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Card className="w-full max-w-md">
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center space-y-4 text-center">
-                            <Shield className="h-12 w-12 text-red-500" />
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Akses Ditolak</h3>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    Anda tidak memiliki izin untuk mengakses halaman ini.
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Role Anda: <span className="font-medium">{profile.role}</span>
-                                </p>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                Mengarahkan ke dashboard yang sesuai...
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        )
-    }
-
-    // All checks passed, render children
+    // Semua pengecekan berhasil, render children
     return <>{children}</>
-}
+})
+RoleGuard.displayName = 'RoleGuard'
 
-// Specific guards for common use cases
-export function GuruOnlyGuard({ children }: { children: ReactNode }) {
-    return (
-        <RoleGuard allowedRoles={['guru']} fallbackPath="/siswa/dashboard">
-            {children}
-        </RoleGuard>
-    )
-}
+// Specific guards untuk kemudahan penggunaan
+export const GuruOnlyGuard = memo(({ children }: { children: ReactNode }) => (
+    <RoleGuard allowedRoles={['guru']}>
+        {children}
+    </RoleGuard>
+))
+GuruOnlyGuard.displayName = 'GuruOnlyGuard'
 
-export function SiswaOnlyGuard({ children }: { children: ReactNode }) {
-    return (
-        <RoleGuard allowedRoles={['siswa']} fallbackPath="/guru/dashboard">
-            {children}
-        </RoleGuard>
-    )
-}
+export const SiswaOnlyGuard = memo(({ children }: { children: ReactNode }) => (
+    <RoleGuard allowedRoles={['siswa']}>
+        {children}
+    </RoleGuard>
+))
+SiswaOnlyGuard.displayName = 'SiswaOnlyGuard'
+
+// Guard untuk halaman yang bisa diakses oleh kedua role
+export const AuthenticatedGuard = memo(({ children }: { children: ReactNode }) => (
+    <RoleGuard allowedRoles={['guru', 'siswa']}>
+        {children}
+    </RoleGuard>
+))
+AuthenticatedGuard.displayName = 'AuthenticatedGuard'

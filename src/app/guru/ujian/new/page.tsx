@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCreateUjian } from '@/hooks/use-ujian'
 import { useSoalList } from '@/hooks/use-soal'
+import { GuruOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -236,7 +237,8 @@ export default function CreateUjianPage() {
   const totalSoal = soalData?.data?.length || 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <GuruOnlyGuard>
+      <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -530,10 +532,11 @@ export default function CreateUjianPage() {
                   )}
                 </div>
               </CardContent>
-            </Card>
-          </div>
+          </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
+  </div>
+  </GuruOnlyGuard>
   )
 }

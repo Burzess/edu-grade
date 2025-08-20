@@ -123,7 +123,33 @@ export interface Database {
                     created_at?: string
                 }
             }
-            jawaban: {
+            ujian_siswa: {
+                Row: {
+                    id: string
+                    ujian_id: string
+                    siswa_id: string
+                    status: 'not_started' | 'in_progress' | 'completed'
+                    started_at: string | null
+                    submitted_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    ujian_id: string
+                    siswa_id: string
+                    status?: 'not_started' | 'in_progress' | 'completed'
+                    started_at?: string | null
+                    submitted_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    ujian_id?: string
+                    siswa_id?: string
+                    status?: 'not_started' | 'in_progress' | 'completed'
+                    started_at?: string | null
+                    submitted_at?: string | null
+                }
+            }
+            jawaban_siswa: {
                 Row: {
                     id: string
                     ujian_id: string

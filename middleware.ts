@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
     const pathname = url.pathname
 
     // Public routes yang tidak perlu autentikasi
-    const publicRoutes = ['/login', '/register', '/', '/auth/callback', '/debug']
+    const publicRoutes = ['/login', '/register', '/', '/auth/callback']
     const isPublicRoute = publicRoutes.includes(pathname)
 
     // Jika user belum login dan mencoba akses route protected

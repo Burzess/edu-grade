@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useSoalDetail, useUpdateSoal } from '@/hooks/use-soal'
+import { GuruOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -226,7 +227,8 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <GuruOnlyGuard>
+        <div className="min-h-screen bg-gray-50">
         {/* Navigation skeleton */}
         <nav className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -275,12 +277,14 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
           </div>
         </main>
       </div>
+      </GuruOnlyGuard>
     )
   }
 
   if (fetchError) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <GuruOnlyGuard>
+        <div className="min-h-screen bg-gray-50">
         <nav className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
@@ -307,11 +311,13 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
           </div>
         </main>
       </div>
+      </GuruOnlyGuard>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <GuruOnlyGuard>
+      <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -578,5 +584,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
         </div>
       </main>
     </div>
+    </GuruOnlyGuard>
   )
 }

@@ -1,16 +1,24 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useAvailableUjian, useCompletedUjianSiswa, useCompletedUjianIds } from '@/hooks/use-jawaban'
+import { useDashboardStatsSiswa, useRecentActivitySiswa, useAvailableUjianForSiswaDashboard } from '@/hooks/use-dashboard-siswa'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { NotificationBanner } from '@/components/notifications/notification-banner'
 import { useAuthStore } from "@/store/auth"
 import { useAuth } from "@/components/providers/auth-provider"
-import { toast } from 'sonner'
 import {
   BookOpen,
   Clock,
@@ -20,14 +28,65 @@ import {
   User,
   Calendar,
   Trophy,
-  LogOut
+  LogOut,
+  Activity,
+  TrendingUp,
+  Play,
+  Award
 } from 'lucide-react'
 import { formatDistanceToNow, format, isAfter, isBefore } from 'date-fns'
 import { id } from 'date-fns/locale'
+import { SiswaOnlyGuard } from '@/components/auth/role-guard'
 
 interface UjianCardProps {
   ujian: any
   type: 'active' | 'completed'
+}
+
+// Component untuk menampilkan aktivitas siswa
+function ActivityItemSiswa({ activity }: { activity: any }) {
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'mulai_ujian':
+        return { icon: Play, color: 'text-blue-600', bgColor: 'bg-blue-50' }
+      case 'selesai_ujian':
+        return { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-50' }
+      case 'ujian_berlangsung':
+        return { icon: Clock, color: 'text-orange-600', bgColor: 'bg-orange-50' }
+      case 'kirim_jawaban':
+        return { icon: FileText, color: 'text-purple-600', bgColor: 'bg-purple-50' }
+      default:
+        return { icon: Activity, color: 'text-gray-600', bgColor: 'bg-gray-50' }
+    }
+  }
+
+  const { icon: Icon, color, bgColor } = getActivityIcon(activity.type)
+  
+  return (
+    <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+      <div className={`p-2 rounded-full ${bgColor}`}>
+        <Icon className={`h-4 w-4 ${color}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">
+          {activity.title}
+        </p>
+        <p className="text-sm text-gray-500 truncate">
+          {activity.description}
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {format(activity.time, 'dd MMM, HH:mm', { locale: id })}
+        </p>
+      </div>
+      {activity.ujianId && activity.type === 'ujian_berlangsung' && (
+        <Link href={`/siswa/ujian/${activity.ujianId}`}>
+          <Button size="sm" variant="outline" className="text-xs">
+            Lanjutkan
+          </Button>
+        </Link>
+      )}
+    </div>
+  )
 }
 
 function UjianCard({ ujian, type }: UjianCardProps) {
@@ -148,34 +207,32 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             )}
           </div>
 
-          {/* Tombol Mulai */}
-          <div className="pt-2">
-            {ujian.status === 'active' && timeStatus?.status === 'active' ? (
-              <Button asChild className="w-full">
-                <Link href={`/siswa/ujian/${ujian.exam_id}`}>
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Mulai Ujian
-                </Link>
-              </Button>
-            ) : ujian.status === 'draft' ? (
-              <Button className="w-full" disabled>
-                <Clock className="h-4 w-4 mr-2" />
-                Menunggu Guru Memulai
-              </Button>
-            ) : timeStatus?.status === 'ended' ? (
-              <Button className="w-full" disabled>
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Waktu Habis
-              </Button>
-            ) : (
-              <Button className="w-full" disabled>
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Tidak Tersedia
-              </Button>
-            )}
-          </div>
-
-          {/* Info Waktu */}
+            {/* Tombol Mulai */}
+            <div className="pt-2">
+              {ujian.status === 'active' && timeStatus?.status === 'active' ? (
+                <Button asChild className="w-full">
+                  <Link href={`/siswa/ujian/${ujian.id || ujian.exam_id}`}>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Mulai Ujian
+                  </Link>
+                </Button>
+              ) : ujian.status === 'draft' ? (
+                <Button className="w-full" disabled>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Menunggu Guru Memulai
+                </Button>
+              ) : timeStatus?.status === 'ended' ? (
+                <Button className="w-full" disabled>
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Waktu Habis
+                </Button>
+              ) : (
+                <Button className="w-full" disabled>
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Tidak Tersedia
+                </Button>
+              )}
+            </div>          {/* Info Waktu */}
           <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
             {ujian.status === 'draft' && (
               <div className="text-yellow-600 bg-yellow-50 p-2 rounded text-center">
@@ -335,11 +392,19 @@ function UjianSkeleton() {
 export default function SiswaDashboard() {
   const { profile } = useAuthStore()
   const { signOut } = useAuth()
+  
+  // Hooks lama untuk backward compatibility
   const { data: availableUjian = [], isLoading: isLoadingAvailable } = useAvailableUjian()
   const { data: completedUjian = [], isLoading: isLoadingCompleted } = useCompletedUjianSiswa()
   const { data: completedIds = [] } = useCompletedUjianIds()
+  
+  // Hooks baru untuk dashboard yang lebih informatif
+  const { data: dashboardStats, isLoading: isStatsLoading } = useDashboardStatsSiswa()
+  const { data: recentActivity = [], isLoading: isActivityLoading } = useRecentActivitySiswa()
+  const { data: availableUjianDashboard = [], isLoading: isAvailableLoading } = useAvailableUjianForSiswaDashboard()
 
   return (
+    <SiswaOnlyGuard >
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -350,13 +415,31 @@ export default function SiswaDashboard() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
-                Selamat datang, {profile?.full_name}
-              </span>
-              <Button variant="outline" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Keluar
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {profile?.full_name || 'Siswa'}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {profile?.email || 'Email tidak tersedia'}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="text-red-600 focus:text-red-600">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Keluar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -364,21 +447,23 @@ export default function SiswaDashboard() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0 space-y-6">
-          {/* Header */}
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Dashboard Siswa
+          {/* Welcome Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
+            <h2 className="text-2xl font-bold mb-2">
+              Selamat datang, {profile?.full_name || 'Siswa'}!
             </h2>
-            <p className="text-gray-600">
-              Ikuti ujian yang tersedia dan lihat hasil ujian Anda
+            <p className="text-blue-100">
+              Ikuti ujian yang tersedia dan pantau perkembangan belajar Anda
             </p>
           </div>
 
-          {/* Stats Cards */}
+          {/* Notification Banner */}
+          <NotificationBanner />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Ujian Tersedia</CardTitle>
+                <CardTitle className="text-sm font-medium">Ujian Aktif</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{availableUjian.filter(u => u.status === 'active').length}</div>
@@ -388,10 +473,20 @@ export default function SiswaDashboard() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Ujian Selesai</CardTitle>
+                <CardTitle className="text-sm font-medium">Ujian Draft</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{completedIds.length}</div>
+                <div className="text-2xl font-bold">{availableUjian.filter(u => u.status === 'draft').length}</div>
+                <p className="text-xs text-muted-foreground">Belum diaktifkan guru</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Ujian Dikerjakan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{completedUjian.length}</div>
                 <p className="text-xs text-muted-foreground">Sudah dikerjakan</p>
               </CardContent>
             </Card>
@@ -402,11 +497,11 @@ export default function SiswaDashboard() {
             <TabsList>
               <TabsTrigger value="active">
                 <BookOpen className="h-4 w-4 mr-2" />
-                Ujian Tersedia ({availableUjian.filter(u => u.status === 'active').length})
+                Ujian Aktif ({availableUjian.filter(u => u.status === 'active').length})
               </TabsTrigger>
               <TabsTrigger value="completed">
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Ujian Diselesaikan ({completedUjian.length})
+                Ujian Dikerjakan ({completedUjian.length})
               </TabsTrigger>
             </TabsList>
 
@@ -417,26 +512,40 @@ export default function SiswaDashboard() {
                     <UjianSkeleton key={`active-skeleton-${i}`} />
                   ))}
                 </div>
-              ) : availableUjian.filter(u => u.status === 'active').length === 0 ? (
-                <div className="text-center py-12">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-lg mb-2">
-                    Belum ada ujian yang tersedia
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Tunggu guru Anda untuk memulai ujian
-                  </p>
-                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {availableUjian.filter(u => u.status === 'active').map((ujian) => (
-                    <UjianCard
-                      key={ujian.exam_id}
-                      ujian={ujian}
-                      type="active"
-                    />
-                  ))}
-                </div>
+                <>
+                  {availableUjian.length === 0 ? (
+                    <div className="text-center py-12">
+                      <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground text-lg mb-2">
+                        Belum ada ujian yang tersedia
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Tunggu guru Anda untuk membuat ujian
+                      </p>
+                    </div>
+                  ) : availableUjian.filter(u => u.status === 'active').length === 0 ? (
+                    <div className="text-center py-12">
+                      <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground text-lg mb-2">
+                        Belum ada ujian aktif
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Ada {availableUjian.length} ujian tersedia, tetapi belum diaktifkan oleh guru
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {availableUjian.filter(u => u.status === 'active').map((ujian) => (
+                        <UjianCard
+                          key={ujian.exam_id || ujian.id}
+                          ujian={ujian}
+                          type="active"
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </TabsContent>
 
@@ -444,7 +553,7 @@ export default function SiswaDashboard() {
               {isLoadingCompleted ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <UjianSkeleton key={`completed-skeleton-${i}-completed`} />
+                    <UjianSkeleton key={`completed-skeleton-${i}`} />
                   ))}
                 </div>
               ) : completedUjian.length === 0 ? (
@@ -477,5 +586,6 @@ export default function SiswaDashboard() {
         </div>
       </main>
     </div>
+    </SiswaOnlyGuard>
   )
 }

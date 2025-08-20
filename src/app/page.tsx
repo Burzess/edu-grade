@@ -1,8 +1,12 @@
+'use client'
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AuthRedirectGuard } from "@/components/auth/role-guard"
+import { useIsAuthenticated } from "@/store/auth"
 import Link from "next/link"
 
-export default function HomePage() {
+function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-16">
@@ -65,5 +69,39 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function AuthenticatedHomePage() {
+  // Default authenticated home - redirect ke dashboard sesuai role
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-6">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+          <p className="text-muted-foreground mb-6">
+            Selamat datang di dashboard Edu-Grade
+          </p>
+          <div className="space-x-4">
+            <Button asChild>
+              <Link href="/guru/dashboard">Dashboard Guru</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/siswa/dashboard">Dashboard Siswa</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function HomePage() {
+  const isAuthenticated = useIsAuthenticated()
+
+  return (
+    <AuthRedirectGuard>
+      {isAuthenticated ? <AuthenticatedHomePage /> : <LandingPage />}
+    </AuthRedirectGuard>
   )
 }

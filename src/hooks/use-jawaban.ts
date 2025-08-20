@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 import { Database } from '@/types/database'
+import { useNotifications } from './use-notifications'
 
 const supabase = createClient()
 
@@ -48,11 +49,11 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
 
         // Update jawaban with score and auto feedback
         const feedback = isCorrect
-            ? `✅ Benar! Jawaban Anda "${answerText}" adalah tepat.`
-            : `❌ Salah. Jawaban Anda "${answerText}" kurang tepat. Jawaban yang benar adalah "${correctText}".`
+            ? `Benar! Jawaban Anda "${answerText}" adalah tepat.`
+            : `Salah. Jawaban Anda "${answerText}" kurang tepat. Jawaban yang benar adalah "${correctText}".`
 
         const { error: updateError } = await supabase
-            .from('jawaban')
+            .from('jawaban_siswa')
             .update({
                 score: score,
                 ai_feedback: feedback,
@@ -70,7 +71,7 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
 
         // Get siswa_id and ujian_id to calculate final score
         const { data: jawabanData } = await supabase
-            .from('jawaban')
+            .from('jawaban_siswa')
             .select('siswa_id, ujian_id')
             .eq('id', jawabanId)
             .maybeSingle()
@@ -92,7 +93,7 @@ async function calculateUjianScore(ujianId: string, siswaId: string) {
 
         // Get all jawaban for this ujian and siswa
         const { data: allJawaban, error: jawabanError } = await supabase
-            .from('jawaban')
+            .from('jawaban_siswa')
             .select('score, soal_id')
             .eq('ujian_id', ujianId)
             .eq('siswa_id', siswaId)
@@ -196,11 +197,11 @@ async function triggerAIGrading(jawabanId: string, soalId: string) {
     }
 }
 
-type Jawaban = Database['public']['Tables']['jawaban']['Row']
-type JawabanInsert = Database['public']['Tables']['jawaban']['Insert']
-type JawabanUpdate = Database['public']['Tables']['jawaban']['Update']
+type JawabanSiswa = Database['public']['Tables']['jawaban_siswa']['Row']
+type JawabanSiswaInsert = Database['public']['Tables']['jawaban_siswa']['Insert']
+type JawabanSiswaUpdate = Database['public']['Tables']['jawaban_siswa']['Update']
 
-// Hook untuk mendapatkan jawaban siswa untuk ujian tertentu
+// Hook untuk mendapatkan jawaban siswa untuk ujian tertentu (attempt terakhir saja)
 export function useJawabanByUjian(ujianId: string) {
     const { user } = useAuthStore()
 
@@ -212,8 +213,9 @@ export function useJawabanByUjian(ujianId: string) {
                 throw new Error('User not authenticated')
             }
 
-            const { data, error } = await supabase
-                .from('jawaban')
+            // Ambil semua jawaban untuk ujian ini, diurutkan berdasarkan created_at
+            const { data: allJawaban, error } = await supabase
+                .from('jawaban_siswa')
                 .select(`
                     *,
                     soal:soal_id (
@@ -228,27 +230,56 @@ export function useJawabanByUjian(ujianId: string) {
                 `)
                 .eq('ujian_id', ujianId)
                 .eq('siswa_id', user.id)
-                .order('created_at', { ascending: true })
+                .order('created_at', { ascending: false })
 
             if (error) {
                 console.error('❌ Error fetching jawaban:', error)
                 throw error
             }
 
-            return data || []
+            if (!allJawaban || allJawaban.length === 0) {
+                return []
+            }
+
+            // Group by soal_id dan ambil jawaban dari attempt terakhir saja
+            const latestAnswersMap = new Map<string, any>()
+            allJawaban.forEach((jawaban: any) => {
+                const soalId = jawaban.soal_id
+                const currentDate = new Date(jawaban.created_at)
+                
+                if (!latestAnswersMap.has(soalId) || 
+                    new Date(latestAnswersMap.get(soalId).created_at) < currentDate) {
+                    latestAnswersMap.set(soalId, jawaban)
+                }
+            })
+
+            // Convert map ke array dan sort berdasarkan soal urutan (jika ada)
+            const latestAnswers = Array.from(latestAnswersMap.values())
+            
+            console.log('🔍 Latest answers for ujian:', {
+                ujianId,
+                totalAnswers: allJawaban.length,
+                latestAnswers: latestAnswers.length,
+                soalIds: latestAnswers.map(j => j.soal_id)
+            })
+
+            return latestAnswers.sort((a, b) => {
+                // Sort by soal_id untuk konsistensi urutan
+                return a.soal_id.localeCompare(b.soal_id)
+            })
         },
         enabled: !!ujianId && !!user?.id,
     })
 }
 
-// Hook untuk mendapatkan semua jawaban siswa
+// Hook untuk mendapatkan semua jawaban siswa (hanya attempt terakhir per ujian)
 export function useJawabanSiswa() {
     const { user } = useAuthStore()
 
     return useQuery({
         queryKey: ['jawaban', 'siswa'],
         queryFn: async () => {
-            console.log('📝 Fetching all jawaban for siswa:', { userId: user?.id })
+            console.log('📝 Fetching all jawaban for siswa (latest attempts only):', { userId: user?.id })
 
             if (!user?.id) {
                 console.log('❌ User not authenticated for useJawabanSiswa')
@@ -256,8 +287,9 @@ export function useJawabanSiswa() {
             }
 
             try {
-                const { data, error } = await supabase
-                    .from('jawaban')
+                // Ambil semua jawaban siswa
+                const { data: allJawaban, error } = await supabase
+                    .from('jawaban_siswa')
                     .select(`
                         *,
                         ujian (
@@ -281,19 +313,32 @@ export function useJawabanSiswa() {
                     throw error
                 }
 
-                console.log('✅ Jawaban siswa fetched successfully:', {
-                    total: data?.length || 0,
-                    sample: data?.[0],
-                    ujianData: data?.map(j => ({
-                        id: j.id,
-                        ujian_id: j.ujian_id,
-                        ujianNested: j.ujian,
-                        hasUjianData: !!j.ujian
-                    }))
+                if (!allJawaban || allJawaban.length === 0) {
+                    return []
+                }
+
+                // Group by ujian_id dan soal_id, ambil hanya attempt terakhir
+                const latestAnswersMap = new Map<string, any>()
+                allJawaban.forEach((jawaban: any) => {
+                    const key = `${jawaban.ujian_id}_${jawaban.soal_id}`
+                    const currentDate = new Date(jawaban.created_at)
+                    
+                    if (!latestAnswersMap.has(key) || 
+                        new Date(latestAnswersMap.get(key).created_at) < currentDate) {
+                        latestAnswersMap.set(key, jawaban)
+                    }
+                })
+
+                const latestAnswers = Array.from(latestAnswersMap.values())
+
+                console.log('✅ Jawaban siswa fetched (latest attempts only):', {
+                    totalAnswers: allJawaban.length,
+                    latestAnswers: latestAnswers.length,
+                    uniqueUjian: [...new Set(latestAnswers.map(j => j.ujian_id))].length
                 })
 
                 // Filter out answers without valid ujian data
-                const validData = data?.filter(jawaban => {
+                const validData = latestAnswers.filter((jawaban: any) => {
                     if (!jawaban.ujian) {
                         console.warn('⚠️ Found jawaban without ujian data:', {
                             jawabanId: jawaban.id,
@@ -302,10 +347,10 @@ export function useJawabanSiswa() {
                         return false
                     }
                     return true
-                }) || []
+                })
 
-                console.log(`📊 Filtered results: ${validData.length}/${data?.length || 0} valid answers`)
-                return validData
+                console.log(`📊 Filtered results: ${validData.length}/${latestAnswers.length} valid answers`)
+                return validData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             } catch (error) {
                 console.error('❌ Error in useJawabanSiswa query:', error)
                 throw error
@@ -321,7 +366,7 @@ export function useSubmitJawaban() {
     const { user } = useAuthStore()
 
     return useMutation({
-        mutationFn: async (jawaban: Omit<JawabanInsert, 'siswa_id'>) => {
+        mutationFn: async (jawaban: Omit<JawabanSiswaInsert, 'siswa_id'>) => {
             console.log('📝 Submitting jawaban:', jawaban)
 
             if (!user?.id) {
@@ -329,7 +374,7 @@ export function useSubmitJawaban() {
             }
 
             const { data, error } = await supabase
-                .from('jawaban')
+                .from('jawaban_siswa')
                 .upsert({
                     ...jawaban,
                     siswa_id: user.id,
@@ -424,7 +469,7 @@ export function useDebouncedSubmitJawaban(delay = 2000) {
     const { user } = useAuthStore()
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-    const submitJawaban = useCallback(async (jawaban: Omit<JawabanInsert, 'siswa_id'>) => {
+    const submitJawaban = useCallback(async (jawaban: Omit<JawabanSiswaInsert, 'siswa_id'>) => {
         if (!user?.id) {
             console.error('❌ User not authenticated for debounced submit')
             return
@@ -437,7 +482,7 @@ export function useDebouncedSubmitJawaban(delay = 2000) {
             })
 
             const { data, error } = await supabase
-                .from('jawaban')
+                .from('jawaban_siswa')
                 .upsert({
                     ...jawaban,
                     siswa_id: user.id,
@@ -461,7 +506,7 @@ export function useDebouncedSubmitJawaban(delay = 2000) {
         }
     }, [user?.id, queryClient])
 
-    const debouncedSubmit = useCallback((jawaban: Omit<JawabanInsert, 'siswa_id'>) => {
+    const debouncedSubmit = useCallback((jawaban: Omit<JawabanSiswaInsert, 'siswa_id'>) => {
         // Clear existing timeout
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current)
@@ -512,7 +557,7 @@ export function useBatchSubmitJawaban() {
             }))
 
             const { data, error } = await supabase
-                .from('jawaban')
+                .from('jawaban_siswa')
                 .upsert(jawabanData)
                 .select()
 
@@ -553,11 +598,11 @@ export function useUpdateJawaban() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ id, ...updates }: { id: string } & JawabanUpdate) => {
+        mutationFn: async ({ id, ...updates }: { id: string } & JawabanSiswaUpdate) => {
             console.log('📝 Updating jawaban:', { id, updates })
 
             const { data, error } = await supabase
-                .from('jawaban')
+                .from('jawaban_siswa')
                 .update({
                     ...updates,
                     updated_at: new Date().toISOString()
@@ -582,30 +627,50 @@ export function useUpdateJawaban() {
     })
 }
 
-// Hook untuk mendapatkan ujian IDs yang sudah dikerjakan siswa (untuk filtering available ujian)
+// Hook untuk mendapatkan ujian IDs yang sudah BENAR-BENAR selesai dikerjakan siswa (berdasarkan attempt terakhir)
 export function useCompletedUjianIds() {
     const { user } = useAuthStore()
 
     return useQuery({
-        queryKey: ['ujian', 'completed', 'ids', 'siswa'],
+        queryKey: ['ujian', 'completed', 'ids', 'siswa', user?.id],
         queryFn: async () => {
             if (!user?.id) {
                 return []
             }
 
             try {
-                const { data: completedIds, error } = await supabase
-                    .from('jawaban')
-                    .select('ujian_id')
+                // Ambil semua jawaban siswa dengan informasi waktu untuk mendapat attempt terakhir
+                const { data: jawabanData, error } = await supabase
+                    .from('jawaban_siswa')
+                    .select('ujian_id, created_at')
                     .eq('siswa_id', user.id)
+                    .order('created_at', { ascending: false })
 
                 if (error) {
-                    console.error('❌ Error fetching completed ujian IDs:', error)
+                    console.error('❌ Error fetching answered ujian IDs:', error)
                     throw error
                 }
 
-                // Extract unique ujian IDs
-                const uniqueIds = [...new Set(completedIds?.map(item => item.ujian_id) || [])]
+                // Group by ujian_id dan ambil attempt terakhir saja
+                const latestAttempts = new Map()
+                jawabanData?.forEach(jawaban => {
+                    const ujianId = jawaban.ujian_id
+                    const currentDate = new Date(jawaban.created_at)
+                    
+                    if (!latestAttempts.has(ujianId) || 
+                        new Date(latestAttempts.get(ujianId).created_at) < currentDate) {
+                        latestAttempts.set(ujianId, jawaban)
+                    }
+                })
+                
+                const uniqueIds = Array.from(latestAttempts.keys())
+                
+                console.log('🔍 Latest answered ujian attempts:', {
+                    totalAnswers: jawabanData?.length || 0,
+                    uniqueUjian: uniqueIds.length,
+                    latestAttempts: uniqueIds
+                })
+                
                 return uniqueIds
             } catch (error) {
                 console.error('❌ Error in useCompletedUjianIds:', error)
@@ -613,10 +678,12 @@ export function useCompletedUjianIds() {
             }
         },
         enabled: !!user?.id,
+        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
+        refetchInterval: false, // Tidak perlu auto-refetch
     })
 }
 
-// Hook untuk mendapatkan ujian yang telah diikuti siswa
+// Hook untuk mendapatkan ujian yang telah SELESAI dikerjakan siswa (untuk tab "Ujian Dikerjakan")
 export function useCompletedUjianSiswa() {
     const { user } = useAuthStore()
 
@@ -628,23 +695,55 @@ export function useCompletedUjianSiswa() {
             }
 
             try {
-                // Ambil semua jawaban siswa
-                const { data: simpleJawaban, error: simpleError } = await supabase
-                    .from('jawaban')
+                // Ambil semua jawaban siswa dengan informasi waktu
+                const { data: allJawaban, error: jawabanError } = await supabase
+                    .from('jawaban_siswa')
                     .select('id, ujian_id, siswa_id, score, created_at')
                     .eq('siswa_id', user.id)
+                    .order('created_at', { ascending: false })
 
-                if (simpleError) {
-                    console.error('❌ Error fetching jawaban:', simpleError)
-                    throw simpleError
+                if (jawabanError) {
+                    console.error('❌ Error fetching jawaban:', jawabanError)
+                    throw jawabanError
                 }
 
-                if (!simpleJawaban || simpleJawaban.length === 0) {
+                if (!allJawaban || allJawaban.length === 0) {
                     return []
                 }
 
-                // Ambil unique ujian IDs
-                const ujianIds = [...new Set(simpleJawaban.map(j => j.ujian_id))]
+                // Group jawaban berdasarkan ujian_id dan ambil hanya attempt terakhir per ujian
+                const latestAttemptsMap = new Map<string, any[]>()
+                allJawaban.forEach((jawaban: any) => {
+                    const ujianId = jawaban.ujian_id
+                    if (!latestAttemptsMap.has(ujianId)) {
+                        latestAttemptsMap.set(ujianId, [])
+                    }
+                    latestAttemptsMap.get(ujianId)!.push(jawaban)
+                })
+
+                // Untuk setiap ujian, ambil jawaban dari attempt terakhir saja
+                const latestAttemptJawaban: any[] = []
+                latestAttemptsMap.forEach((jawabans: any[], ujianId: string) => {
+                    // Sort by created_at descending dan ambil yang terakhir (terbaru)
+                    const sortedJawaban = jawabans.sort((a: any, b: any) => 
+                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    )
+                    
+                    // Ambil tanggal attempt terakhir
+                    const latestAttemptDate = sortedJawaban[0].created_at
+                    
+                    // Filter jawaban yang memiliki tanggal yang sama dengan attempt terakhir
+                    // (untuk handle multiple soal dalam satu attempt)
+                    const latestSessionJawaban = sortedJawaban.filter((j: any) => {
+                        const diff = new Date(j.created_at).getTime() - new Date(latestAttemptDate).getTime()
+                        return Math.abs(diff) < 60000 // dalam rentang 1 menit (satu sesi ujian)
+                    })
+                    
+                    latestAttemptJawaban.push(...latestSessionJawaban)
+                })
+
+                // Ambil unique ujian IDs dari attempt terakhir
+                const ujianIds = [...new Set(latestAttemptJawaban.map(j => j.ujian_id))]
 
                 // Ambil data ujian untuk IDs tersebut
                 const { data: ujianData, error: ujianError } = await supabase
@@ -663,6 +762,13 @@ export function useCompletedUjianSiswa() {
                     `)
                     .in('id', ujianIds)
 
+                console.log('📊 Fetched completed ujian data (latest attempts only):', {
+                    totalJawaban: allJawaban.length,
+                    latestAttemptJawaban: latestAttemptJawaban.length,
+                    uniqueUjianIds: ujianIds.length,
+                    ujianData: ujianData?.length || 0
+                })
+
                 if (ujianError) {
                     console.error('❌ Error fetching ujian data:', ujianError)
                     throw ujianError
@@ -672,15 +778,15 @@ export function useCompletedUjianSiswa() {
                     return []
                 }
 
-                // Gabungkan data jawaban dengan ujian
+                // Gabungkan data jawaban dengan ujian (hanya attempt terakhir)
                 const completedUjian = ujianData.map(ujian => {
-                    const jawabanForUjian = simpleJawaban.filter(j => j.ujian_id === ujian.id)
+                    const jawabanForUjian = latestAttemptJawaban.filter(j => j.ujian_id === ujian.id)
                     const scores = jawabanForUjian.filter(j => j.score !== null).map(j => j.score)
                     const averageScore = scores.length > 0
                         ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
                         : null
 
-                    // Find latest attempt
+                    // Find latest attempt date
                     const lastAttempt = jawabanForUjian
                         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]?.created_at
 
@@ -710,36 +816,147 @@ export function useCompletedUjianSiswa() {
             }
         },
         enabled: !!user?.id,
+        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
+        refetchInterval: false, // Tidak perlu auto-refetch
     })
 }
 
-// Hook untuk mendapatkan ujian yang tersedia untuk siswa (belum dikerjakan)
-export function useAvailableUjian() {
+// Hook untuk mendapatkan ujian yang sedang dikerjakan siswa (in-progress)
+export function useInProgressUjianSiswa() {
     const { user } = useAuthStore()
-    const { data: completedIds = [] } = useCompletedUjianIds()
 
     return useQuery({
-        queryKey: ['ujian', 'available', completedIds],
+        queryKey: ['ujian', 'in-progress', 'siswa', user?.id],
         queryFn: async () => {
             if (!user?.id) {
                 return []
             }
 
             try {
-                // Fetch all ujian yang tidak ada di daftar completed
+                // Ambil ujian yang sudah pernah dijawab tapi belum completed
+                const { data: jawabanData, error } = await supabase
+                    .from('jawaban_siswa')
+                    .select(`
+                        ujian_id,
+                        created_at,
+                        ujian!inner (
+                            id,
+                            name,
+                            description,
+                            status,
+                            duration_minutes,
+                            start_time,
+                            end_time,
+                            created_by,
+                            profiles!created_by (full_name)
+                        )
+                    `)
+                    .eq('siswa_id', user.id)
+                    .in('ujian.status', ['active', 'draft']) // Hanya ujian yang masih aktif atau draft
+
+                if (error) {
+                    console.error('❌ Error fetching in-progress ujian:', error)
+                    throw error
+                }
+
+                if (!jawabanData || jawabanData.length === 0) {
+                    return []
+                }
+
+                // Group by ujian dan ambil yang unique
+                const ujianMap = new Map()
+                jawabanData.forEach(item => {
+                    const ujian = item.ujian as any
+                    if (!ujianMap.has(ujian.id)) {
+                        ujianMap.set(ujian.id, {
+                            ...ujian,
+                            lastAttempt: item.created_at
+                        })
+                    } else {
+                        // Update dengan attempt terbaru
+                        const existing = ujianMap.get(ujian.id)
+                        if (new Date(item.created_at) > new Date(existing.lastAttempt)) {
+                            ujianMap.set(ujian.id, {
+                                ...ujian,
+                                lastAttempt: item.created_at
+                            })
+                        }
+                    }
+                })
+
+                const result = Array.from(ujianMap.values())
+                console.log('📝 In-progress ujian:', result.length)
+                return result
+            } catch (error) {
+                console.error('❌ Error in useInProgressUjianSiswa:', error)
+                throw error
+            }
+        },
+        enabled: !!user?.id,
+        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
+        refetchInterval: false, // Tidak perlu auto-refetch
+    })
+}
+
+// Hook untuk mendapatkan ujian yang tersedia untuk siswa (belum dikerjakan)
+export function useAvailableUjian() {
+    const { user } = useAuthStore()
+    const queryClient = useQueryClient()
+    const { showUjianNotification, permission } = useNotifications()
+
+    const query = useQuery({
+        queryKey: ['ujian', 'available', user?.id],
+        queryFn: async () => {
+            if (!user?.id) {
+                return []
+            }
+
+            try {
+                // Get ujian IDs yang sudah dikerjakan (attempt terakhir) dengan logika yang sama
+                const { data: jawabanData, error: jawabanError } = await supabase
+                    .from('jawaban_siswa')
+                    .select('ujian_id, created_at')
+                    .eq('siswa_id', user.id)
+                    .order('created_at', { ascending: false })
+
+                if (jawabanError) {
+                    console.error('❌ Error fetching answered ujian:', jawabanError)
+                    throw jawabanError
+                }
+
+                // Group by ujian_id dan ambil attempt terakhir saja
+                const latestAttempts = new Map()
+                jawabanData?.forEach((jawaban: any) => {
+                    const ujianId = jawaban.ujian_id
+                    const currentDate = new Date(jawaban.created_at)
+                    
+                    if (!latestAttempts.has(ujianId) || 
+                        new Date(latestAttempts.get(ujianId).created_at) < currentDate) {
+                        latestAttempts.set(ujianId, jawaban)
+                    }
+                })
+                
+                const answeredUjianIds = Array.from(latestAttempts.keys())
+
+                // Fetch semua ujian yang belum dikerjakan
                 const query = supabase
                     .from('ujian')
                     .select(`
                         *
                     `)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false })
 
-                // Filter out completed ujian if there are any
-                if (completedIds.length > 0) {
-                    query.not('id', 'in', `(${completedIds.join(',')})`)
+                // Filter out ujian yang sudah dikerjakan
+                if (answeredUjianIds.length > 0) {
+                    query.not('id', 'in', `(${answeredUjianIds.join(',')})`)
                 }
 
                 const { data, error } = await query
+                console.log('🔍 Fetching available ujian for user:', {
+                    totalUjian: data?.length || 0,
+                    answeredUjian: answeredUjianIds.length,
+                    availableUjian: data?.length || 0
+                })
 
                 if (error) {
                     console.error('❌ Error fetching available ujian:', error)
@@ -753,7 +970,58 @@ export function useAvailableUjian() {
             }
         },
         enabled: !!user?.id,
+        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
+        refetchInterval: false, // Tidak perlu auto-refetch karena sudah ada realtime
     })
+
+    // Setup realtime subscription untuk ujian table
+    useEffect(() => {
+        if (!user?.id) return
+
+        console.log('🔄 Setting up realtime subscription for available ujian (siswa)')
+        
+        const channel = supabase
+            .channel('ujian-available-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'ujian',
+                },
+                (payload) => {
+                    console.log('📡 Realtime ujian change detected (available):', payload.eventType, payload.new || payload.old)
+                    
+                    // Invalidate query untuk update UI
+                    queryClient.invalidateQueries({ 
+                        queryKey: ['ujian', 'available', user.id] 
+                    })
+                    
+                    // Show notification untuk ujian baru yang dimulai
+                    if (payload.eventType === 'UPDATE' && payload.new) {
+                        const newData = payload.new as any
+                        const oldData = payload.old as any
+                        
+                        if (oldData?.status === 'draft' && newData?.status === 'active') {
+                            console.log('🎯 Ujian baru tersedia:', newData.name)
+                            
+                            // Show notification jika user sudah memberikan permission
+                            if (permission === 'granted') {
+                                showUjianNotification(newData.name)
+                            }
+                        }
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            console.log('🔄 Cleaning up available ujian realtime subscription')
+            supabase.removeChannel(channel)
+        }
+    }, [user?.id, queryClient, showUjianNotification, permission])
+
+    return query
 }
 
 // Hook untuk mendapatkan detail ujian untuk siswa

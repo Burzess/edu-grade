@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUjian, useDeleteUjian, useUjianWithSeparateQueries, useStartUjian } from '@/hooks/use-ujian'
-import { GuruOnlyGuard } from '@/components/auth/role-guard'
+import { useUjian, useDeleteUjian, useStartUjian } from '@/hooks/use-ujian-backup'
+import { GuruLayout } from '@/components/layout/guru-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -115,7 +115,7 @@ function UjianCard({ ujian, onDelete, onStartUjian }: UjianCardProps) {
             </div>
             <div className="flex items-center gap-1">
               <Users className="h-4 w-4" />
-              <span>0 peserta</span> {/* TODO: implement peserta count */}
+              <span>{ujian.totalPeserta || 0} peserta</span>
             </div>
           </div>
 
@@ -234,7 +234,6 @@ function UjianPageContent() {
   const pageSize = 12
 
   const { data: ujianData, isLoading, error } = useUjian(currentPage, pageSize)
-  // const { data: ujianDataDebug, isLoading: isLoadingDebug, error: errorDebug } = useUjianWithSeparateQueries(currentPage, pageSize)
   const deleteUjianMutation = useDeleteUjian()
   const startUjianMutation = useStartUjian()
 
@@ -290,11 +289,11 @@ function UjianPageContent() {
   ) || []
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Ujian</h1>
+          <h1 className="text-2xl font-bold">Kelola Ujian</h1>
           <p className="text-muted-foreground">
             Kelola ujian yang akan diberikan kepada siswa
           </p>
@@ -394,8 +393,8 @@ function UjianPageContent() {
 
 export default function UjianPage() {
   return (
-    <GuruOnlyGuard>
+    <GuruLayout>
       <UjianPageContent />
-    </GuruOnlyGuard>
+    </GuruLayout>
   )
 }
