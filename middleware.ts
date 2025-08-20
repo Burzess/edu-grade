@@ -23,42 +23,49 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Jika user sudah login, get profile untuk cek role
+    // Jika user sudah login, ambil role dari user_metadata untuk menghindari DB query
     if (user) {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
+        // Coba ambil role dari metadata dulu (lebih cepat)
+        let userRole = user.user_metadata?.role
+        
+        // Jika tidak ada di metadata, baru query database (fallback)
+        if (!userRole) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+            userRole = profile?.role
+        }
 
         // Redirect ke dashboard sesuai role jika di root
         if (pathname === '/') {
-            if (profile?.role === 'guru') {
+            if (userRole === 'guru') {
                 url.pathname = '/guru/dashboard'
                 return NextResponse.redirect(url)
-            } else if (profile?.role === 'siswa') {
+            } else if (userRole === 'siswa') {
                 url.pathname = '/siswa/dashboard'
                 return NextResponse.redirect(url)
             }
         }
 
         // Proteksi route berdasarkan role
-        if (pathname.startsWith('/guru') && profile?.role !== 'guru') {
+        if (pathname.startsWith('/guru') && userRole !== 'guru') {
             url.pathname = '/siswa/dashboard'
             return NextResponse.redirect(url)
         }
 
-        if (pathname.startsWith('/siswa') && profile?.role !== 'siswa') {
+        if (pathname.startsWith('/siswa') && userRole !== 'siswa') {
             url.pathname = '/guru/dashboard'
             return NextResponse.redirect(url)
         }
 
         // Redirect ke dashboard jika sudah login dan mencoba akses login/register
         if (isPublicRoute && pathname !== '/') {
-            if (profile?.role === 'guru') {
+            if (userRole === 'guru') {
                 url.pathname = '/guru/dashboard'
                 return NextResponse.redirect(url)
-            } else if (profile?.role === 'siswa') {
+            } else if (userRole === 'siswa') {
                 url.pathname = '/siswa/dashboard'
                 return NextResponse.redirect(url)
             }

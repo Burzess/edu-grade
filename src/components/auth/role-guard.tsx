@@ -1,5 +1,6 @@
 'use client'
 
+import { useRoleCheck, useQuickAuthCheck } from '@/hooks/use-optimized-auth'
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, ReactNode, memo } from 'react'
@@ -90,15 +91,16 @@ const useAuthRedirect = () => {
 
 // Guard untuk mencegah user yang sudah login mengakses halaman login/register
 export const AuthRedirectGuard = memo(({ children }: { children: ReactNode }) => {
-    const { user, profile, loading } = useAuthStore()
+    const { isAuthenticated, loading, userRole } = useQuickAuthCheck()
     const { redirectToDashboard } = useAuthRedirect()
 
     useEffect(() => {
-        // Jika user sudah login dan profile sudah dimuat, redirect ke dashboard sesuai role
-        if (!loading && user && profile?.role) {
-            redirectToDashboard(profile.role as UserRole)
-        }
-    }, [user, profile, loading, redirectToDashboard])
+        // Skip if still loading or not authenticated
+        if (loading || !isAuthenticated || !userRole) return
+
+        // Redirect to appropriate dashboard
+        redirectToDashboard(userRole as UserRole)
+    }, [isAuthenticated, userRole, loading, redirectToDashboard])
 
     // Loading state saat mengecek auth status
     if (loading) {
@@ -106,7 +108,7 @@ export const AuthRedirectGuard = memo(({ children }: { children: ReactNode }) =>
     }
 
     // Jika user sudah login, jangan render children (akan redirect)
-    if (user && profile) {
+    if (isAuthenticated && userRole) {
         return <LoadingScreen message="Mengalihkan ke dashboard..." />
     }
 
@@ -117,28 +119,28 @@ AuthRedirectGuard.displayName = 'AuthRedirectGuard'
 
 // Main role guard component
 export const RoleGuard = memo(({ children, allowedRoles, fallbackPath }: RoleGuardProps) => {
-    const { user, profile, loading } = useAuthStore()
+    const { hasAccess, loading, userRole, isAuthenticated } = useRoleCheck(allowedRoles)
     const { redirectTo, redirectToDashboard } = useAuthRedirect()
 
-    // Cek apakah role user diizinkan mengakses halaman ini
-    const isRoleAllowed = profile?.role && allowedRoles.includes(profile.role as UserRole)
-
     useEffect(() => {
+        // Skip if still loading
+        if (loading) return
+
         // Jika tidak loading dan user belum login, redirect ke halaman login
-        if (!loading && !user) {
+        if (!isAuthenticated) {
             redirectTo('/login')
             return
         }
 
         // Jika user sudah login tapi role tidak diizinkan, redirect sesuai role
-        if (!loading && user && profile && !isRoleAllowed) {
+        if (isAuthenticated && !hasAccess && userRole) {
             if (fallbackPath) {
                 redirectTo(fallbackPath)
             } else {
-                redirectToDashboard(profile.role as UserRole)
+                redirectToDashboard(userRole as UserRole)
             }
         }
-    }, [user, profile, loading, isRoleAllowed, redirectTo, redirectToDashboard, fallbackPath])
+    }, [isAuthenticated, loading, hasAccess, userRole, redirectTo, redirectToDashboard, fallbackPath])
 
     // Loading state
     if (loading) {
@@ -146,20 +148,15 @@ export const RoleGuard = memo(({ children, allowedRoles, fallbackPath }: RoleGua
     }
 
     // User belum login
-    if (!user) {
+    if (!isAuthenticated) {
         return <LoadingScreen message="Mengalihkan ke halaman login..." />
     }
 
-    // Profile belum dimuat
-    if (!profile) {
-        return <LoadingScreen message="Memuat profil pengguna..." />
-    }
-
     // Role tidak diizinkan
-    if (!isRoleAllowed) {
+    if (!hasAccess) {
         return (
             <AccessDeniedScreen 
-                currentRole={profile.role} 
+                currentRole={userRole || 'unknown'} 
                 requiredRoles={allowedRoles}
             />
         )

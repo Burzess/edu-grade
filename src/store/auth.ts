@@ -11,6 +11,7 @@ interface AuthState {
     loading: boolean
     error: string | null
     lastUpdated: number
+    profileCache: { [userId: string]: { profile: Profile; timestamp: number } }
     setUser: (user: User | null) => void
     setProfile: (profile: Profile | null) => void
     setLoading: (loading: boolean) => void
@@ -21,6 +22,9 @@ interface AuthState {
     isAuthenticated: () => boolean
     getUserRole: () => string | null
     isRole: (role: 'guru' | 'siswa') => boolean
+    // Caching methods
+    getCachedProfile: (userId: string) => Profile | null
+    setCachedProfile: (userId: string, profile: Profile) => void
 }
 
 // Initial state untuk reset
@@ -29,7 +33,8 @@ const initialState = {
     profile: null,
     loading: true,
     error: null,
-    lastUpdated: 0
+    lastUpdated: 0,
+    profileCache: {}
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -37,27 +42,39 @@ export const useAuthStore = create<AuthState>()(
         ...initialState,
         
         setUser: (user) => {
-            set({ 
-                user, 
-                lastUpdated: Date.now(),
-                error: null // Clear error saat user berubah
-            })
+            const currentState = get()
+            if (currentState.user?.id !== user?.id) {
+                set({ 
+                    user, 
+                    lastUpdated: Date.now(),
+                    error: null // Clear error saat user berubah
+                })
+            }
         },
         
         setProfile: (profile) => {
-            set({ 
-                profile, 
-                lastUpdated: Date.now(),
-                error: null
-            })
+            const currentState = get()
+            if (currentState.profile?.id !== profile?.id || currentState.profile?.role !== profile?.role) {
+                set({ 
+                    profile, 
+                    lastUpdated: Date.now(),
+                    error: null
+                })
+            }
         },
         
         setLoading: (loading) => {
-            set({ loading })
+            const currentState = get()
+            if (currentState.loading !== loading) {
+                set({ loading })
+            }
         },
         
         setError: (error) => {
-            set({ error, loading: false })
+            const currentState = get()
+            if (currentState.error !== error) {
+                set({ error, loading: false })
+            }
         },
         
         logout: () => {
@@ -73,6 +90,34 @@ export const useAuthStore = create<AuthState>()(
                 ...initialState,
                 lastUpdated: Date.now()
             })
+        },
+
+        // Caching methods
+        getCachedProfile: (userId: string) => {
+            const { profileCache } = get()
+            const cached = profileCache[userId]
+            if (cached && (Date.now() - cached.timestamp < 5 * 60 * 1000)) { // 5 menit cache
+                return cached.profile
+            }
+            return null
+        },
+
+        setCachedProfile: (userId: string, profile: Profile) => {
+            const currentState = get()
+            const existing = currentState.profileCache[userId]
+            
+            // Only update if profile actually changed
+            if (!existing || existing.profile.id !== profile.id || existing.profile.role !== profile.role) {
+                set((state) => ({
+                    profileCache: {
+                        ...state.profileCache,
+                        [userId]: {
+                            profile,
+                            timestamp: Date.now()
+                        }
+                    }
+                }))
+            }
         },
 
         // Computed getters - memoized untuk performance
@@ -93,23 +138,31 @@ export const useAuthStore = create<AuthState>()(
     }))
 )
 
-// Selectors untuk mencegah unnecessary re-renders
-export const useUser = () => useAuthStore(state => state.user)
-export const useProfile = () => useAuthStore(state => state.profile)
-export const useAuthLoading = () => useAuthStore(state => state.loading)
-export const useAuthError = () => useAuthStore(state => state.error)
-export const useIsAuthenticated = () => useAuthStore(state => state.isAuthenticated())
-export const useUserRole = () => useAuthStore(state => state.getUserRole())
+// Stable selectors untuk mencegah unnecessary re-renders
+export const selectUser = (state: AuthState) => state.user
+export const selectProfile = (state: AuthState) => state.profile
+export const selectLoading = (state: AuthState) => state.loading
+export const selectError = (state: AuthState) => state.error
+export const selectIsAuthenticated = (state: AuthState) => !!(state.user && state.profile)
+export const selectUserRole = (state: AuthState) => state.profile?.role || state.user?.user_metadata?.role || null
+
+// Selector hooks yang stable
+export const useUser = () => useAuthStore(selectUser)
+export const useProfile = () => useAuthStore(selectProfile)
+export const useAuthLoading = () => useAuthStore(selectLoading)
+export const useAuthError = () => useAuthStore(selectError)
+export const useIsAuthenticated = () => useAuthStore(selectIsAuthenticated)
+export const useUserRole = () => useAuthStore(selectUserRole)
 
 // Custom hooks untuk specific role checks
-export const useIsGuru = () => useAuthStore(state => state.isRole('guru'))
-export const useIsSiswa = () => useAuthStore(state => state.isRole('siswa'))
+export const useIsGuru = () => useAuthStore(state => selectUserRole(state) === 'guru')
+export const useIsSiswa = () => useAuthStore(state => selectUserRole(state) === 'siswa')
 
 // Hook untuk mengambil minimal auth state yang dibutuhkan guards
 export const useAuthGuardState = () => useAuthStore(state => ({
     user: state.user,
     profile: state.profile,
     loading: state.loading,
-    isAuthenticated: state.isAuthenticated(),
-    getUserRole: state.getUserRole
+    isAuthenticated: selectIsAuthenticated(state),
+    userRole: selectUserRole(state)
 }))

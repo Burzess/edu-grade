@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
     const router = useRouter()
-    const { setUser, setProfile, setLoading, logout } = useAuthStore()
+    const { setUser, setProfile, setLoading, logout, getCachedProfile, setCachedProfile } = useAuthStore()
 
     useEffect(() => {
         // Get initial session
@@ -52,6 +52,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const getProfile = async (user: User) => {
         try {
+            // Cek cache terlebih dahulu
+            const cachedProfile = getCachedProfile(user.id)
+            if (cachedProfile) {
+                console.log('🔄 Using cached profile for user:', user.id)
+                setProfile(cachedProfile)
+                return
+            }
+
+            // Coba ambil dari metadata dulu (lebih cepat)
+            const metadata = user.user_metadata || {}
+            if (metadata.role && metadata.full_name) {
+                const quickProfile = {
+                    id: user.id,
+                    email: user.email!,
+                    full_name: metadata.full_name,
+                    role: metadata.role as 'siswa' | 'guru',
+                    created_at: user.created_at
+                }
+                setProfile(quickProfile)
+                setCachedProfile(user.id, quickProfile)
+                return
+            }
+
+            // Fallback ke database query
+            console.log('📡 Fetching profile from database for user:', user.id)
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -60,12 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (data) {
                 setProfile(data)
+                setCachedProfile(user.id, data) // Cache hasil
             } else if (error) {
                 console.error('Error fetching profile:', error)
                 // Jika profile tidak ditemukan, coba buat manual
                 if (error.code === 'PGRST116') {
                     console.log('Profile not found, creating...')
-                    const metadata = user.user_metadata || {}
                     const result = await ensureProfileExists(
                         user.id,
                         user.email!,
@@ -83,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         
                         if (newProfile) {
                             setProfile(newProfile)
+                            setCachedProfile(user.id, newProfile)
                         }
                     }
                 }
@@ -107,9 +133,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) throw error
 
-        // Jika user langsung dibuat (no email confirmation) dan trigger gagal
-        // Buat profile manual
+        // Update user metadata agar role tersimpan di JWT untuk akses cepat
         if (data.user && data.session) {
+            const { error: updateError } = await supabase.auth.updateUser({
+                data: {
+                    full_name: fullName,
+                    role: role
+                }
+            })
+
+            if (updateError) {
+                console.warn('Warning: Could not update user metadata:', updateError)
+            }
+
             const result = await ensureProfileExists(
                 data.user.id,
                 data.user.email!,
