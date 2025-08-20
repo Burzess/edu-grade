@@ -22,6 +22,7 @@ import { ArrowLeft, Save, FileText, Clock, Filter, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
+import { GuruLayout } from '@/components/layout/guru-layout'
 
 const ujianSchema = z.object({
   name: z.string().min(3, 'Nama ujian minimal 3 karakter'),
@@ -72,8 +73,8 @@ function SoalItem({ soal, isSelected, onToggle }: SoalItemProps) {
                 {soal.question_text}
               </p>
               <div className="flex items-center gap-1">
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className={getDifficultyColor(soal.difficulty_level)}
                 >
                   {getDifficultyLabel(soal.difficulty_level)}
@@ -83,7 +84,7 @@ function SoalItem({ soal, isSelected, onToggle }: SoalItemProps) {
                 </Badge>
               </div>
             </div>
-            
+
             {soal.tags && soal.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {soal.tags.map((tag: string) => (
@@ -93,7 +94,7 @@ function SoalItem({ soal, isSelected, onToggle }: SoalItemProps) {
                 ))}
               </div>
             )}
-            
+
             <div className="text-xs text-muted-foreground">
               Dibuat {format(new Date(soal.created_at), 'dd MMM yyyy', { locale: id })}
             </div>
@@ -138,7 +139,7 @@ export default function CreateUjianPage() {
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all')
 
   const createUjianMutation = useCreateUjian()
-  const { data: soalData, isLoading: isLoadingSoal } = useSoalList({ 
+  const { data: soalData, isLoading: isLoadingSoal } = useSoalList({
     limit: 100  // Load more for selection
   })
 
@@ -162,17 +163,17 @@ export default function CreateUjianPage() {
   // Enhanced filtering function
   const getFilteredSoal = () => {
     if (!soalData?.data) return []
-    
+
     return soalData.data.filter(soal => {
       // Question type filter
       const matchesType = filterType === 'all' || soal.question_type === filterType
-      
+
       // Tag filter
       const matchesTag = filterTag === 'all' || soal.tags?.includes(filterTag)
-      
+
       // Difficulty filter
       const matchesDifficulty = filterDifficulty === 'all' || soal.difficulty_level === filterDifficulty
-      
+
       return matchesType && matchesTag && matchesDifficulty
     })
   }
@@ -200,10 +201,10 @@ export default function CreateUjianPage() {
 
   const handleSelectAll = () => {
     if (!soalData?.data) return
-    
+
     const allIds = filteredSoal.map(soal => soal.id)
     const isAllSelected = allIds.every(id => selectedSoalIds.includes(id))
-    
+
     if (isAllSelected) {
       // Deselect all filtered
       form.setValue('selected_soal', selectedSoalIds.filter(id => !allIds.includes(id)))
@@ -237,26 +238,18 @@ export default function CreateUjianPage() {
   const totalSoal = soalData?.data?.length || 0
 
   return (
-    <GuruOnlyGuard>
-      <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Kembali ke Daftar Ujian
-              </Link>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Buat Ujian Baru
-              </h1>
-            </div>
-          </div>
+    <GuruLayout>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center space-x-4">
+          <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Kembali ke Daftar Ujian
+          </Link>
+          <h1 className="text-xl font-semibold text-gray-900">
+            Buat Ujian Baru
+          </h1>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Form Section */}
           <div className="lg:col-span-1">
@@ -316,8 +309,8 @@ export default function CreateUjianPage() {
                           <FormLabel>Durasi Ujian *</FormLabel>
                           <FormControl>
                             <div className="space-y-3">
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 placeholder="60"
                                 min="1"
                                 max="480"
@@ -532,11 +525,10 @@ export default function CreateUjianPage() {
                   )}
                 </div>
               </CardContent>
-          </Card>
+            </Card>
+          </div>
         </div>
       </div>
-    </main>
-  </div>
-  </GuruOnlyGuard>
+    </GuruLayout>
   )
 }

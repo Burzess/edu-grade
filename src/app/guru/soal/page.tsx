@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react'
 import Link from 'next/link'
+import { CreateSoalModal } from '@/components/soal/create-soal-modal'
 
 function SoalListPageContent() {
     const router = useRouter()
@@ -80,12 +81,14 @@ function SoalListPageContent() {
                         Kelola bank soal untuk ujian
                     </p>
                 </div>
-                <Button asChild>
-                    <Link href="/guru/soal/new">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Buat Soal Baru
-                    </Link>
-                </Button>
+                <CreateSoalModal 
+                    trigger={
+                        <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Buat Soal Baru
+                        </Button>
+                    }
+                />
             </div>
 
             {/* Filters */}
@@ -170,11 +173,13 @@ function SoalListPageContent() {
                     ) : soalData?.data.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-gray-500">Belum ada soal yang dibuat</p>
-                            <Button asChild className="mt-4">
-                                <Link href="/guru/soal/new">
-                                    Buat Soal Pertama
-                                </Link>
-                            </Button>
+                            <CreateSoalModal 
+                                trigger={
+                                    <Button className="mt-4">
+                                        Buat Soal Pertama
+                                    </Button>
+                                }
+                            />
                         </div>
                     ) : (
                         <>

@@ -24,6 +24,7 @@ import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
 import { useState } from 'react'
+import { GuruLayout } from '@/components/layout/guru-layout'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -136,26 +137,16 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50">
-                <nav className="bg-white shadow-sm border-b">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                            <div className="flex items-center space-x-4">
-                                <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                                    <ArrowLeft className="h-4 w-4 mr-1" />
-                                    Kembali ke Daftar Ujian
-                                </Link>
-                                <Skeleton className="h-6 w-48" />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Skeleton className="h-9 w-20" />
-                                <Skeleton className="h-9 w-20" />
-                            </div>
-                        </div>
+            <GuruLayout>
+                <div className="p-6 space-y-6">
+                    <div className="flex items-center space-x-4">
+                        <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                            <ArrowLeft className="h-4 w-4 mr-1" />
+                            Kembali ke Daftar Ujian
+                        </Link>
+                        <Skeleton className="h-6 w-48" />
                     </div>
-                </nav>
 
-                <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-1 space-y-6">
                             <Card>
@@ -185,39 +176,33 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                             </Card>
                         </div>
                     </div>
-                </main>
-            </div>
+                </div>
+            </GuruLayout>
         )
     }
 
     if (error || !ujian) {
         return (
-            <div className="min-h-screen bg-gray-50">
-                <nav className="bg-white shadow-sm border-b">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between h-16">
-                            <div className="flex items-center space-x-4">
-                                <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                                    <ArrowLeft className="h-4 w-4 mr-1" />
-                                    Kembali ke Daftar Ujian
-                                </Link>
-                                <h1 className="text-xl font-semibold text-gray-900">
-                                    Detail Ujian
-                                </h1>
-                            </div>
-                        </div>
+            <GuruLayout>
+                <div className="p-6 space-y-6">
+                    <div className="flex items-center space-x-4">
+                        <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                            <ArrowLeft className="h-4 w-4 mr-1" />
+                            Kembali ke Daftar Ujian
+                        </Link>
+                        <h1 className="text-xl font-semibold text-gray-900">
+                            Detail Ujian
+                        </h1>
                     </div>
-                </nav>
 
-                <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                     <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>
                             Ujian tidak ditemukan atau terjadi kesalahan saat memuat data.
                         </AlertDescription>
                     </Alert>
-                </main>
-            </div>
+                </div>
+            </GuruLayout>
         )
     }
 
@@ -245,65 +230,60 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Navigation */}
-            <nav className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex items-center space-x-4">
-                            <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                                <ArrowLeft className="h-4 w-4 mr-1" />
-                                Kembali ke Daftar Ujian
+        <GuruLayout>
+            <div className="p-6 space-y-6">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center space-x-4">
+                        <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                            <ArrowLeft className="h-4 w-4 mr-1" />
+                            Kembali ke Daftar Ujian
+                        </Link>
+                        <h1 className="text-xl font-semibold text-gray-900">
+                            {ujian.name}
+                        </h1>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                        >
+                            <Link href={`/guru/ujian/${ujian.id}/edit`}>
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
                             </Link>
-                            <h1 className="text-xl font-semibold text-gray-900">
-                                {ujian.name}
-                            </h1>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                            >
-                                <Link href={`/guru/ujian/${ujian.id}/edit`}>
-                                    <Edit className="h-4 w-4 mr-1" />
-                                    Edit
-                                </Link>
-                            </Button>
+                        </Button>
 
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Hapus
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Hapus Ujian</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Apakah Anda yakin ingin menghapus ujian "{ujian.name}"?
-                                            Tindakan ini tidak dapat dibatalkan dan akan menghapus semua data terkait ujian.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={handleDelete}
-                                            disabled={isDeleting}
-                                            className="bg-red-600 hover:bg-red-700"
-                                        >
-                                            {isDeleting ? 'Menghapus...' : 'Hapus'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm">
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Hapus
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Hapus Ujian</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Apakah Anda yakin ingin menghapus ujian "{ujian.name}"?
+                                        Tindakan ini tidak dapat dibatalkan dan akan menghapus semua data terkait ujian.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        className="bg-red-600 hover:bg-red-700"
+                                    >
+                                        {isDeleting ? 'Menghapus...' : 'Hapus'}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
-            </nav>
 
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Ujian Info Section */}
                     <div className="lg:col-span-1 space-y-6">
@@ -458,7 +438,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                         </Card>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </GuruLayout>
     )
 }

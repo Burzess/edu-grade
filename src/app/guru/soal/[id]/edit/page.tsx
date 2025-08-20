@@ -18,10 +18,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
-import { useAuthStore } from '@/store/auth'
-import { useAuth } from '@/components/providers/auth-provider'
 import { ArrowLeft, Save, Loader2, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { GuruLayout } from '@/components/layout/guru-layout'
 
 const soalSchema = z.object({
   question_text: z.string().min(10, 'Pertanyaan minimal 10 karakter'),
@@ -84,8 +83,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
   console.log('🔄 EditSoalPage: Resolved params:', resolvedParams)
   
   const router = useRouter()
-  const { profile } = useAuthStore()
-  const { signOut } = useAuth()
   const [error, setError] = useState<string | null>(null)
   
   const { data: soal, isLoading, error: fetchError } = useSoalDetail(resolvedParams.id)
@@ -99,15 +96,13 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
       if (isLoading) {
         console.warn('⚠️ EditSoalPage: Still loading after 10 seconds, this might be stuck!')
         console.log('Debug info:', { 
-          resolvedParamsId: resolvedParams.id, 
-          hasUser: !!profile, 
-          userEmail: profile?.email 
+          resolvedParamsId: resolvedParams.id
         })
       }
     }, 10000)
 
     return () => clearTimeout(timeout)
-  }, [isLoading, resolvedParams.id, profile])
+  }, [isLoading, resolvedParams.id])
 
   const form = useForm<SoalForm>({
     resolver: zodResolver(soalSchema),
@@ -227,125 +222,87 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
 
   if (isLoading) {
     return (
-      <GuruOnlyGuard>
-        <div className="min-h-screen bg-gray-50">
-        {/* Navigation skeleton */}
-        <nav className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Kembali ke Daftar Soal
-                </Link>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  Edit Soal
-                </h1>
-              </div>
-            </div>
+      <GuruLayout>
+        <div className="p-6 space-y-6">
+          <div className="flex items-center space-x-4">
+            <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Kembali ke Daftar Soal
+            </Link>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Edit Soal
+            </h1>
           </div>
-        </nav>
 
-        <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  <Skeleton className="h-6 w-32" />
-                </CardTitle>
-                <CardDescription>
-                  <Skeleton className="h-4 w-64" />
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <Skeleton className="h-6 w-32" />
+              </CardTitle>
+              <CardDescription>
+                <Skeleton className="h-4 w-64" />
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-      </GuruOnlyGuard>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </GuruLayout>
     )
   }
 
   if (fetchError) {
     return (
-      <GuruOnlyGuard>
-        <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Kembali ke Daftar Soal
-                </Link>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  Edit Soal
-                </h1>
-              </div>
-            </div>
+      <GuruLayout>
+        <div className="p-6 space-y-6">
+          <div className="flex items-center space-x-4">
+            <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Kembali ke Daftar Soal
+            </Link>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Edit Soal
+            </h1>
           </div>
-        </nav>
 
-        <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <Alert variant="destructive">
-              <AlertDescription>
-                Gagal memuat data soal. Silakan coba lagi atau kembali ke daftar soal.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </main>
-      </div>
-      </GuruOnlyGuard>
+          <Alert variant="destructive">
+            <AlertDescription>
+              Gagal memuat data soal. Silakan coba lagi atau kembali ke daftar soal.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </GuruLayout>
     )
   }
 
   return (
-    <GuruOnlyGuard>
-      <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Kembali ke Daftar Soal
-              </Link>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Edit Soal
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
-                {profile?.full_name}
-              </span>
-              <Button variant="outline" onClick={signOut}>
-                Keluar
-              </Button>
-            </div>
-          </div>
+    <GuruLayout>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center space-x-4">
+          <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Kembali ke Daftar Soal
+          </Link>
+          <h1 className="text-xl font-semibold text-gray-900">
+            Edit Soal
+          </h1>
         </div>
-      </nav>
 
-      <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <Card>
+        <Card>
             <CardHeader>
               <CardTitle>Edit Soal</CardTitle>
               <CardDescription>
@@ -581,9 +538,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
               </Form>
             </CardContent>
           </Card>
-        </div>
-      </main>
-    </div>
-    </GuruOnlyGuard>
+      </div>
+    </GuruLayout>
   )
 }

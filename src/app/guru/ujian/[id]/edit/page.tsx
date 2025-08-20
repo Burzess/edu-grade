@@ -20,6 +20,7 @@ import { ArrowLeft, Save, FileText, Clock, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
+import { GuruLayout } from '@/components/layout/guru-layout'
 
 const ujianSchema = z.object({
   name: z.string().min(3, 'Nama ujian minimal 3 karakter'),
