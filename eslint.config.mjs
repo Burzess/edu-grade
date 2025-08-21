@@ -20,8 +20,8 @@ const eslintConfig = [
       "react-hooks/rules-of-hooks": "off",
       "react-hooks/exhaustive-deps": "off",
       "prefer-const": "off",
-      // Tambahan rule untuk console statements
-      "no-console": process.env.NODE_ENV === "production" ? "error" : "warn",
+      // Ubah no-console menjadi warning saja, biarkan compiler Next.js yang handle removal
+      "no-console": "warn",
       "no-debugger": process.env.NODE_ENV === "production" ? "error" : "warn",
     },
   },

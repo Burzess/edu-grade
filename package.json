@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "build:production": "NODE_ENV=production next build",
+    "build:vercel": "next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
