@@ -370,26 +370,80 @@ export function useSubmitJawaban() {
             console.log('📝 Submitting jawaban:', jawaban)
 
             if (!user?.id) {
-                throw new Error('User not authenticated')
-            }
-
-            const { data, error } = await supabase
-                .from('jawaban_siswa')
-                .upsert({
-                    ...jawaban,
-                    siswa_id: user.id,
-                    updated_at: new Date().toISOString()
-                })
-                .select()
-                .single()
-
-            if (error) {
+                const error = new Error('User not authenticated')
                 console.error('❌ Error submitting jawaban:', error)
                 throw error
             }
 
-            console.log('✅ Jawaban submitted successfully:', data)
-            return data
+            // Validate required fields
+            if (!jawaban.ujian_id || !jawaban.soal_id) {
+                const error = new Error('Missing required fields: ujian_id or soal_id')
+                console.error('❌ Error submitting jawaban:', {
+                    error,
+                    received: jawaban,
+                    missingFields: {
+                        ujian_id: !jawaban.ujian_id,
+                        soal_id: !jawaban.soal_id
+                    }
+                })
+                throw error
+            }
+
+            // Validate answer_text is provided (can be empty string but not undefined)
+            if (jawaban.answer_text === undefined || jawaban.answer_text === null) {
+                const error = new Error('answer_text cannot be null or undefined')
+                console.error('❌ Error submitting jawaban:', {
+                    error,
+                    received: jawaban
+                })
+                throw error
+            }
+
+            const submissionData = {
+                ...jawaban,
+                siswa_id: user.id,
+                updated_at: new Date().toISOString()
+            }
+
+            console.log('📤 Sending data to Supabase:', submissionData)
+
+            try {
+                const { data, error } = await supabase
+                    .from('jawaban_siswa')
+                    .upsert(submissionData)
+                    .select()
+                    .single()
+
+                console.log('📥 Supabase response received:', { data, error })
+
+                if (error) {
+                    console.error('❌ Error submitting jawaban - Supabase error:', {
+                        error,
+                        code: error.code,
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        submissionData
+                    })
+                    throw new Error(`Database error: ${error.message}`)
+                }
+
+                if (!data) {
+                    const errorMsg = 'No data returned from Supabase'
+                    console.error('❌ Error submitting jawaban:', errorMsg)
+                    throw new Error(errorMsg)
+                }
+
+                console.log('✅ Jawaban submitted successfully:', data)
+                return data
+            } catch (supabaseError) {
+                console.error('❌ Unexpected error during Supabase operation:', {
+                    error: supabaseError,
+                    submissionData,
+                    timestamp: new Date().toISOString()
+                })
+                throw supabaseError
+            }
         },
         onSuccess: (data) => {
             console.log('🎉 useSubmitJawaban onSuccess triggered:', data)
@@ -408,6 +462,13 @@ export function useSubmitJawaban() {
             checkMultipleChoiceAnswer(data.id, data.soal_id, data.answer_text)
             triggerAIGrading(data.id, data.soal_id)
         },
+        onError: (error) => {
+            console.error('❌ Mutation failed in useSubmitJawaban:', {
+                error,
+                message: error.message,
+                stack: error.stack
+            })
+        }
     })
 }
 

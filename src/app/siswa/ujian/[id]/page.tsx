@@ -445,6 +445,8 @@ function UjianSiswaPageContent() {
     }, [currentQuestion, questionSections, currentSectionType])
 
     const handleSubmitAll = useCallback(async (isAutoSubmit = false) => {
+        let submissions: any[] = [];
+        
         try {
             if (!organizedQuestions || organizedQuestions.length === 0) {
                 toast.error('Tidak ada soal untuk dikumpulkan');
@@ -469,7 +471,7 @@ function UjianSiswaPageContent() {
                 unansweredQuestions: unansweredQuestions.length
             });
 
-            const submissions = organizedQuestions
+            submissions = organizedQuestions
                 .filter((q: any) => q?.soal?.id)
                 .map((q: any) => ({
                     ujian_id: ujianId,
@@ -482,11 +484,36 @@ function UjianSiswaPageContent() {
                 return;
             }
 
-            await Promise.all(
-                submissions.map((submission: any) =>
-                    submitJawabanMutation.mutateAsync(submission)
-                )
+            console.log('📤 Starting submission of answers...', { submissions });
+
+            // Submit all answers with better error handling
+            const results = await Promise.allSettled(
+                submissions.map((submission: any, index: number) => {
+                    console.log(`📝 Submitting answer ${index + 1}/${submissions.length}:`, submission);
+                    return submitJawabanMutation.mutateAsync(submission);
+                })
             );
+
+            // Check for any failures
+            const failures = results.filter(result => result.status === 'rejected');
+            if (failures.length > 0) {
+                console.error('❌ Some submissions failed:', failures);
+                failures.forEach((failure, index) => {
+                    if (failure.status === 'rejected') {
+                        console.error(`❌ Submission ${index + 1} failed:`, failure.reason);
+                    }
+                });
+                
+                const successCount = results.length - failures.length;
+                if (successCount > 0) {
+                    toast.warning(`${successCount} jawaban berhasil disimpan, ${failures.length} jawaban gagal disimpan`);
+                } else {
+                    toast.error('Semua jawaban gagal disimpan. Silakan coba lagi.');
+                    return;
+                }
+            } else {
+                console.log('✅ All answers submitted successfully');
+            }
 
             // Update status ujian_siswa menjadi completed
             try {
@@ -510,21 +537,28 @@ function UjianSiswaPageContent() {
             }, isAutoSubmit ? 2000 : 1000);
 
         } catch (error) {
-            console.error('Error submitting ujian:', error);
+            console.error('❌ Critical error in handleSubmitAll:', {
+                error,
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                isAutoSubmit,
+                submissionsLength: submissions?.length
+            });
+            
             toast.error(
                 isAutoSubmit
                     ? 'Gagal mengumpulkan ujian otomatis. Silakan coba manual.'
-                    : 'Gagal mengumpulkan ujian'
+                    : `Gagal mengumpulkan ujian: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`
             );
         }
     }, [organizedQuestions, answers, submitJawabanMutation, submitUjianSiswaMutation, ujianId, router]);
 
-    // Auto submit ref untuk timer
+    // Auto submit ref untuk timer - stabilize the reference
     const autoSubmitRef = useRef<(() => void) | null>(null);
     
     useEffect(() => {
         autoSubmitRef.current = () => handleSubmitAll(true);
-    }, [handleSubmitAll]);
+    });
 
     // Load existing answers
     useEffect(() => {
@@ -572,7 +606,7 @@ function UjianSiswaPageContent() {
         }
     }, [ujian, ujianId, ujianLoading, startUjianSiswaMutation])
 
-    // Timer logic
+    // Timer logic - stabilize dependencies
     useEffect(() => {
         if (!ujian?.start_time || !ujian?.duration_minutes) return
 
@@ -626,7 +660,7 @@ function UjianSiswaPageContent() {
             console.log('🧹 Cleaning up timer interval')
             clearInterval(interval)
         }
-    }, [ujian?.start_time, ujian?.duration_minutes])
+    }, [ujian?.start_time, ujian?.duration_minutes]) // Remove dependencies that cause re-renders
 
     const formatTime = useCallback((seconds: number) => {
         const hours = Math.floor(seconds / 3600)
@@ -1044,22 +1078,22 @@ function UjianSiswaPageContent() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Kumpulkan Ujian</AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-2">
-                            <p>Apakah Anda yakin ingin mengumpulkan ujian?</p>
-                            
-                            <div className="bg-blue-50 p-3 rounded-lg text-sm">
-                                <div className="font-medium mb-2">📊 Progress Anda:</div>
-                                <div className="space-y-1">
-                                    <div>📝 Pilihan Ganda: {sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total} soal</div>
-                                    <div>✍️ Essay: {sectionProgress.essay.answered}/{sectionProgress.essay.total} soal</div>
-                                    <div className="font-medium">Total: {answeredCount}/{organizedQuestions.length} soal dijawab</div>
-                                </div>
-                            </div>
-                            
-                            <p className="text-red-600 text-sm">
-                                ⚠️ Setelah dikumpulkan, Anda tidak bisa mengubah jawaban lagi.
-                            </p>
-                        </AlertDialogDescription>
+                <AlertDialogDescription className="space-y-2">
+                    <div>Apakah Anda yakin ingin mengumpulkan ujian?</div>
+                    
+                    <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                        <div className="font-medium mb-2">📊 Progress Anda:</div>
+                        <div className="space-y-1">
+                            <div>📝 Pilihan Ganda: {sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total} soal</div>
+                            <div>✍️ Essay: {sectionProgress.essay.answered}/{sectionProgress.essay.total} soal</div>
+                            <div className="font-medium">Total: {answeredCount}/{organizedQuestions.length} soal dijawab</div>
+                        </div>
+                    </div>
+                    
+                    <div className="text-red-600 text-sm">
+                        ⚠️ Setelah dikumpulkan, Anda tidak bisa mengubah jawaban lagi.
+                    </div>
+                </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Batal</AlertDialogCancel>
