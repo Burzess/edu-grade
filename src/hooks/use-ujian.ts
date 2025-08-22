@@ -86,7 +86,9 @@ export function useUjian(page = 1, limit = 10) {
       }
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Refetch setiap 30 detik untuk update status expired
+    staleTime: 2 * 60 * 1000, // 2 menit untuk mengurangi request berlebihan
+    refetchInterval: false, // Disable auto refetch - will use realtime instead
+    refetchIntervalInBackground: false, // Stop refetch ketika tab tidak aktif
   })
 }
 
@@ -670,7 +672,7 @@ export function useUjianSiswa() {
       return data || []
     },
     enabled: !!user?.id && user.role === 'siswa',
-    refetchInterval: 30000, // Refetch setiap 30 detik untuk update status
+    refetchInterval: false, // Bergantung pada realtime subscriptions untuk efisiensi
   })
 }
 
@@ -865,7 +867,7 @@ export function useActiveUjianSiswa(ujianId: string) {
       }
     },
     enabled: !!user?.id && !!ujianId && user.role === 'siswa',
-    refetchInterval: 60000, // Refetch setiap 1 menit untuk update remaining time
+    refetchInterval: false, // Disable auto refetch untuk mengurangi load server
   })
 }
 
@@ -947,15 +949,47 @@ export function useUjianSiswaStatusChecker() {
   useEffect(() => {
     if (!user?.id || user.role !== 'siswa') return
 
-    const interval = setInterval(async () => {
-      try {
-        await autoComplete.mutateAsync()
-      } catch (error) {
-        console.error('Error auto-completing expired ujian siswa:', error)
-      }
-    }, 60000) // Check setiap 1 menit
+    // Optimized interval - hanya check setiap 5 menit dan hanya ketika tab aktif
+    let interval: NodeJS.Timeout | null = null
+    
+    const startChecker = () => {
+      if (interval) return
+      
+      interval = setInterval(async () => {
+        try {
+          await autoComplete.mutateAsync()
+        } catch (error) {
+          console.error('Error auto-completing expired ujian siswa:', error)
+        }
+      }, 5 * 60 * 1000) // Check setiap 5 menit
+    }
 
-    return () => clearInterval(interval)
+    const stopChecker = () => {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopChecker()
+      } else {
+        startChecker()
+      }
+    }
+
+    // Initial setup
+    if (!document.hidden) {
+      startChecker()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      stopChecker()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [user?.id, user?.role, autoComplete])
 }
 
@@ -1014,6 +1048,6 @@ export function useUjianStatistics(ujianId: string) {
       }
     },
     enabled: !!user?.id && !!ujianId && user.role === 'guru',
-    refetchInterval: 30000, // Refetch setiap 30 detik untuk real-time updates
+    refetchInterval: false, // Use realtime subscriptions instead untuk mengurangi load
   })
 }

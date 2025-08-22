@@ -52,11 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const getProfile = async (user: User) => {
         try {
+            // Set timeout untuk mencegah hanging
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => {
+                controller.abort()
+                console.error('⏰ Profile fetch timeout after 10 seconds')
+            }, 10000) // 10 detik timeout
+
             // Cek cache terlebih dahulu
             const cachedProfile = getCachedProfile(user.id)
             if (cachedProfile) {
                 console.log('🔄 Using cached profile for user:', user.id)
                 setProfile(cachedProfile)
+                clearTimeout(timeoutId)
                 return
             }
 
@@ -72,49 +80,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
                 setProfile(quickProfile)
                 setCachedProfile(user.id, quickProfile)
+                clearTimeout(timeoutId)
                 return
             }
 
-            // Fallback ke database query
+            // Fallback ke database query dengan retry logic
             console.log('📡 Fetching profile from database for user:', user.id)
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single()
+            let retries = 3
+            let profileData = null
 
-            if (data) {
-                setProfile(data)
-                setCachedProfile(user.id, data) // Cache hasil
-            } else if (error) {
-                console.error('Error fetching profile:', error)
-                // Jika profile tidak ditemukan, coba buat manual
-                if (error.code === 'PGRST116') {
-                    console.log('Profile not found, creating...')
-                    const result = await ensureProfileExists(
-                        user.id,
-                        user.email!,
-                        metadata.full_name || '',
-                        (metadata.role as 'siswa' | 'guru') || 'siswa'
-                    )
-                    
-                    if (result.success) {
-                        // Coba fetch ulang setelah dibuat
-                        const { data: newProfile } = await supabase
-                            .from('profiles')
-                            .select('*')
-                            .eq('id', user.id)
-                            .single()
-                        
-                        if (newProfile) {
-                            setProfile(newProfile)
-                            setCachedProfile(user.id, newProfile)
+            while (retries > 0 && !profileData) {
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', user.id)
+                        .single()
+
+                    if (data) {
+                        profileData = data
+                        setProfile(data)
+                        setCachedProfile(user.id, data)
+                        break
+                    } else if (error) {
+                        if (error.code === 'PGRST116') {
+                            // Profile not found, try to create
+                            console.log('Profile not found, creating...')
+                            const result = await ensureProfileExists(
+                                user.id,
+                                user.email!,
+                                metadata.full_name || user.email?.split('@')[0] || 'User',
+                                (metadata.role as 'siswa' | 'guru') || 'siswa'
+                            )
+                            
+                            if (result.success) {
+                                // Try fetch again after creation
+                                const { data: newProfile } = await supabase
+                                    .from('profiles')
+                                    .select('*')
+                                    .eq('id', user.id)
+                                    .single()
+                                
+                                if (newProfile) {
+                                    profileData = newProfile
+                                    setProfile(newProfile)
+                                    setCachedProfile(user.id, newProfile)
+                                    break
+                                }
+                            }
+                        } else {
+                            throw error
                         }
+                    }
+                } catch (fetchError: any) {
+                    if (fetchError.name === 'AbortError') {
+                        console.error('⏰ Profile fetch aborted due to timeout')
+                        break
+                    }
+                    
+                    retries--
+                    console.warn(`⚠️ Profile fetch failed, ${retries} retries left:`, fetchError)
+                    
+                    if (retries > 0) {
+                        // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)))
                     }
                 }
             }
+
+            clearTimeout(timeoutId)
+
+            // Jika setelah retry masih gagal, buat profile fallback
+            if (!profileData) {
+                console.warn('⚠️ Unable to fetch/create profile, using fallback')
+                const fallbackProfile = {
+                    id: user.id,
+                    email: user.email!,
+                    full_name: user.email?.split('@')[0] || 'User',
+                    role: 'siswa' as const,
+                    created_at: user.created_at
+                }
+                setProfile(fallbackProfile)
+                setCachedProfile(user.id, fallbackProfile)
+            }
+
         } catch (err) {
-            console.error('Error in getProfile:', err)
+            console.error('❌ Critical error in getProfile:', err)
+            // Fallback profile untuk mencegah stuck loading
+            const emergencyProfile = {
+                id: user.id,
+                email: user.email!,
+                full_name: user.email?.split('@')[0] || 'User',
+                role: 'siswa' as const,
+                created_at: user.created_at
+            }
+            setProfile(emergencyProfile)
         }
     }
 

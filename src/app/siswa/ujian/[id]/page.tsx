@@ -2,8 +2,22 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useUjianForSiswa, useJawabanByUjian, useSubmitJawaban } from '@/hooks/use-jawaban'
+import { useUjianForSiswa } from '@/hooks/use-jawaban'
 import { useStartUjianSiswa, useSubmitUjianSiswa } from '@/hooks/use-ujian'
+import { 
+  useOptimizedUjianStatus, 
+  useOptimizedBatchSubmitJawaban,
+  useOptimizedUjianStatusChecker 
+} from '@/hooks/use-optimized-ujian'
+import { 
+  useOptimizedDebouncedSubmitJawaban, 
+  useOptimizedJawabanByUjian 
+} from '@/hooks/use-optimized-jawaban'
+import { 
+  OptimizedRealtimeProvider, 
+  useConnectionHealth, 
+  usePerformanceMonitor 
+} from '@/components/providers/optimized-realtime-provider'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -369,9 +383,20 @@ function UjianSiswaPageContent() {
     const [showSubmitDialog, setShowSubmitDialog] = useState(false)
     const [navigatorOpen, setNavigatorOpen] = useState(false)
 
+    // Use optimized hooks
     const { data: ujian, isLoading: ujianLoading } = useUjianForSiswa(ujianId)
-    const { data: existingAnswers = [] } = useJawabanByUjian(ujianId)
-    const submitJawabanMutation = useSubmitJawaban()
+    const { data: existingAnswers = [] } = useOptimizedJawabanByUjian(ujianId)
+    const optimizedBatchSubmit = useOptimizedBatchSubmitJawaban()
+    const { debouncedSubmit, forceSubmit } = useOptimizedDebouncedSubmitJawaban()
+    
+    // Use optimized status checker
+    useOptimizedUjianStatusChecker()
+    
+    // Use connection and performance monitoring
+    useConnectionHealth()
+    usePerformanceMonitor()
+    
+    // Mutations
     const startUjianSiswaMutation = useStartUjianSiswa()
     const submitUjianSiswaMutation = useSubmitUjianSiswa()
 
@@ -484,29 +509,16 @@ function UjianSiswaPageContent() {
                 return;
             }
 
-            console.log('📤 Starting submission of answers...', { submissions });
+            // Submit all answers with optimized batch submit
+            const result = await optimizedBatchSubmit.mutateAsync(submissions);
+            
+            const { successful, failed, totalSubmitted } = result;
 
-            // Submit all answers with better error handling
-            const results = await Promise.allSettled(
-                submissions.map((submission: any, index: number) => {
-                    console.log(`📝 Submitting answer ${index + 1}/${submissions.length}:`, submission);
-                    return submitJawabanMutation.mutateAsync(submission);
-                })
-            );
-
-            // Check for any failures
-            const failures = results.filter(result => result.status === 'rejected');
-            if (failures.length > 0) {
-                console.error('❌ Some submissions failed:', failures);
-                failures.forEach((failure, index) => {
-                    if (failure.status === 'rejected') {
-                        console.error(`❌ Submission ${index + 1} failed:`, failure.reason);
-                    }
-                });
+            if (failed.length > 0) {
+                console.error('❌ Some submissions failed:', failed);
                 
-                const successCount = results.length - failures.length;
-                if (successCount > 0) {
-                    toast.warning(`${successCount} jawaban berhasil disimpan, ${failures.length} jawaban gagal disimpan`);
+                if (totalSubmitted > 0) {
+                    toast.warning(`${totalSubmitted} jawaban berhasil disimpan, ${failed.length} jawaban gagal disimpan`);
                 } else {
                     toast.error('Semua jawaban gagal disimpan. Silakan coba lagi.');
                     return;
@@ -551,7 +563,7 @@ function UjianSiswaPageContent() {
                     : `Gagal mengumpulkan ujian: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`
             );
         }
-    }, [organizedQuestions, answers, submitJawabanMutation, submitUjianSiswaMutation, ujianId, router]);
+    }, [organizedQuestions, answers, optimizedBatchSubmit, submitUjianSiswaMutation, ujianId, router]);
 
     // Auto submit ref untuk timer - stabilize the reference
     const autoSubmitRef = useRef<(() => void) | null>(null);
@@ -559,6 +571,20 @@ function UjianSiswaPageContent() {
     useEffect(() => {
         autoSubmitRef.current = () => handleSubmitAll(true);
     });
+
+    // Handle force save (for page unload, etc.)
+    useEffect(() => {
+        const handleBeforeUnload = async () => {
+            await forceSubmit();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            // Final save on unmount
+            forceSubmit();
+        };
+    }, [forceSubmit]);
 
     // Load existing answers
     useEffect(() => {
@@ -673,30 +699,32 @@ function UjianSiswaPageContent() {
         return `${minutes}:${secs.toString().padStart(2, '0')}`
     }, [])
 
+    // Handle answer changes with optimized auto-save
     const handleAnswerChange = useCallback((answer: string) => {
         if (!currentQuestion?.soal?.id) {
             console.error('❌ No current question or soal ID available')
             return
         }
 
-        setAnswers(prev => ({
-            ...prev,
-            [currentQuestion.soal.id]: answer
-        }))
+        const soalId = currentQuestion.soal.id;
 
-        // Simpan ke localStorage untuk backup
+        // Update local state immediately for UI responsiveness
+        setAnswers(prev => ({ ...prev, [soalId]: answer }));
+
+        // Save to localStorage for backup
         const localKey = `ujian_${ujianId}_answers`
-        setAnswers(currentAnswers => {
-            const updatedAnswers = {
-                ...currentAnswers,
-                [currentQuestion.soal.id]: answer
-            }
-            localStorage.setItem(localKey, JSON.stringify(updatedAnswers))
-            return updatedAnswers
-        })
+        const updatedAnswers = { ...answers, [soalId]: answer };
+        localStorage.setItem(localKey, JSON.stringify(updatedAnswers));
 
-        console.log('Answer saved locally for soal:', currentQuestion.soal.id)
-    }, [currentQuestion?.soal?.id, ujianId])
+        console.log('🔄 Answer changed for soal:', soalId, 'triggering auto-save...');
+        
+        // Trigger optimized auto-save with debouncing
+        debouncedSubmit({
+            ujian_id: ujianId,
+            soal_id: soalId,
+            answer_text: answer
+        });
+    }, [currentQuestion?.soal?.id, ujianId, answers, debouncedSubmit]);
 
     const handleNext = useCallback(() => {
         if (currentQuestionIndex < organizedQuestions.length - 1) {
@@ -904,7 +932,7 @@ function UjianSiswaPageContent() {
                                 variant="outline"
                                 size="sm"
                                 onClick={handleShowSubmitDialog}
-                                disabled={submitJawabanMutation.isPending}
+                                disabled={optimizedBatchSubmit.isPending}
                                 className="text-xs px-2 py-1 sm:px-3 sm:py-2 h-8 sm:h-9"
                             >
                                 <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
@@ -1025,7 +1053,7 @@ function UjianSiswaPageContent() {
                             onSubmit={handleShowSubmitDialog}
                             isLast={currentQuestionIndex === organizedQuestions.length - 1}
                             isFirst={currentQuestionIndex === 0}
-                            isSaving={submitJawabanMutation.isPending}
+                            isSaving={optimizedBatchSubmit.isPending}
                             sectionType={currentSectionType}
                             sectionIndex={sectionIndex}
                             sectionTotal={sectionTotal}
@@ -1099,9 +1127,9 @@ function UjianSiswaPageContent() {
                         <AlertDialogCancel>Batal</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => handleSubmitAll(false)}
-                            disabled={submitJawabanMutation.isPending}
+                            disabled={optimizedBatchSubmit.isPending}
                         >
-                            {submitJawabanMutation.isPending ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
+                            {optimizedBatchSubmit.isPending ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1112,8 +1140,10 @@ function UjianSiswaPageContent() {
 
 export default function UjianSiswaPage() {
     return (
-        <SiswaOnlyGuard>
-            <UjianSiswaPageContent />
-        </SiswaOnlyGuard>
+        <OptimizedRealtimeProvider>
+            <SiswaOnlyGuard>
+                <UjianSiswaPageContent />
+            </SiswaOnlyGuard>
+        </OptimizedRealtimeProvider>
     )
 }
