@@ -26,9 +26,11 @@ export function useOptimizedUjianStatus(ujianId: string) {
     },
     enabled: !!user?.id && !!ujianId,
     staleTime: 5 * 60 * 1000, // 5 menit - mengurangi request berlebihan
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Dynamic interval berdasarkan status ujian
-      if (data?.status === 'active') {
+      // Akses data dari query.state.data
+      const ujianData = query.state.data as any
+      if (ujianData?.status === 'active') {
         return 2 * 60 * 1000 // 2 menit untuk ujian aktif
       }
       return false // Tidak refetch untuk ujian completed/draft
