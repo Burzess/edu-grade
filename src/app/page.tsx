@@ -62,9 +62,9 @@ function LandingPage() {
             <Button asChild size="lg">
               <Link href="/login">Masuk</Link>
             </Button>
-            <Button asChild variant="outline" size="lg">
+            {/* <Button asChild variant="outline" size="lg">
               <Link href="/register">Daftar</Link>
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
