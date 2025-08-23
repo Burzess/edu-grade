@@ -228,7 +228,7 @@ export const useRecentActivitySiswa = () => {
     },
     enabled: !!user?.id,
     staleTime: 1 * 60 * 1000, // 1 minute
-    refetchInterval: 30000, // Auto-refetch setiap 30 detik
+    refetchInterval: false, // REALTIME REMOVED: Auto-refetch disabled to prevent excessive requests
   })
 }
 
@@ -293,43 +293,7 @@ export const useAvailableUjianForSiswaDashboard = () => {
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 
-  // Setup realtime subscription untuk ujian table (untuk dashboard)
-  useEffect(() => {
-    if (!user?.id) return
-
-    console.log('🔄 Setting up realtime subscription for ujian dashboard (siswa)')
-    
-    const channel = supabase
-      .channel('ujian-dashboard-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ujian',
-        },
-        (payload) => {
-          console.log('📡 Realtime ujian dashboard change:', payload.eventType, payload.new || payload.old)
-          
-          // Invalidate queries untuk update dashboard
-          queryClient.invalidateQueries({ 
-            queryKey: ['available-ujian-dashboard', user.id] 
-          })
-          queryClient.invalidateQueries({ 
-            queryKey: ['dashboard-stats-siswa', user.id] 
-          })
-          queryClient.invalidateQueries({ 
-            queryKey: ['recent-activity-siswa', user.id] 
-          })
-        }
-      )
-      .subscribe()
-
-    return () => {
-      console.log('🔄 Cleaning up ujian dashboard realtime subscription')
-      supabase.removeChannel(channel)
-    }
-  }, [user?.id, queryClient])
+  // REALTIME REMOVED: Subscription untuk ujian table dihapus untuk mencegah infinite requests
 
   return query
 }

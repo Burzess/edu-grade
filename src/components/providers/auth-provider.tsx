@@ -6,6 +6,7 @@ import { ensureProfileExists } from '@/lib/profile-utils'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect } from 'react'
+import { AuthErrorBoundary } from '@/components/auth/auth-error-boundary'
 
 interface AuthContextType {
     signUp: (email: string, password: string, fullName: string, role: 'siswa' | 'guru') => Promise<{ user: any; session: any }>
@@ -52,44 +53,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const getProfile = async (user: User) => {
         try {
-            // Set timeout untuk mencegah hanging
+            // Set timeout untuk mencegah hanging (kurangi dari 10 detik ke 5 detik)
             const controller = new AbortController()
             const timeoutId = setTimeout(() => {
                 controller.abort()
-                console.error('⏰ Profile fetch timeout after 10 seconds')
-            }, 10000) // 10 detik timeout
+                console.error('⏰ Profile fetch timeout after 5 seconds')
+            }, 5000) // Kurangi ke 5 detik
 
-            // Cek cache terlebih dahulu
+            // Cek cache terlebih dahulu dengan validasi yang lebih ketat
             const cachedProfile = getCachedProfile(user.id)
-            if (cachedProfile) {
+            if (cachedProfile && cachedProfile.email && cachedProfile.role) {
                 console.log('🔄 Using cached profile for user:', user.id)
                 setProfile(cachedProfile)
                 clearTimeout(timeoutId)
                 return
             }
 
-            // Coba ambil dari metadata dulu (lebih cepat)
+            // Coba ambil dari metadata dulu (lebih cepat) dengan validasi
             const metadata = user.user_metadata || {}
-            if (metadata.role && metadata.full_name) {
+            if (metadata.role && metadata.full_name && user.email) {
                 const quickProfile = {
                     id: user.id,
-                    email: user.email!,
+                    email: user.email,
                     full_name: metadata.full_name,
                     role: metadata.role as 'siswa' | 'guru',
                     created_at: user.created_at
                 }
+                console.log('⚡ Using metadata profile for user:', user.id)
                 setProfile(quickProfile)
                 setCachedProfile(user.id, quickProfile)
                 clearTimeout(timeoutId)
                 return
             }
 
-            // Fallback ke database query dengan retry logic
+            // Check network connectivity
+            if (!navigator.onLine) {
+                console.warn('🔌 No internet connection, using fallback profile')
+                clearTimeout(timeoutId)
+                const fallbackProfile = {
+                    id: user.id,
+                    email: user.email!,
+                    full_name: user.email?.split('@')[0] || 'User',
+                    role: (metadata.role as 'siswa' | 'guru') || 'siswa',
+                    created_at: user.created_at
+                }
+                setProfile(fallbackProfile)
+                setCachedProfile(user.id, fallbackProfile)
+                return
+            }
+
+            // Fallback ke database query dengan retry logic yang dipercepat
             console.log('📡 Fetching profile from database for user:', user.id)
-            let retries = 3
+            let retries = 2 // Kurangi dari 3 ke 2 retry
             let profileData = null
 
-            while (retries > 0 && !profileData) {
+            while (retries > 0 && !profileData && !controller.signal.aborted) {
                 try {
                     const { data, error } = await supabase
                         .from('profiles')
@@ -104,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         break
                     } else if (error) {
                         if (error.code === 'PGRST116') {
-                            // Profile not found, try to create
+                            // Profile not found, create quickly
                             console.log('Profile not found, creating...')
                             const result = await ensureProfileExists(
                                 user.id,
@@ -142,26 +160,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.warn(`⚠️ Profile fetch failed, ${retries} retries left:`, fetchError)
                     
                     if (retries > 0) {
-                        // Exponential backoff
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)))
+                        // Kurangi delay retry dari exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, 500))
                     }
                 }
             }
 
             clearTimeout(timeoutId)
 
-            // Jika setelah retry masih gagal, buat profile fallback
-            if (!profileData) {
-                console.warn('⚠️ Unable to fetch/create profile, using fallback')
-                const fallbackProfile = {
+            // Jika setelah retry masih gagal atau timeout, buat profile fallback
+            if (!profileData || controller.signal.aborted) {
+                console.warn('⚠️ Unable to fetch/create profile, using emergency fallback')
+                const emergencyProfile = {
                     id: user.id,
                     email: user.email!,
-                    full_name: user.email?.split('@')[0] || 'User',
-                    role: 'siswa' as const,
+                    full_name: metadata.full_name || user.email?.split('@')[0] || 'User',
+                    role: (metadata.role as 'siswa' | 'guru') || 'siswa',
                     created_at: user.created_at
                 }
-                setProfile(fallbackProfile)
-                setCachedProfile(user.id, fallbackProfile)
+                setProfile(emergencyProfile)
+                setCachedProfile(user.id, emergencyProfile)
+                
+                // Schedule background sync untuk update profile nanti
+                setTimeout(() => {
+                    console.log('🔄 Attempting background profile sync...')
+                    getProfile(user).catch(console.error)
+                }, 10000)
             }
 
         } catch (err) {
@@ -251,9 +275,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ signUp, signIn, signOut }}>
-            {children}
-        </AuthContext.Provider>
+        <AuthErrorBoundary>
+            <AuthContext.Provider value={{ signUp, signIn, signOut }}>
+                {children}
+            </AuthContext.Provider>
+        </AuthErrorBoundary>
     )
 }
 

@@ -32,13 +32,24 @@ class UniversalSupabaseClient {
     return this.realClient.from(table)
   }
 
-  // Channel methods for real-time (disabled in demo)
+  // Channel methods - REALTIME REMOVED: Disabled to prevent infinite requests
   channel(name: string) {
-    return this.realClient.channel(name)
+    console.log('🚫 Supabase Channel: DISABLED - realtime functionality removed')
+    // Return mock channel that does nothing
+    return {
+      on: () => this,
+      subscribe: () => ({ 
+        status: 'CLOSED',
+        unsubscribe: () => {}
+      }),
+      unsubscribe: () => {},
+      send: () => Promise.resolve('ok')
+    }
   }
 
   removeChannel(channel: any) {
-    return this.realClient.removeChannel(channel)
+    console.log('🚫 removeChannel: DISABLED - realtime functionality removed')
+    return Promise.resolve('ok')
   }
 }
 

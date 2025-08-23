@@ -6,6 +6,8 @@ export async function POST(request: NextRequest) {
   try {
     const { jawabanId } = await request.json()
 
+    console.log('🤖 AI Grading API called with:', { jawabanId })
+
     if (!jawabanId) {
       return NextResponse.json(
         { error: 'Jawaban ID is required' },
@@ -39,8 +41,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('📄 Found jawaban:', {
+      id: jawaban.id,
+      soalType: jawaban.soal?.question_type,
+      hasAnswer: !!jawaban.answer_text,
+      currentScore: jawaban.score
+    })
+
     // Skip if already graded
     if (jawaban.score !== null) {
+      console.log('⏭️ Already graded, skipping AI grading')
       return NextResponse.json({ 
         success: true, 
         message: 'Already graded',
@@ -50,6 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Skip if no answer provided
     if (!jawaban.answer_text || jawaban.answer_text.trim() === '') {
+      console.log('⚠️ Empty answer, setting score to 0')
       
       await supabase
         .from('jawaban_siswa')
@@ -74,15 +85,23 @@ export async function POST(request: NextRequest) {
         (opt: any) => opt.id === jawaban.soal.correct_answer
       )
       correctAnswer = correctOption?.text || jawaban.soal.correct_answer
+      console.log('🎯 Multiple choice - correct answer:', correctAnswer)
     }
 
-    // Grade using AI
+    console.log('🤖 Starting AI grading process...')
+    
+    // Grade using AI with error handling
     const gradingResult = await gradeEssayAnswer(
       jawaban.soal.question_text,
       jawaban.answer_text,
       jawaban.soal.question_type,
       correctAnswer
     )
+
+    console.log('✅ AI grading completed:', {
+      score: gradingResult.score,
+      feedbackLength: gradingResult.feedback.length
+    })
 
     // Update jawaban with AI grading result
     const { error: updateError } = await supabase

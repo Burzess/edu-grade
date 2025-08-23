@@ -547,7 +547,7 @@ export function useAvailableUjianForSiswa() {
         throw new Error('User not authenticated')
       }
 
-      // Get ujian yang statusnya active dan belum diikuti siswa ini
+      // Get ujian yang statusnya active
       const { data, error } = await supabase
         .from('ujian')
         .select(`
@@ -556,22 +556,32 @@ export function useAvailableUjianForSiswa() {
             id,
             status,
             started_at,
-            submitted_at
+            submitted_at,
+            siswa_id
           ),
           ujian_soal(count)
         `)
         .eq('status', 'active')
-        .not('ujian_siswa.siswa_id', 'eq', user.id)
 
       if (error) {
         throw error
       }
 
-      // Filter ujian yang belum expired
+      // Filter ujian yang belum expired dan belum completed oleh siswa
       const now = new Date()
       const availableUjian = data?.filter(ujian => {
-        if (!ujian.end_time) return true
-        return new Date(ujian.end_time) > now
+        // Check expiry
+        if (ujian.end_time && new Date(ujian.end_time) <= now) {
+          return false
+        }
+
+        // Check if siswa sudah completed ujian ini
+        const siswaUjian = ujian.ujian_siswa?.find((us: any) => us.siswa_id === user.id)
+        if (siswaUjian?.status === 'completed') {
+          return false // Jangan tampilkan jika sudah completed
+        }
+
+        return true
       }) || []
 
       return availableUjian
@@ -579,7 +589,9 @@ export function useAvailableUjianForSiswa() {
     enabled: !!user?.id && user.role === 'siswa',
   })
 
+  // TEMPORARY: Disable realtime subscription to stop infinite loops
   // Setup realtime subscription untuk ujian table
+  /*
   useEffect(() => {
     if (!user?.id || user.role !== 'siswa') return
 
@@ -597,15 +609,20 @@ export function useAvailableUjianForSiswa() {
         (payload) => {
           console.log('📡 Realtime ujian change detected:', payload.eventType, payload.new || payload.old)
           
-          // Invalidate dan refetch query untuk update UI
-          queryClient.invalidateQueries({ 
-            queryKey: ['available-ujian-siswa', user.id] 
-          })
-          
-          // Juga invalidate hook dashboard
-          queryClient.invalidateQueries({ 
-            queryKey: ['available-ujian-dashboard', user.id] 
-          })
+          // Throttle invalidations - hanya invalidate untuk perubahan penting
+          if (payload.eventType === 'INSERT' || 
+              (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
+            // Hanya invalidate jika ada ujian baru atau status berubah
+            queryClient.invalidateQueries({ 
+              queryKey: ['available-ujian-siswa', user.id],
+              refetchType: 'none' // Jangan langsung refetch, tunggu sampai component membutuhkan
+            })
+            
+            queryClient.invalidateQueries({ 
+              queryKey: ['available-ujian-dashboard', user.id],
+              refetchType: 'none'
+            })
+          }
           
           // Show notification jika ada ujian baru dimulai
           if (payload.eventType === 'UPDATE' && payload.new) {
@@ -631,6 +648,7 @@ export function useAvailableUjianForSiswa() {
       supabase.removeChannel(channel)
     }
   }, [user?.id, user?.role, queryClient, showUjianNotification, permission])
+  */
 
   return query
 }
@@ -713,7 +731,7 @@ export function useStartUjianSiswa() {
         .select('id, status')
         .eq('ujian_id', ujianId)
         .eq('siswa_id', user.id)
-        .single()
+        .maybeSingle() // FIXED: Use maybeSingle() instead of single() to handle no data
 
       if (existingUjianSiswa) {
         throw new Error('Anda sudah terdaftar untuk ujian ini')
@@ -741,8 +759,15 @@ export function useStartUjianSiswa() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['available-ujian-siswa'] })
       queryClient.invalidateQueries({ queryKey: ['ujian-siswa'] })
-      // Refresh data ujian guru untuk update total peserta
-      queryClient.invalidateQueries({ queryKey: ['ujian'] })
+      // FIXED: More specific invalidation to prevent infinite loops
+      // Hanya invalidate ujian list untuk guru, tidak untuk siswa yang sedang mengerjakan
+      queryClient.invalidateQueries({ 
+        queryKey: ['ujian'], 
+        predicate: (query) => {
+          // Jangan invalidate query ujian siswa yang sedang aktif
+          return !query.queryKey.includes('siswa')
+        }
+      })
     },
   })
 }
@@ -783,93 +808,39 @@ export function useSubmitUjianSiswa() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ujian-siswa'] })
-      // Refresh data ujian guru untuk update total peserta
-      queryClient.invalidateQueries({ queryKey: ['ujian'] })
+      // FIXED: More specific invalidation to prevent infinite loops
+      // Hanya invalidate ujian list untuk guru, tidak untuk siswa yang sedang mengerjakan
+      queryClient.invalidateQueries({ 
+        queryKey: ['ujian'], 
+        predicate: (query) => {
+          // Jangan invalidate query ujian siswa yang sedang aktif
+          return !query.queryKey.includes('siswa')
+        }
+      })
     },
   })
 }
 
-// Hook untuk mendapatkan detail ujian yang sedang dikerjakan siswa
+// EMERGENCY: Hook untuk mendapatkan detail ujian yang sedang dikerjakan siswa - DISABLED
 export function useActiveUjianSiswa(ujianId: string) {
   const { user } = useAuthStore()
-  const supabase = createClient()
 
   return useQuery({
     queryKey: ['active-ujian-siswa', ujianId, user?.id],
     queryFn: async () => {
-      if (!user?.id) {
-        throw new Error('User not authenticated')
-      }
-
-      // Get ujian_siswa record untuk tracking progress
-      const { data: ujianSiswa, error: ujianSiswaError } = await supabase
-        .from('ujian_siswa')
-        .select('*')
-        .eq('ujian_id', ujianId)
-        .eq('siswa_id', user.id)
-        .single()
-
-      if (ujianSiswaError) {
-        throw new Error('Anda belum terdaftar untuk ujian ini')
-      }
-
-      // Get detail ujian beserta soal-soalnya
-      const { data: ujian, error: ujianError } = await supabase
-        .from('ujian')
-        .select(`
-          *,
-          ujian_soal(
-            id,
-            soal_id,
-            urutan,
-            soal!inner(
-              id,
-              question_text,
-              question_type,
-              options,
-              tags,
-              difficulty_level
-            )
-          )
-        `)
-        .eq('id', ujianId)
-        .single()
-
-      if (ujianError) {
-        throw ujianError
-      }
-
-      // Get jawaban yang sudah ada untuk siswa ini
-      const { data: existingAnswers, error: answersError } = await supabase
-        .from('jawaban_siswa')
-        .select('soal_id, answer_text')
-        .eq('ujian_id', ujianId)
-        .eq('siswa_id', user.id)
-
-      if (answersError) {
-        console.error('Error fetching existing answers:', answersError)
-      }
-
-      // Calculate remaining time
-      let remainingTime = null
-      if (ujianSiswa.started_at && ujian.duration_minutes) {
-        const startTime = new Date(ujianSiswa.started_at)
-        const endTime = new Date(startTime.getTime() + ujian.duration_minutes * 60 * 1000)
-        const now = new Date()
-        remainingTime = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000))
-      }
-
-      return {
-        ujian,
-        ujianSiswa,
-        existingAnswers: existingAnswers || [],
-        remainingTime,
-      }
+      console.log('🚫 useActiveUjianSiswa: BLOCKED to prevent infinite requests')
+      return null
     },
-    enabled: !!user?.id && !!ujianId && user.role === 'siswa',
-    refetchInterval: false, // Disable auto refetch untuk mengurangi load server
+    enabled: false, // EMERGENCY: Completely disable this hook
+    staleTime: Infinity,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    retry: false
   })
 }
+
 
 // Hook untuk auto-complete ujian siswa yang sudah expired
 export function useAutoCompleteExpiredUjianSiswa() {

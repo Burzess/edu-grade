@@ -3,7 +3,7 @@
 import { useRoleCheck, useQuickAuthCheck } from '@/hooks/use-optimized-auth'
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
-import { useEffect, ReactNode, memo } from 'react'
+import { useEffect, ReactNode, memo, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Shield, Loader2 } from 'lucide-react'
 
@@ -16,19 +16,66 @@ interface RoleGuardProps {
     fallbackPath?: string
 }
 
-// Komponen loading yang konsisten
-const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Card className="w-full max-w-md shadow-lg border-0">
-            <CardContent className="pt-8 pb-8">
-                <div className="flex flex-col items-center space-y-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                    <p className="text-sm text-gray-600 font-medium">{message}</p>
-                </div>
-            </CardContent>
-        </Card>
-    </div>
-))
+// Komponen loading yang konsisten dengan timeout handling
+const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => {
+    const [progress, setProgress] = useState(0)
+    const [timeoutWarning, setTimeoutWarning] = useState(false)
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setProgress((prev: number) => {
+                const newProgress = prev + 5
+                if (newProgress >= 100) {
+                    setTimeoutWarning(true)
+                    return 100
+                }
+                return newProgress
+            })
+        }, 250) // Update setiap 250ms
+
+        const warningTimeout = setTimeout(() => {
+            setTimeoutWarning(true)
+        }, 4000) // Warning setelah 4 detik
+
+        return () => {
+            clearInterval(interval)
+            clearTimeout(warningTimeout)
+        }
+    }, [])
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+            <Card className="w-full max-w-md shadow-lg border-0">
+                <CardContent className="pt-8 pb-8">
+                    <div className="flex flex-col items-center space-y-4">
+                        <Loader2 className={`h-8 w-8 animate-spin ${timeoutWarning ? 'text-orange-500' : 'text-blue-600'}`} />
+                        <p className={`text-sm font-medium ${timeoutWarning ? 'text-orange-600' : 'text-gray-600'}`}>
+                            {timeoutWarning ? "Memverifikasi akses (membutuhkan waktu lebih lama)..." : message}
+                        </p>
+                        
+                        {/* Progress bar */}
+                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div 
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                    timeoutWarning ? 'bg-orange-500' : 'bg-blue-600'
+                                }`}
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+
+                        {timeoutWarning && (
+                            <div className="text-xs text-orange-600 text-center space-y-1">
+                                <p>Jika loading terlalu lama, coba:</p>
+                                <p>• Refresh halaman</p>
+                                <p>• Periksa koneksi internet</p>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    )
+})
 LoadingScreen.displayName = 'LoadingScreen'
 
 // Komponen access denied yang lebih informatif

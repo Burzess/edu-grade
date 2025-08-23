@@ -18,36 +18,45 @@ export function useOptimizedDebouncedSubmitJawaban() {
     try {
       isSubmittingRef.current = true
       const submissions = Array.from(pendingSubmissions.current.values())
+      const submissionsBackup = [...submissions] // Backup untuk error handling
       pendingSubmissions.current.clear()
 
       console.log('💾 Auto-saving batch:', submissions.length, 'answers')
 
-        // Submit dengan upsert batch untuk efisiensi
+        // FIXED: Simplified approach - just insert new answers
+        // Tabel jawaban memungkinkan multiple draft, UI akan mengambil yang terbaru
         const { error } = await supabase
           .from('jawaban_siswa')
-          .upsert(
+          .insert(
             submissions.map(s => ({
               ...s,
               siswa_id: user?.id,
+              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
-            })),
-            { 
-              onConflict: 'ujian_id,soal_id,siswa_id',
-              ignoreDuplicates: false 
-            }
+            }))
           )
 
         if (error) {
-        console.error('❌ Error in batch auto-save:', error)
-        // Re-add failed submissions back to pending
-        submissions.forEach(s => {
-          pendingSubmissions.current.set(s.soal_id, s)
-        })
-      } else {
-        console.log('✅ Batch auto-save successful')
-      }
+          console.error('❌ Error in batch auto-save:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          // Re-add failed submissions back to pending untuk retry
+          submissionsBackup.forEach(s => {
+            pendingSubmissions.current.set(s.soal_id, s)
+          })
+        } else {
+          console.log('✅ Batch auto-save successful:', submissions.length, 'answers')
+        }
     } catch (error) {
-      console.error('❌ Unexpected error in batch auto-save:', error)
+      console.error('❌ Unexpected error in batch auto-save:', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      // Note: submissions variable tidak tersedia di sini, 
+      // tapi sudah di-handle di blok if (error) di atas
     } finally {
       isSubmittingRef.current = false
     }
@@ -137,11 +146,12 @@ export function useOptimizedJawabanByUjian(ujianId: string) {
   })
 }
 
-// Smart connection management untuk realtime subscriptions
+// REALTIME REMOVED: OptimizedRealtimeManager dihapus untuk mencegah infinite requests
+// Class ini di-disable karena menyebabkan masalah performa dengan 21,000+ requests
+
+// Placeholder class untuk mencegah error pada imports
 export class OptimizedRealtimeManager {
   private static instance: OptimizedRealtimeManager
-  private channels: Map<string, any> = new Map()
-  private connectionState: 'connected' | 'connecting' | 'disconnected' = 'disconnected'
 
   static getInstance(): OptimizedRealtimeManager {
     if (!OptimizedRealtimeManager.instance) {
@@ -151,92 +161,16 @@ export class OptimizedRealtimeManager {
   }
 
   subscribeToUjianChanges(userId: string, callback: (payload: any) => void): () => void {
-    const channelKey = `ujian-changes-${userId}`
-    
-    if (this.channels.has(channelKey)) {
-      console.log('♻️ Reusing existing ujian subscription')
-      return () => {} // Return empty cleanup for duplicate subscriptions
-    }
-
-    console.log('🔄 Creating new optimized realtime subscription for ujian')
-    
-    const channel = supabase
-      .channel(channelKey)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ujian',
-        },
-        (payload) => {
-          // Throttle realtime updates to prevent spam
-          this.throttledCallback(channelKey, payload, callback)
-        }
-      )
-      .subscribe()
-
-    this.channels.set(channelKey, channel)
-
-    // Return cleanup function
-    return () => {
-      console.log('🔄 Cleaning up optimized realtime subscription')
-      const ch = this.channels.get(channelKey)
-      if (ch) {
-        supabase.removeChannel(ch)
-        this.channels.delete(channelKey)
-      }
-    }
-  }
-
-  private throttledCallback = this.throttle((channelKey: string, payload: any, callback: (payload: any) => void) => {
-    callback(payload)
-  }, 1000) // Throttle to max 1 update per second
-
-  private throttle<T extends (...args: any[]) => void>(func: T, delay: number): T {
-    let timeoutId: NodeJS.Timeout | null = null
-    let lastExecTime = 0
-    
-    return ((...args: any[]) => {
-      const currentTime = Date.now()
-      
-      if (currentTime - lastExecTime > delay) {
-        func(...args)
-        lastExecTime = currentTime
-      } else {
-        if (timeoutId) clearTimeout(timeoutId)
-        timeoutId = setTimeout(() => {
-          func(...args)
-          lastExecTime = Date.now()
-        }, delay - (currentTime - lastExecTime))
-      }
-    }) as T
+    console.log('🚫 OptimizedRealtimeManager: DISABLED - no realtime subscriptions')
+    return () => {} // Return empty cleanup
   }
 
   cleanup() {
-    this.channels.forEach((channel, key) => {
-      supabase.removeChannel(channel)
-    })
-    this.channels.clear()
-    console.log('🧹 All realtime channels cleaned up')
+    console.log('� OptimizedRealtimeManager.cleanup(): DISABLED')
   }
 }
 
-// Hook untuk menggunakan optimized realtime manager
+// Hook placeholder untuk mencegah error
 export function useOptimizedRealtimeUjian(userId: string | undefined, onUjianChange: (payload: any) => void) {
-  const manager = OptimizedRealtimeManager.getInstance()
-
-  useEffect(() => {
-    if (!userId) return
-
-    const cleanup = manager.subscribeToUjianChanges(userId, onUjianChange)
-    return cleanup
-  }, [userId, onUjianChange, manager])
-
-  useEffect(() => {
-    return () => {
-      // Cleanup on unmount
-      manager.cleanup()
-    }
-  }, [manager])
+  console.log('🚫 useOptimizedRealtimeUjian: DISABLED')
 }

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 import { Database } from '@/types/database'
 import { useNotifications } from './use-notifications'
+import { useCircuitBreaker, useRateLimiter } from './use-circuit-breaker'
 
 const supabase = createClient()
 
@@ -739,8 +740,11 @@ export function useCompletedUjianIds() {
             }
         },
         enabled: !!user?.id,
-        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
-        refetchInterval: false, // Tidak perlu auto-refetch
+        staleTime: 5 * 60 * 1000, // 5 menit - IDs ujian completed tidak berubah sering
+        gcTime: 10 * 60 * 1000, // 10 menit cache
+        refetchInterval: false, // Disable auto-refetch
+        refetchOnWindowFocus: false, // Disable refetch saat window focus
+        refetchOnMount: false, // Disable refetch saat mount (kecuali stale)
     })
 }
 
@@ -877,8 +881,11 @@ export function useCompletedUjianSiswa() {
             }
         },
         enabled: !!user?.id,
-        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
-        refetchInterval: false, // Tidak perlu auto-refetch
+        staleTime: 5 * 60 * 1000, // 5 menit - hasil ujian tidak berubah sering
+        gcTime: 10 * 60 * 1000, // 10 menit cache
+        refetchInterval: false, // Disable auto-refetch
+        refetchOnWindowFocus: false, // Disable refetch saat window focus
+        refetchOnMount: false, // Disable refetch saat mount (kecuali stale)
     })
 }
 
@@ -981,8 +988,12 @@ export function useAvailableUjian() {
                     .order('created_at', { ascending: false })
 
                 if (jawabanError) {
-                    console.error('❌ Error fetching answered ujian:', jawabanError)
-                    throw jawabanError
+                    console.error('❌ Error fetching answered ujian:', {
+                        error: jawabanError.message,
+                        code: jawabanError.code,
+                        userId: user.id
+                    })
+                    return [] // Return empty array instead of throwing
                 }
 
                 // Group by ujian_id dan ambil attempt terakhir saja
@@ -1020,67 +1031,35 @@ export function useAvailableUjian() {
                 })
 
                 if (error) {
-                    console.error('❌ Error fetching available ujian:', error)
-                    throw error
+                    console.error('❌ Error fetching available ujian:', {
+                        error: error.message,
+                        code: error.code,
+                        userId: user.id
+                    })
+                    return [] // Return empty array instead of throwing
                 }
 
                 return data || []
             } catch (error) {
-                console.error('❌ Error in useAvailableUjian:', error)
-                throw error
+                console.error('❌ Error in useAvailableUjian:', {
+                    error: error instanceof Error ? error.message : error,
+                    userId: user?.id
+                })
+                return [] // Return empty array instead of throwing
             }
         },
         enabled: !!user?.id,
-        staleTime: 30000, // 30 detik untuk mengurangi re-fetch yang tidak perlu
-        refetchInterval: false, // Tidak perlu auto-refetch karena sudah ada realtime
+        staleTime: 10 * 60 * 1000, // 10 menit - data ujian tidak berubah sering
+        gcTime: 15 * 60 * 1000, // 15 menit cache
+        refetchInterval: false, // Disable auto-refetch
+        refetchOnWindowFocus: false, // Disable refetch saat window focus
+        refetchOnMount: false, // Disable refetch saat mount
+        refetchOnReconnect: false, // Disable refetch on reconnect  
+        retry: 1, // Only retry once
+        retryDelay: 5000, // 5 second delay between retries
     })
 
-    // Setup realtime subscription untuk ujian table
-    useEffect(() => {
-        if (!user?.id) return
-
-        console.log('🔄 Setting up realtime subscription for available ujian (siswa)')
-        
-        const channel = supabase
-            .channel('ujian-available-changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'ujian',
-                },
-                (payload) => {
-                    console.log('📡 Realtime ujian change detected (available):', payload.eventType, payload.new || payload.old)
-                    
-                    // Invalidate query untuk update UI
-                    queryClient.invalidateQueries({ 
-                        queryKey: ['ujian', 'available', user.id] 
-                    })
-                    
-                    // Show notification untuk ujian baru yang dimulai
-                    if (payload.eventType === 'UPDATE' && payload.new) {
-                        const newData = payload.new as any
-                        const oldData = payload.old as any
-                        
-                        if (oldData?.status === 'draft' && newData?.status === 'active') {
-                            console.log('🎯 Ujian baru tersedia:', newData.name)
-                            
-                            // Show notification jika user sudah memberikan permission
-                            if (permission === 'granted') {
-                                showUjianNotification(newData.name)
-                            }
-                        }
-                    }
-                }
-            )
-            .subscribe()
-
-        return () => {
-            console.log('🔄 Cleaning up available ujian realtime subscription')
-            supabase.removeChannel(channel)
-        }
-    }, [user?.id, queryClient, showUjianNotification, permission])
+    // REALTIME REMOVED: Subscription untuk ujian table dihapus untuk mencegah infinite requests
 
     return query
 }
@@ -1088,14 +1067,40 @@ export function useAvailableUjian() {
 // Hook untuk mendapatkan detail ujian untuk siswa
 export function useUjianForSiswa(ujianId: string) {
     const { user } = useAuthStore()
+    
+    // Circuit breaker untuk mencegah infinite loops
+    const circuitBreaker = useCircuitBreaker({
+        maxFailures: 3,
+        resetTimeout: 60000, // 1 menit
+        failureThreshold: 2
+    })
+    
+    // Rate limiter untuk membatasi frequency
+    const rateLimiter = useRateLimiter(5, 60000) // Max 5 calls per minute
 
     return useQuery({
         queryKey: ['ujian', 'siswa', ujianId],
         queryFn: async () => {
+            // Check circuit breaker
+            if (!circuitBreaker.canExecute()) {
+                console.log('🚫 Circuit breaker blocked useUjianForSiswa call')
+                return null
+            }
+            
+            // Check rate limiter
+            if (!rateLimiter.canExecute()) {
+                console.log('🚫 Rate limiter blocked useUjianForSiswa call')
+                return null
+            }
 
             if (!user?.id) {
                 console.log('❌ User not authenticated for useUjianForSiswa')
-                throw new Error('User not authenticated')
+                return null // Return null instead of throwing
+            }
+
+            if (!ujianId) {
+                console.log('❌ No ujianId provided for useUjianForSiswa')
+                return null
             }
 
             try {
@@ -1110,13 +1115,17 @@ export function useUjianForSiswa(ujianId: string) {
                     .maybeSingle()
 
                 if (ujianError) {
-                    console.error('❌ Error fetching ujian basic info:', ujianError)
+                    console.error('❌ Error fetching ujian basic info:', {
+                        error: ujianError.message,
+                        code: ujianError.code,
+                        ujianId
+                    })
                     throw ujianError
                 }
 
                 if (!ujianData) {
                     console.error('❌ Ujian not found:', ujianId)
-                    throw new Error('Ujian tidak ditemukan')
+                    return null // Return null instead of throwing
                 }
 
                 // Step 2: Get ujian_soal relationships
@@ -1127,7 +1136,11 @@ export function useUjianForSiswa(ujianId: string) {
                     .order('urutan', { ascending: true })
 
                 if (ujianSoalError) {
-                    console.error('❌ Error fetching ujian_soal:', ujianSoalError)
+                    console.error('❌ Error fetching ujian_soal:', {
+                        error: ujianSoalError.message,
+                        code: ujianSoalError.code,
+                        ujianId
+                    })
                     throw ujianSoalError
                 }
 
@@ -1168,12 +1181,31 @@ export function useUjianForSiswa(ujianId: string) {
                     ujian_soal: ujianSoalWithSoal
                 }
 
+                // Success callback
+                circuitBreaker.onSuccess()
+                
                 return result
             } catch (error) {
-                console.error('Error in useUjianForSiswa query:', error)
-                throw error
+                // Error callback
+                circuitBreaker.onFailure()
+                
+                console.error('Error in useUjianForSiswa query:', {
+                    error: error instanceof Error ? error.message : error,
+                    ujianId,
+                    userId: user?.id,
+                    circuitState: circuitBreaker.getState()
+                })
+                return null // Return null instead of throwing to prevent infinite retries
             }
         },
-        enabled: !!ujianId && !!user?.id,
+        enabled: !!ujianId && !!user?.id && ujianId.length > 0,
+        staleTime: 10 * 60 * 1000, // 10 menit - increase significantly  
+        gcTime: 15 * 60 * 1000, // 15 menit cache
+        refetchInterval: false, // Disable auto-refetch
+        refetchOnWindowFocus: false, // Disable refetch saat window focus
+        refetchOnMount: false, // Disable refetch saat mount
+        refetchOnReconnect: false, // Disable refetch on reconnect
+        retry: 1, // Only retry once to prevent endless loops
+        retryDelay: 5000, // 5 second delay between retries
     })
 }

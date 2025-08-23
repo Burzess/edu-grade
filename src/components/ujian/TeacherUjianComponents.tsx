@@ -256,22 +256,11 @@ export function TeacherUjianApp({ ujianId }: { ujianId: string }) {
   )
 }
 
-// Component untuk real-time monitoring ujian
-export function RealTimeUjianMonitor({ ujianId }: { ujianId: string }) {
+// Component untuk monitoring ujian (REALTIME REMOVED)
+export function UjianMonitor({ ujianId }: { ujianId: string }) {
   const { data, isLoading } = useUjianStatistics(ujianId)
-  const [autoRefresh, setAutoRefresh] = React.useState(true)
 
-  // Auto refresh setiap 10 detik jika diaktifkan
-  React.useEffect(() => {
-    if (!autoRefresh) return
-
-    const interval = setInterval(() => {
-      // Query akan di-refetch otomatis karena refetchInterval: 30000
-      console.log('Auto refreshing ujian statistics...')
-    }, 10000)
-
-    return () => clearInterval(interval)
-  }, [autoRefresh])
+  // REALTIME REMOVED: Auto-refresh dihapus untuk mencegah excessive requests
 
   if (isLoading) return <div className="p-4">Loading monitor...</div>
   if (!data) return <div className="p-4">Data tidak tersedia</div>
@@ -281,17 +270,10 @@ export function RealTimeUjianMonitor({ ujianId }: { ujianId: string }) {
   return (
     <div className="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-4 border-l-4 border-blue-500 max-w-sm">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-gray-900">Monitor Real-time</h4>
-        <button
-          onClick={() => setAutoRefresh(!autoRefresh)}
-          className={`text-xs px-2 py-1 rounded ${
-            autoRefresh 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-gray-100 text-gray-800'
-          }`}
-        >
-          {autoRefresh ? 'ON' : 'OFF'}
-        </button>
+        <h4 className="font-semibold text-gray-900">Monitor Ujian</h4>
+        <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800">
+          Static
+        </span>
       </div>
       
       <div className="space-y-2 text-sm">
@@ -314,7 +296,7 @@ export function RealTimeUjianMonitor({ ujianId }: { ujianId: string }) {
       </div>
       
       <div className="mt-3 pt-3 border-t text-xs text-gray-500">
-        Update terakhir: {new Date().toLocaleTimeString('id-ID')}
+        Data saat halaman dimuat
       </div>
     </div>
   )

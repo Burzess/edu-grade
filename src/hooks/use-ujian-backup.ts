@@ -86,7 +86,7 @@ export function useUjian(page = 1, limit = 10) {
       }
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Refetch setiap 30 detik untuk update status expired
+    refetchInterval: false, // REALTIME REMOVED: Refetch disabled to prevent excessive requests
   })
 }
 
@@ -670,7 +670,7 @@ export function useUjianSiswa() {
       return data || []
     },
     enabled: !!user?.id && user.role === 'siswa',
-    refetchInterval: 30000, // Refetch setiap 30 detik untuk update status
+    refetchInterval: false, // REALTIME REMOVED: Refetch disabled to prevent excessive requests
   })
 }
 
@@ -861,7 +861,7 @@ export function useActiveUjianSiswa(ujianId: string) {
       }
     },
     enabled: !!user?.id && !!ujianId && user.role === 'siswa',
-    refetchInterval: 60000, // Refetch setiap 1 menit untuk update remaining time
+    refetchInterval: false, // REALTIME REMOVED: Refetch disabled to prevent excessive requests
   })
 }
 
@@ -1010,6 +1010,6 @@ export function useUjianStatistics(ujianId: string) {
       }
     },
     enabled: !!user?.id && !!ujianId && user.role === 'guru',
-    refetchInterval: 30000, // Refetch setiap 30 detik untuk real-time updates
+    refetchInterval: false, // REALTIME REMOVED: Refetch disabled to prevent excessive requests
   })
 }

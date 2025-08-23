@@ -147,7 +147,7 @@ export function useHasilUjianDetail(ujianId: string) {
             }
 
             try {
-                // Ambil data ujian
+                // SECURITY FIX: Pastikan ujian ini milik guru yang sedang login
                 const { data: ujianData, error: ujianError } = await supabase
                     .from('ujian')
                     .select(`
@@ -158,15 +158,16 @@ export function useHasilUjianDetail(ujianId: string) {
                         duration_minutes,
                         start_time,
                         end_time,
-                        created_at
+                        created_at,
+                        created_by
                     `)
                     .eq('id', ujianId)
-                    .eq('created_by', user.id)
+                    .eq('created_by', user.id) // ✅ CRITICAL: Hanya ujian milik guru ini
                     .maybeSingle()
 
                 if (ujianError || !ujianData) {
-                    console.error('❌ Error fetching ujian detail:', ujianError)
-                    throw ujianError
+                    console.error('❌ Error fetching ujian detail atau ujian bukan milik guru ini:', ujianError)
+                    throw new Error('Ujian tidak ditemukan atau Anda tidak memiliki akses')
                 }
 
                 // Ambil semua jawaban siswa untuk ujian ini

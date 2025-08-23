@@ -230,7 +230,7 @@ export const useRecentActivity = () => {
     },
     enabled: !!user?.id,
     staleTime: 1 * 60 * 1000, // 1 minute untuk aktivitas yang lebih real-time
-    refetchInterval: 30000, // Auto-refetch setiap 30 detik
+    refetchInterval: false, // REALTIME REMOVED: Auto-refetch disabled to prevent excessive requests
   })
 }
 

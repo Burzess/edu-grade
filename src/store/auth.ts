@@ -92,11 +92,12 @@ export const useAuthStore = create<AuthState>()(
             })
         },
 
-        // Caching methods
+        // Caching methods dengan optimasi
         getCachedProfile: (userId: string) => {
             const { profileCache } = get()
             const cached = profileCache[userId]
-            if (cached && (Date.now() - cached.timestamp < 5 * 60 * 1000)) { // 5 menit cache
+            // Perpanjang cache time ke 10 menit untuk mengurangi fetch
+            if (cached && (Date.now() - cached.timestamp < 10 * 60 * 1000)) {
                 return cached.profile
             }
             return null
@@ -106,8 +107,11 @@ export const useAuthStore = create<AuthState>()(
             const currentState = get()
             const existing = currentState.profileCache[userId]
             
-            // Only update if profile actually changed
-            if (!existing || existing.profile.id !== profile.id || existing.profile.role !== profile.role) {
+            // Only update if profile actually changed atau belum ada cache
+            if (!existing || 
+                existing.profile.id !== profile.id || 
+                existing.profile.role !== profile.role ||
+                existing.profile.full_name !== profile.full_name) {
                 set((state) => ({
                     profileCache: {
                         ...state.profileCache,

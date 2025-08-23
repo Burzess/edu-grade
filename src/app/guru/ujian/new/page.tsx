@@ -220,6 +220,12 @@ export default function CreateUjianPage() {
       setError(null)
       console.log('🔄 Creating ujian...', data)
 
+      // Pastikan duration_minutes memiliki nilai valid
+      if (!data.duration_minutes || data.duration_minutes === 0) {
+        setError('Durasi ujian harus diisi')
+        return
+      }
+
       await createUjianMutation.mutateAsync({
         name: data.name,
         description: data.description,
@@ -314,13 +320,31 @@ export default function CreateUjianPage() {
                                 placeholder="60"
                                 min="1"
                                 max="480"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                value={field.value === 0 || !field.value ? '' : field.value}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  if (value === '' || value === '0') {
+                                    field.onChange('')
+                                  } else {
+                                    const numValue = parseInt(value)
+                                    if (!isNaN(numValue)) {
+                                      field.onChange(numValue)
+                                    }
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  // Jika field kosong saat blur, set ke 0 untuk validation
+                                  if (!e.target.value) {
+                                    field.onChange(0)
+                                  }
+                                  field.onBlur()
+                                }}
+                                name={field.name}
                               />
                               <div className="text-xs text-muted-foreground">
                                 Durasi dalam menit (minimal 1 menit, maksimal 8 jam/480 menit)
                               </div>
-                              {field.value > 0 && (
+                              {field.value && field.value > 0 && (
                                 <div className="text-sm text-blue-600">
                                   = {Math.floor(field.value / 60)} jam {field.value % 60} menit
                                 </div>
