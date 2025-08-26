@@ -6,12 +6,18 @@ export async function middleware(request: NextRequest) {
     // Update session
     const response = await updateSession(request)
 
+    // Blokir akses ke /register untuk semua user
+    const url = request.nextUrl.clone()
+    const pathname = url.pathname
+    if (pathname.startsWith('/register')) {
+        url.pathname = '/login'
+        url.searchParams.set('error', 'register_disabled')
+        return NextResponse.redirect(url)
+    }
+
     // Get user from Supabase
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-
-    const url = request.nextUrl.clone()
-    const pathname = url.pathname
 
     // Public routes yang tidak perlu autentikasi
     const publicRoutes = ['/login', '/register', '/', '/auth/callback']
