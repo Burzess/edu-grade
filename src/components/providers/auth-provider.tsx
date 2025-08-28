@@ -16,13 +16,57 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ 
+    children, 
+    initialUser 
+}: { 
+    children: React.ReactNode;
+    initialUser?: { id: string; email: string; role: string; full_name: string } | null;
+}) {
     const supabase = createClient()
     const router = useRouter()
     const { setUser, setProfile, setLoading, logout, getCachedProfile, setCachedProfile } = useAuthStore()
 
     useEffect(() => {
-        // Get initial session
+        // Jika ada initialUser dari server, gunakan itu untuk menghindari loading
+        if (initialUser) {
+            console.log('🚀 Using server-side initial user:', initialUser.email)
+            
+            // Set profile langsung dari server data
+            const serverProfile = {
+                id: initialUser.id,
+                email: initialUser.email,
+                full_name: initialUser.full_name,
+                role: initialUser.role as 'siswa' | 'guru',
+                created_at: new Date().toISOString()
+            }
+
+            // Buat minimal user object untuk compatibility
+            const minimalUser = {
+                id: initialUser.id,
+                email: initialUser.email,
+                user_metadata: {
+                    role: initialUser.role,
+                    full_name: initialUser.full_name
+                },
+                app_metadata: {},
+                aud: 'authenticated',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                email_confirmed_at: new Date().toISOString(),
+                last_sign_in_at: new Date().toISOString(),
+                role: 'authenticated',
+                session_id: 'server-session'
+            } as User
+
+            setUser(minimalUser)
+            setProfile(serverProfile)
+            setCachedProfile(initialUser.id, serverProfile)
+            setLoading(false)
+            return
+        }
+
+        // Get initial session hanya jika tidak ada initialUser
         const getInitialSession = async () => {
             const { data: { session } } = await supabase.auth.getSession()
 
@@ -49,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         )
 
         return () => subscription.unsubscribe()
-    }, [supabase, setUser, setProfile, setLoading, logout])
+    }, [supabase, setUser, setProfile, setLoading, logout, initialUser])
 
     const getProfile = async (user: User) => {
         try {
