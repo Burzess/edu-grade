@@ -1,4 +1,6 @@
-import { useState } from 'react'
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Bell, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,10 +12,16 @@ interface NotificationBannerProps {
 
 export function NotificationBanner({ onDismiss }: NotificationBannerProps) {
   const [isVisible, setIsVisible] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const { permission, requestPermission, isSupported } = useNotifications()
 
-  // Jangan tampilkan banner jika notifications tidak didukung atau sudah granted/denied
-  if (!isSupported || permission !== 'default' || !isVisible) {
+  // Ensure component is mounted before rendering
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Jangan tampilkan banner jika belum mounted atau notifications tidak didukung atau sudah granted/denied
+  if (!mounted || !isSupported || permission !== 'default' || !isVisible) {
     return null
   }
 
