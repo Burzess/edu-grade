@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useAuthStore } from '@/store/auth'
 import { useAuth } from '@/components/providers/auth-provider'
 import {
@@ -18,7 +19,8 @@ import {
   X,
   Home,
   Trophy,
-  User
+  User,
+  Loader2
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -67,6 +69,7 @@ const navigationItems: NavigationItem[] = [
 
 export function GuruSidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const pathname = usePathname()
   const { profile } = useAuthStore()
   const { signOut } = useAuth()
@@ -76,6 +79,24 @@ export function GuruSidebar({ className }: SidebarProps) {
       return pathname === href
     }
     return pathname.startsWith(href)
+  }
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      
+      // Tambahkan delay minimal agar modal terlihat
+      await Promise.all([
+        signOut(),
+        new Promise(resolve => setTimeout(resolve, 800))
+      ])
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Jika ada error, tetap redirect ke login
+      window.location.href = '/login'
+    } finally {
+      // Note: setIsLoggingOut(false) tidak diperlukan karena halaman akan redirect
+    }
   }
 
   return (
@@ -189,7 +210,8 @@ export function GuruSidebar({ className }: SidebarProps) {
 
         <Button
           variant="ghost"
-          onClick={signOut}
+          onClick={handleLogout}
+          disabled={isLoggingOut}
           className={cn(
             "w-full justify-start px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900",
             !isCollapsed && "space-x-3"
@@ -200,6 +222,21 @@ export function GuruSidebar({ className }: SidebarProps) {
           {!isCollapsed && <span>Keluar</span>}
         </Button>
       </div>
+
+      {/* Modal Loading saat Logout */}
+      <Dialog open={isLoggingOut} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md"
+          showCloseButton={false}
+        >
+          <div className="flex flex-col items-center justify-center py-8 px-4">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Sedang Keluar...
+            </h3>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -212,6 +249,7 @@ export function MobileGuruSidebar({
   isOpen: boolean
   onClose: () => void 
 }) {
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const pathname = usePathname()
   const { profile } = useAuthStore()
   const { signOut } = useAuth()
@@ -221,6 +259,25 @@ export function MobileGuruSidebar({
       return pathname === href
     }
     return pathname.startsWith(href)
+  }
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      onClose() // Tutup mobile sidebar
+      
+      // Tambahkan delay minimal agar modal terlihat
+      await Promise.all([
+        signOut(),
+        new Promise(resolve => setTimeout(resolve, 800))
+      ])
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Jika ada error, tetap redirect ke login
+      window.location.href = '/login'
+    } finally {
+      // Note: setIsLoggingOut(false) tidak diperlukan karena halaman akan redirect
+    }
   }
 
   if (!isOpen) return null
@@ -333,10 +390,8 @@ export function MobileGuruSidebar({
 
             <Button
               variant="ghost"
-              onClick={() => {
-                onClose()
-                signOut()
-              }}
+              onClick={handleLogout}
+              disabled={isLoggingOut}
               className="w-full justify-start px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             >
               <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-gray-400" />
@@ -345,6 +400,24 @@ export function MobileGuruSidebar({
           </div>
         </div>
       </div>
+
+      {/* Modal Loading saat Logout untuk Mobile */}
+      <Dialog open={isLoggingOut} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md"
+          showCloseButton={false}
+        >
+          <div className="flex flex-col items-center justify-center py-8 px-4">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Sedang Keluar...
+            </h3>
+            <p className="text-sm text-gray-500 text-center">
+              Mohon tunggu, kami sedang mengeluarkan Anda dari sistem dengan aman.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
