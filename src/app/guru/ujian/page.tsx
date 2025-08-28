@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUjian, useDeleteUjian, useStartUjian } from '@/hooks/use-ujian-backup'
+import { useUjian, useDeleteUjian, useStartUjian } from '@/hooks/use-ujian'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -236,11 +236,6 @@ function UjianPageContent() {
   const { data: ujianData, isLoading, error } = useUjian(currentPage, pageSize)
   const deleteUjianMutation = useDeleteUjian()
   const startUjianMutation = useStartUjian()
-
-  // Use debug data if toggle is on, otherwise use normal data
-  // const currentData = useDebugQuery ? ujianDataDebug : ujianData
-  // const currentLoading = useDebugQuery ? isLoadingDebug : isLoading
-  // const currentError = useDebugQuery ? errorDebug : error
 
   const handleDelete = async (id: string) => {
     console.log('🗑️ Deleting ujian:', { id })
