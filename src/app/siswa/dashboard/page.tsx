@@ -15,6 +15,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import SiswaDashboardClient from './siswa-dashboard-client'
+import SiswaLogoutButton from './siswa-logout-button'
 
 export default async function SiswaDashboard() {
   // Server-side auth check - tidak ada loading state
@@ -50,12 +51,7 @@ export default async function SiswaDashboard() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="text-red-600 focus:text-red-600">
-                    <Link href="/api/auth/logout" prefetch={false}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Keluar
-                    </Link>
-                  </DropdownMenuItem>
+                  <SiswaLogoutButton />
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
