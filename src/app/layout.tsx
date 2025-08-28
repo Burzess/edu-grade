@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { getCurrentUser } from "@/lib/auth-server";
+import ErrorBoundary from "@/components/ui/error-boundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,21 +21,32 @@ export const metadata: Metadata = {
   description: "Platform pembelajaran dengan penilaian otomatis menggunakan AI",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Server-side auth check untuk menghindari loading state
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    console.error('Layout auth check failed:', error);
+    // Tidak throw error, biarkan client handle auth
+  }
+
   return (
     <html lang="id">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </QueryProvider>
+        <ErrorBoundary>
+          <QueryProvider>
+            <AuthProvider initialUser={user}>
+              {children}
+            </AuthProvider>
+          </QueryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
