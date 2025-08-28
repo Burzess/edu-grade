@@ -51,7 +51,7 @@ export default async function SiswaDashboard() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="text-red-600 focus:text-red-600">
-                    <Link href="/api/auth/logout">
+                    <Link href="/api/auth/logout" prefetch={false}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Keluar
                     </Link>
