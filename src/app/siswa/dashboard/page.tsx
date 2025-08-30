@@ -72,7 +72,7 @@ export default async function SiswaDashboard() {
           </div>
 
           {/* Notification Banner */}
-          <NotificationBannerWrapper />
+          {/* <NotificationBannerWrapper /> */}
 
           {/* Client Component untuk data dinamis */}
           <SiswaDashboardClient />
