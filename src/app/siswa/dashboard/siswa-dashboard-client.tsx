@@ -85,6 +85,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
     return null
   }
 
+  const teacherName = ujian.profiles.full_name;
   const timeStatus = getTimeStatus()
   const soalCount = ujian.total_questions
 
@@ -119,7 +120,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">Guru:</span>
-              <span>{ujian.teacher_name || 'Tidak diketahui'}</span>
+              <span>{teacherName || 'Tidak diketahui'}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -254,7 +255,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">Guru:</span>
-              <span>{ujian.profiles?.[0]?.full_name || 'Tidak diketahui'}</span>
+              <span>{teacherName || 'Tidak diketahui'}</span>
             </div>
 
             <div className="flex items-center gap-2">
