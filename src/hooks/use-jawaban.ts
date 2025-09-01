@@ -1014,7 +1014,8 @@ export function useAvailableUjian() {
                 const query = supabase
                     .from('ujian')
                     .select(`
-                        *
+                        *,
+                        profiles!created_by (full_name)
                     `)
                     .order('created_at', { ascending: false })
 

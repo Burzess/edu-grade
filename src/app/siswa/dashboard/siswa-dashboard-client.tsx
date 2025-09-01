@@ -85,9 +85,9 @@ function UjianCard({ ujian, type }: UjianCardProps) {
     return null
   }
 
-  const teacherName = ujian.profiles.full_name;
+  const teacherName = ujian.profiles?.full_name || 'Tidak diketahui';
   const timeStatus = getTimeStatus()
-  const soalCount = ujian.total_questions
+  const soalCount = ujian.total_questions || 0
 
   if (type === 'active') {
     return (
