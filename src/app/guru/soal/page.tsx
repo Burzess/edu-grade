@@ -81,14 +81,12 @@ function SoalListPageContent() {
                         Kelola bank soal untuk ujian
                     </p>
                 </div>
-                <CreateSoalModal 
-                    trigger={
-                        <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Buat Soal Baru
-                        </Button>
-                    }
-                />
+                <CreateSoalModal>
+                    <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Buat Soal Baru
+                    </Button>
+                </CreateSoalModal>
             </div>
 
             {/* Filters */}
@@ -173,13 +171,11 @@ function SoalListPageContent() {
                     ) : soalData?.data.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-gray-500">Belum ada soal yang dibuat</p>
-                            <CreateSoalModal 
-                                trigger={
-                                    <Button className="mt-4">
-                                        Buat Soal Pertama
-                                    </Button>
-                                }
-                            />
+                            <CreateSoalModal>
+                                <Button className="mt-4">
+                                    Buat Soal Pertama
+                                </Button>
+                            </CreateSoalModal>
                         </div>
                     ) : (
                         <>
