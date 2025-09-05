@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useJawabanByUjian, useUjianForSiswa } from '@/hooks/use-jawaban'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
@@ -16,10 +17,57 @@ import {
   FileText,
   User,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+
+// Component untuk text yang dapat diperluas
+function ExpandableText({ 
+  text, 
+  maxLength = 200, 
+  className = "" 
+}: { 
+  text: string
+  maxLength?: number
+  className?: string 
+}) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  if (!text || text.length <= maxLength) {
+    return <div className={className}>{text}</div>
+  }
+  
+  const displayText = isExpanded ? text : `${text.slice(0, maxLength)}...`
+  
+  return (
+    <div className={className}>
+      <div className="whitespace-pre-wrap transition-all duration-200 ease-in-out">
+        {displayText}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-2 p-0 h-auto text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-transparent transition-colors duration-150"
+      >
+        {isExpanded ? (
+          <>
+            <ChevronUp className="h-3 w-3 mr-1" />
+            Tampilkan lebih sedikit
+          </>
+        ) : (
+          <>
+            <ChevronDown className="h-3 w-3 mr-1" />
+            Tampilkan selengkapnya
+          </>
+        )}
+      </Button>
+    </div>
+  )
+}
 
 function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
   const hasScore = jawaban.score !== null
@@ -56,9 +104,11 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
           
           <div className="p-3 bg-blue-50 rounded-lg">
             <div className="font-medium text-sm text-blue-600 mb-2">Jawaban Anda:</div>
-            <div className="text-blue-800 whitespace-pre-wrap">
-              {jawaban.answer_text || 'Tidak ada jawaban'}
-            </div>
+            <ExpandableText 
+              text={jawaban.answer_text || 'Tidak ada jawaban'} 
+              maxLength={200}
+              className="text-blue-800"
+            />
           </div>
 
           {hasScore && (
@@ -105,17 +155,21 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
         {/* Question */}
         <div className="p-3 bg-gray-50 rounded-lg">
           <div className="font-medium text-sm text-gray-600 mb-2">Pertanyaan:</div>
-          <div className="text-gray-800 whitespace-pre-wrap">
-            {jawaban.soal?.question_text || 'Soal tidak tersedia'}
-          </div>
+          <ExpandableText 
+            text={jawaban.soal?.question_text || 'Soal tidak tersedia'} 
+            maxLength={300}
+            className="text-gray-800"
+          />
         </div>
 
         {/* Answer */}
         <div className="p-3 bg-blue-50 rounded-lg">
           <div className="font-medium text-sm text-blue-600 mb-2">Jawaban Anda:</div>
-          <div className="text-blue-800 whitespace-pre-wrap">
-            {jawaban.answer_text || 'Tidak ada jawaban'}
-          </div>
+          <ExpandableText 
+            text={jawaban.answer_text || 'Tidak ada jawaban'} 
+            maxLength={200}
+            className="text-blue-800"
+          />
         </div>
 
         {/* Correct Answer (for multiple choice) */}
@@ -135,9 +189,11 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
               <MessageSquare className="h-4 w-4" />
               Feedback AI:
             </div>
-            <div className="text-purple-800 whitespace-pre-wrap">
-              {jawaban.ai_feedback}
-            </div>
+            <ExpandableText 
+              text={jawaban.ai_feedback} 
+              maxLength={250}
+              className="text-purple-800"
+            />
           </div>
         )}
 
@@ -245,7 +301,7 @@ function HasilUjianPageContent() {
   const answeredQuestions = jawaban.filter(j => j.answer_text && j.answer_text.trim() !== '').length
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto px-4 md:px-8 py-6 space-y-8">
       {/* Back button */}
       <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
         <ArrowLeft className="h-4 w-4 mr-2" />
