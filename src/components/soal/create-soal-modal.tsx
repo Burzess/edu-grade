@@ -50,32 +50,22 @@ const soalSchema = z.object({
             return false;
         }
     }
-    // Untuk essay, options dan correct_answer harus undefined/null
-    if (data.question_type === 'essay') {
-        if (data.options && data.options.length > 0) {
-            return false;
-        }
-        if (data.correct_answer && data.correct_answer.trim() !== '') {
-            return false;
-        }
-    }
+    // Untuk essay, correct_answer opsional (bisa digunakan sebagai referensi)
     return true;
 }, {
-    message: "Untuk soal pilihan ganda, harus ada minimal 2 opsi dan jawaban yang benar harus dipilih",
-    path: ["question_type"]
+    message: "Data soal tidak valid",
 })
 
 type SoalForm = z.infer<typeof soalSchema>
 
 interface CreateSoalModalProps {
-  trigger?: React.ReactNode
-  onSuccess?: () => void
+  children: React.ReactNode
 }
 
-export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
+export function CreateSoalModal({ children }: CreateSoalModalProps) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+  
   const createSoalMutation = useCreateSoal()
 
   const form = useForm<SoalForm>({
@@ -85,22 +75,17 @@ export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
       question_type: 'essay',
       difficulty_level: 'medium',
       tags: [],
-      options: undefined,
-      correct_answer: undefined,
-    },
+      options: [],
+      correct_answer: '',
+    }
   })
 
   const questionType = form.watch('question_type')
 
-  // Reset options ketika question_type berubah
+  // Reset form ketika tipe soal berubah
   useEffect(() => {
-    if (questionType === 'essay') {
-      form.setValue('options', undefined)
-      form.setValue('correct_answer', undefined)
-    } else if (questionType === 'multiple_choice') {
-      // Set default options untuk multiple choice jika belum ada
-      const currentOptions = form.getValues('options')
-      if (!currentOptions || currentOptions.length === 0) {
+    if (questionType === 'multiple_choice') {
+      if (!form.getValues('options') || form.getValues('options')?.length === 0) {
         form.setValue('options', [
           { id: 'A', text: '' },
           { id: 'B', text: '' },
@@ -143,60 +128,40 @@ export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
         tags: data.tags || [],
       }
 
-      // Tambahkan options dan correct_answer untuk pilihan ganda
+      // Tambahkan options dan correct_answer sesuai tipe soal
       if (data.question_type === 'multiple_choice') {
         soalData.options = data.options || []
         soalData.correct_answer = data.correct_answer
       } else {
-        // Untuk essay, set null/undefined
+        // Untuk essay, gunakan correct_answer sebagai reference answer (opsional)
         soalData.options = null
-        soalData.correct_answer = null
+        soalData.correct_answer = data.correct_answer || null // Bisa kosong untuk essay
       }
 
       console.log('📤 Sending data to server:', soalData)
 
       await createSoalMutation.mutateAsync(soalData)
-      console.log('✅ Soal created successfully')
-
-      // Reset form and close modal
-      form.reset()
-      setOpen(false)
-      setError(null)
       
-      // Call onSuccess callback if provided
-      if (onSuccess) {
-        onSuccess()
-      }
-    } catch (err: any) {
-      console.error('❌ Error creating soal:', err)
-      setError(err.message || 'Terjadi kesalahan saat membuat soal')
-    }
-  }
-
-  // Reset form when modal closes
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen)
-    if (!newOpen) {
+      console.log('✅ Soal created successfully')
+      setOpen(false)
       form.reset()
-      setError(null)
+      
+    } catch (error) {
+      console.error('❌ Error creating soal:', error)
+      setError(error instanceof Error ? error.message : 'Terjadi kesalahan')
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Buat Soal Baru
-          </Button>
-        )}
+        {children}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Buat Soal Baru</DialogTitle>
           <DialogDescription>
-            Buat soal baru untuk bank soal Anda. Soal akan digunakan untuk membuat ujian.
+            Buat soal baru untuk ujian. Pilih tipe soal dan isi pertanyaan dengan lengkap.
           </DialogDescription>
         </DialogHeader>
 
@@ -208,6 +173,7 @@ export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Question Text */}
             <FormField
               control={form.control}
               name="question_text"
@@ -216,123 +182,110 @@ export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
                   <FormLabel>Pertanyaan *</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Tuliskan pertanyaan atau soal di sini..."
-                      className="min-h-[120px]"
+                      placeholder="Tulis pertanyaan soal di sini..."
+                      className="min-h-[100px]"
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Tuliskan pertanyaan yang jelas dan mudah dipahami siswa.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="question_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipe Soal *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih tipe soal" />
-                        </SelectTrigger>
-                      </FormControl>
+            {/* Question Type */}
+            <FormField
+              control={form.control}
+              name="question_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipe Soal *</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih tipe soal" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="essay">Essay</SelectItem>
                         <SelectItem value="multiple_choice">Pilihan Ganda</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Pilih tipe soal: Essay untuk jawaban bebas, Pilihan Ganda untuk opsi A, B, C, D.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="difficulty_level"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tingkat Kesulitan *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih tingkat kesulitan" />
-                        </SelectTrigger>
-                      </FormControl>
+            {/* Difficulty Level */}
+            <FormField
+              control={form.control}
+              name="difficulty_level"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tingkat Kesulitan *</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih tingkat kesulitan" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="easy">Mudah</SelectItem>
                         <SelectItem value="medium">Sedang</SelectItem>
                         <SelectItem value="hard">Sulit</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Bantu kategorikan tingkat kesulitan soal.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            {/* Options untuk Multiple Choice */}
+            {/* Multiple Choice Options */}
             {questionType === 'multiple_choice' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <FormLabel>Opsi Jawaban *</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addOption}
-                    disabled={(form.getValues('options')?.length || 0) >= 6}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Tambah Opsi
-                  </Button>
-                </div>
-
                 <FormField
                   control={form.control}
                   name="options"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Pilihan Jawaban *</FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addOption}
+                          disabled={(form.getValues('options') || []).length >= 6}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Tambah Opsi
+                        </Button>
+                      </div>
                       <FormControl>
                         <div className="space-y-3">
-                          {(field.value || []).map((option, index) => (
-                            <div key={index} className="flex items-center space-x-3">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2">
-                                  <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium">
-                                    {option.id}
-                                  </span>
-                                  <Input
-                                    placeholder={`Opsi ${option.id}`}
-                                    value={option.text}
-                                    onChange={(e) => {
-                                      const newOptions = [...(field.value || [])]
-                                      newOptions[index] = { ...option, text: e.target.value }
-                                      field.onChange(newOptions)
-                                    }}
-                                  />
-                                  {(field.value || []).length > 2 && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removeOption(index)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                </div>
+                          {(form.getValues('options') || []).map((option, index) => (
+                            <div key={option.id} className="space-y-2">
+                              <Label>Opsi {option.id}</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder={`Opsi ${option.id}`}
+                                  value={option.text}
+                                  onChange={(e) => {
+                                    const currentOptions = form.getValues('options') || []
+                                    const newOptions = [...currentOptions]
+                                    newOptions[index] = { ...option, text: e.target.value }
+                                    form.setValue('options', newOptions)
+                                  }}
+                                />
+                                {(form.getValues('options') || []).length > 2 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeOption(index)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -375,22 +328,54 @@ export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
               </div>
             )}
 
+            {/* Essay Reference Answer Section */}
+            {questionType === 'essay' && (
+              <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+                <h4 className="text-sm font-medium text-gray-700">Kunci Jawaban Essay (Opsional)</h4>
+                <p className="text-sm text-gray-600">
+                  Berikan kunci jawaban untuk membantu AI melakukan penilaian yang lebih akurat dan konsisten.
+                </p>
+                
+                <FormField
+                  control={form.control}
+                  name="correct_answer"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kunci Jawaban</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Tuliskan kunci jawaban atau poin-poin utama yang harus ada dalam jawaban siswa..."
+                          className="min-h-[120px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Kunci jawaban ini akan digunakan AI sebagai referensi untuk menilai jawaban siswa. 
+                        Kosongkan jika ingin AI menilai secara bebas tanpa referensi khusus.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="tags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tags</FormLabel>
+                  <FormLabel>Tags (Opsional)</FormLabel>
                   <FormControl>
                     <TagInput
                       value={field.value || []}
                       onChange={field.onChange}
-                      placeholder="Tambah tag untuk kategori soal..."
+                      placeholder="Tambah tag untuk kategorisasi soal"
                       maxTags={10}
                     />
                   </FormControl>
                   <FormDescription>
-                    Tag membantu mengorganisir dan mencari soal. Contoh: "matematika", "aljabar", "kelas-10"
+                    Maksimal 10 tag untuk membantu kategorisasi soal.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -400,20 +385,23 @@ export function CreateSoalModal({ trigger, onSuccess }: CreateSoalModalProps) {
         </Form>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => setOpen(false)}
           >
             Batal
           </Button>
-          <Button
+          <Button 
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
             disabled={createSoalMutation.isPending}
+            onClick={form.handleSubmit(onSubmit)}
           >
             {createSoalMutation.isPending ? (
-              'Menyimpan...'
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Menyimpan...
+              </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
