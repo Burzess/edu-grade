@@ -5,21 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { useUjianForSiswa, useBatchSubmitJawaban } from '@/hooks/use-jawaban'
 import { useStartUjianSiswa, useSubmitUjianSiswa } from '@/hooks/use-ujian'
 import { 
-  useOptimizedUjianStatus, 
-  useOptimizedBatchSubmitJawaban
-  // REALTIME REMOVED: useOptimizedUjianStatusChecker disabled
-  // useOptimizedUjianStatusChecker 
-} from '@/hooks/use-optimized-ujian'
-import { 
   useOptimizedDebouncedSubmitJawaban, 
   useOptimizedJawabanByUjian 
 } from '@/hooks/use-optimized-jawaban'
-// REALTIME REMOVED: Provider imports disabled to prevent infinite requests
-// import { 
-//   OptimizedRealtimeProvider, 
-//   useConnectionHealth, 
-//   usePerformanceMonitor 
-// } from '@/components/providers/optimized-realtime-provider'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,15 +31,12 @@ import {
     FileText,
     CheckCircle,
     AlertCircle,
-    User,
     ArrowLeft,
     ArrowRight,
-    Save,
     Send,
     Grid3X3,
-    Play
 } from 'lucide-react'
-import { formatDistanceToNow, format, isAfter } from 'date-fns'
+import { format, isAfter } from 'date-fns'
 import { id } from 'date-fns/locale'
 
 // Fungsi untuk mengacak array (Fisher-Yates shuffle)
