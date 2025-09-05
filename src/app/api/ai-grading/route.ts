@@ -141,10 +141,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Batch grading endpoint
+// Batch grading endpoint dengan Smart Batching
 export async function PUT(request: NextRequest) {
   try {
-    const { ujianId } = await request.json()
+    const { ujianId, useBatching = true } = await request.json()
 
     if (!ujianId) {
       return NextResponse.json(
@@ -188,11 +188,80 @@ export async function PUT(request: NextRequest) {
       })
     }
 
-
+    // NEW: Use Smart Batching or traditional method
     let gradedCount = 0
     let errorCount = 0
 
-    // Process each answer
+    if (useBatching) {
+      console.log('🤖 Using SMART BATCHING for', jawabanList.length, 'answers')
+      
+      // Prepare answers for smart batching
+      const answersForBatching = jawabanList.map(jawaban => {
+        let correctAnswer = undefined
+        if (jawaban.soal.question_type === 'multiple_choice' && jawaban.soal.correct_answer) {
+          const correctOption = jawaban.soal.options?.find(
+            (opt: any) => opt.id === jawaban.soal.correct_answer
+          )
+          correctAnswer = correctOption?.text || jawaban.soal.correct_answer
+        }
+
+        return {
+          id: jawaban.id,
+          question: jawaban.soal.question_text,
+          studentAnswer: jawaban.answer_text || '',
+          questionType: jawaban.soal.question_type as 'essay' | 'multiple_choice',
+          correctAnswer
+        }
+      })
+
+      try {
+        // Import smart batching function
+        const { smartBatchGradeAnswers } = await import('@/lib/ai-grading')
+        
+        const batchResults = await smartBatchGradeAnswers(answersForBatching, 3) // Batch size 3
+
+        // Update database with batch results
+        for (const result of batchResults) {
+          try {
+            const { error: updateError } = await supabase
+              .from('jawaban_siswa')
+              .update({
+                score: result.result.score,
+                ai_feedback: result.result.feedback,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', result.id)
+
+            if (updateError) {
+              errorCount++
+              console.error(`❌ Error updating jawaban ${result.id}:`, updateError)
+            } else {
+              gradedCount++
+            }
+          } catch (updateError) {
+            errorCount++
+            console.error(`❌ Exception updating jawaban ${result.id}:`, updateError)
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          gradedCount,
+          errorCount,
+          totalProcessed: jawabanList.length,
+          method: 'smart_batching',
+          batchSize: 3
+        })
+
+      } catch (batchError) {
+        console.error('❌ Smart batching failed, falling back to individual grading:', batchError)
+        // Fall through to individual grading
+      }
+    }
+
+    // FALLBACK: Individual grading (original method)
+    console.log('🤖 Using INDIVIDUAL GRADING for', jawabanList.length, 'answers')
+    
     for (const jawaban of jawabanList) {
       try {
         // Skip empty answers
@@ -257,7 +326,8 @@ export async function PUT(request: NextRequest) {
       success: true,
       gradedCount,
       errorCount,
-      totalProcessed: jawabanList.length
+      totalProcessed: jawabanList.length,
+      method: 'individual_grading'
     })
 
   } catch (error) {

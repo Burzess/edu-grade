@@ -22,7 +22,8 @@ export async function gradeEssayAnswer(
     console.log('🤖 Starting AI grading...', { 
       questionLength: question.length, 
       answerLength: studentAnswer.length,
-      questionType 
+      questionType,
+      hasReferenceAnswer: !!correctAnswer
     })
 
     // Validasi input
@@ -51,32 +52,70 @@ export async function gradeEssayAnswer(
     if (questionType === 'multiple_choice' && correctAnswer) {
       // For multiple choice questions
       prompt = `
-Sebagai sistem penilaian otomatis, berikan penilaian untuk jawaban pilihan ganda berikut:
+        Sebagai sistem penilaian otomatis, berikan penilaian untuk jawaban pilihan ganda berikut:
 
-PERTANYAAN:
-${question}
+        PERTANYAAN:
+        ${question}
 
-JAWABAN BENAR:
-${correctAnswer}
+        JAWABAN BENAR:
+        ${correctAnswer}
 
-JAWABAN SISWA:
-${studentAnswer}
+        JAWABAN SISWA:
+        ${studentAnswer}
 
-Berikan penilaian dalam format JSON dengan struktur berikut:
-{
-  "score": [0-100],
-  "feedback": "[feedback dalam bahasa Indonesia]",
-  "reasoning": "[penjelasan singkat mengapa mendapat nilai tersebut]"
-}
+        Berikan penilaian dalam format JSON dengan struktur berikut:
+        {
+          "score": [0-100],
+          "feedback": "[feedback dalam bahasa Indonesia]",
+          "reasoning": "[penjelasan singkat mengapa mendapat nilai tersebut]"
+        }
 
-Aturan penilaian:
-- Jika jawaban siswa sama persis dengan jawaban benar: 100 poin
-- Jika jawaban siswa salah: 0 poin
-- Berikan feedback yang konstruktif dan menjelaskan jawaban yang benar
-`
+        Aturan penilaian:
+        - Jika jawaban siswa sama persis dengan jawaban benar: 100 poin
+        - Jika jawaban siswa salah: 0 poin
+        - Berikan feedback yang konstruktif dan menjelaskan jawaban yang benar
+        `
     } else {
-      // For essay questions
-      prompt = `
+      // For essay questions - dengan atau tanpa reference answer
+      if (correctAnswer && correctAnswer.trim().length > 0) {
+        // Essay dengan reference answer dari guru
+        prompt = `
+        Sebagai sistem penilaian otomatis yang objektif dan adil, berikan penilaian untuk jawaban essay berikut dengan menggunakan kunci jawaban sebagai referensi:
+
+        PERTANYAAN:
+        ${question}
+
+        KUNCI JAWABAN/REFERENSI DARI GURU:
+        ${correctAnswer}
+
+        JAWABAN SISWA:
+        ${studentAnswer}
+
+        Berikan penilaian dalam format JSON dengan struktur berikut:
+        {
+          "score": [0-100],
+          "feedback": "[feedback dalam bahasa Indonesia]",
+          "reasoning": "[penjelasan singkat mengapa mendapat nilai tersebut]"
+        }
+
+        Kriteria penilaian dengan referensi:
+        1. Kesesuaian dengan kunci jawaban (50%)
+        2. Kelengkapan jawaban dibanding referensi (25%) 
+        3. Kejelasan dan struktur (15%)
+        4. Penggunaan bahasa (10%)
+
+        Pedoman nilai:
+        - 90-100: Sangat baik, jawaban sesuai atau melebihi kunci jawaban
+        - 80-89: Baik, jawaban mencakup sebagian besar poin kunci
+        - 70-79: Cukup, jawaban mencakup poin utama dari kunci jawaban
+        - 60-69: Kurang, jawaban hanya mencakup sebagian kecil kunci jawaban
+        - 0-59: Sangat kurang, jawaban tidak sesuai atau salah
+
+        PENTING: Gunakan kunci jawaban sebagai panduan utama, tapi tetap berikan nilai untuk jawaban yang benar meskipun berbeda redaksi. Berikan feedback konstruktif yang membandingkan jawaban siswa dengan kunci jawaban.
+        `
+      } else {
+        // Essay tanpa reference answer (cara lama)
+        prompt = `
         Sebagai sistem penilaian otomatis yang objektif dan adil, berikan penilaian untuk jawaban essay berikut:
 
         PERTANYAAN:
@@ -108,6 +147,7 @@ Aturan penilaian:
         Jawaban kosong atau sangat singkat (kurang dari 5 kata) mendapat nilai 0.
         Berikan feedback yang konstruktif dan spesifik untuk membantu siswa belajar.
         `
+      }
     }
 
     const result = await model.generateContent(prompt)
@@ -180,6 +220,7 @@ Aturan penilaian:
   }
 }
 
+// HYBRID BATCH GRADING: Optimasi untuk mengurangi biaya dengan batching cerdas
 export async function batchGradeAnswers(
   answers: Array<{
     id: string
@@ -241,4 +282,224 @@ export async function batchGradeAnswers(
   
   console.log('✅ Batch AI grading completed:', results.length, 'results')
   return results
+}
+
+// NEW: Smart Batch Grading - untuk essay serupa bisa digabung dalam 1 request
+export async function smartBatchGradeAnswers(
+  answers: Array<{
+    id: string
+    question: string
+    studentAnswer: string
+    questionType?: 'essay' | 'multiple_choice'
+    correctAnswer?: string
+  }>,
+  batchSize: number = 3 // Jumlah jawaban per request (untuk essay serupa)
+): Promise<Array<{ id: string; result: AIGradingResponse }>> {
+  console.log('🤖 Starting SMART batch AI grading for', answers.length, 'answers with batch size:', batchSize)
+  
+  // Group answers by similar questions to optimize batching
+  const questionGroups = new Map<string, typeof answers>()
+  
+  for (const answer of answers) {
+    const key = `${answer.question}_${answer.questionType}`
+    if (!questionGroups.has(key)) {
+      questionGroups.set(key, [])
+    }
+    questionGroups.get(key)!.push(answer)
+  }
+  
+  const results: Array<{ id: string; result: AIGradingResponse }> = []
+  
+  // Process each question group
+  for (const [questionKey, groupAnswers] of questionGroups) {
+    console.log(`📝 Processing ${groupAnswers.length} answers for question group:`, questionKey.substring(0, 50) + '...')
+    
+    // For essay questions, try smart batching
+    if (groupAnswers[0].questionType === 'essay' && groupAnswers.length >= 2) {
+      
+      // Process in smart batches
+      for (let i = 0; i < groupAnswers.length; i += batchSize) {
+        const batch = groupAnswers.slice(i, i + batchSize)
+        
+        try {
+          const batchResults = await gradeMultipleEssaysInOneRequest(batch)
+          results.push(...batchResults)
+        } catch (error) {
+          console.error('❌ Smart batch failed, falling back to individual grading:', error)
+          
+          // Fallback to individual grading
+          for (const answer of batch) {
+            try {
+              const result = await gradeEssayAnswer(
+                answer.question,
+                answer.studentAnswer,
+                answer.questionType,
+                answer.correctAnswer
+              )
+              results.push({ id: answer.id, result })
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            } catch (individualError) {
+              results.push({
+                id: answer.id,
+                result: {
+                  score: 50,
+                  feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
+                  reasoning: 'Fallback scoring'
+                }
+              })
+            }
+          }
+        }
+        
+        // Delay between batches
+        if (i + batchSize < groupAnswers.length) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+      }
+    } else {
+      // For multiple choice or single essays, use individual grading
+      for (const answer of groupAnswers) {
+        try {
+          const result = await gradeEssayAnswer(
+            answer.question,
+            answer.studentAnswer,
+            answer.questionType,
+            answer.correctAnswer
+          )
+          results.push({ id: answer.id, result })
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (error) {
+          results.push({
+            id: answer.id,
+            result: {
+              score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
+              feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
+              reasoning: 'AI grading error'
+            }
+          })
+        }
+      }
+    }
+  }
+  
+  console.log('✅ Smart batch AI grading completed:', results.length, 'results')
+  return results
+}
+
+// NEW: Grade multiple essays in one request (untuk essay dengan pertanyaan yang sama)
+async function gradeMultipleEssaysInOneRequest(
+  answers: Array<{
+    id: string
+    question: string
+    studentAnswer: string
+    questionType?: 'essay' | 'multiple_choice'
+    correctAnswer?: string
+  }>
+): Promise<Array<{ id: string; result: AIGradingResponse }>> {
+  
+  if (answers.length === 0) return []
+  
+  const model = genAI.getGenerativeModel({ 
+    model: 'gemini-1.5-flash',
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 2000, // Increased for multiple responses
+    }
+  })
+
+  // Create batch prompt for multiple essays
+  const question = answers[0].question
+  const studentAnswers = answers.map((ans, index) => 
+    `JAWABAN ${index + 1} (ID: ${ans.id}):\n${ans.studentAnswer}`
+  ).join('\n\n')
+
+  const prompt = `
+    Sebagai sistem penilaian otomatis, berikan penilaian untuk ${answers.length} jawaban essay berikut dengan pertanyaan yang sama:
+
+    PERTANYAAN:
+    ${question}
+
+    ${studentAnswers}
+
+    Berikan penilaian untuk SETIAP jawaban dalam format JSON array berikut:
+    [
+      {
+        "id": "jawaban_id_1",
+        "score": [0-100],
+        "feedback": "[feedback dalam bahasa Indonesia]",
+        "reasoning": "[penjelasan singkat]"
+      },
+      {
+        "id": "jawaban_id_2",
+        "score": [0-100],
+        "feedback": "[feedback dalam bahasa Indonesia]",
+        "reasoning": "[penjelasan singkat]"
+      }
+    ]
+
+    Kriteria penilaian:
+    1. Keakuratan dan relevansi (40%)
+    2. Kelengkapan jawaban (30%) 
+    3. Kejelasan dan struktur (20%)
+    4. Penggunaan bahasa (10%)
+
+    PENTING: Berikan penilaian yang objektif dan konsisten untuk semua jawaban.
+    `
+
+  const result = await model.generateContent(prompt)
+  const response = await result.response
+  const text = response.text()
+
+  console.log('🤖 Smart batch AI response preview:', text.substring(0, 300) + '...')
+
+  // Parse JSON array response
+  let jsonMatch = text.match(/\[[\s\S]*\]/)
+  
+  if (!jsonMatch) {
+    const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
+    jsonMatch = cleanedText.match(/\[[\s\S]*\]/)
+  }
+
+  if (!jsonMatch) {
+    throw new Error('Invalid batch AI response format - no JSON array found')
+  }
+
+  let batchResults: Array<{id: string, score: number, feedback: string, reasoning: string}>
+  try {
+    batchResults = JSON.parse(jsonMatch[0])
+  } catch (parseError) {
+    console.error('❌ Failed to parse batch JSON:', parseError)
+    throw new Error('Invalid JSON in batch AI response')
+  }
+
+  // Validate and format results
+  const formattedResults: Array<{ id: string; result: AIGradingResponse }> = []
+  
+  for (const answer of answers) {
+    const aiResult = batchResults.find(r => r.id === answer.id)
+    
+    if (aiResult && typeof aiResult.score === 'number' && aiResult.score >= 0 && aiResult.score <= 100) {
+      formattedResults.push({
+        id: answer.id,
+        result: {
+          score: Math.round(aiResult.score),
+          feedback: aiResult.feedback || 'Feedback tidak tersedia',
+          reasoning: aiResult.reasoning || 'Reasoning tidak tersedia'
+        }
+      })
+    } else {
+      // Fallback if result not found or invalid
+      formattedResults.push({
+        id: answer.id,
+        result: {
+          score: 50,
+          feedback: 'Penilaian batch tidak berhasil, menggunakan penilaian fallback.',
+          reasoning: 'Batch grading fallback'
+        }
+      })
+    }
+  }
+
+  console.log(`✅ Smart batch processed ${formattedResults.length} answers successfully`)
+  return formattedResults
 }
