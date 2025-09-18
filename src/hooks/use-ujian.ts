@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 import { Database } from '@/types/database'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react' // PERBAIKAN: Tambah useRef
 import { useNotifications } from './use-notifications'
 
 type Ujian = Database['public']['Tables']['ujian']['Row']
@@ -699,6 +699,9 @@ export function useStartUjianSiswa() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const supabase = createClient()
+  
+  // PERBAIKAN: Cache untuk mencegah duplicate calls
+  const registrationCache = useRef(new Set<string>())
 
   return useMutation({
     mutationFn: async (ujianId: string) => {
@@ -706,55 +709,82 @@ export function useStartUjianSiswa() {
         throw new Error('User not authenticated')
       }
 
-      const now = new Date().toISOString()
-
-      // Check apakah ujian masih aktif dan belum expired
-      const { data: ujian, error: ujianError } = await supabase
-        .from('ujian')
-        .select('id, name, status, end_time')
-        .eq('id', ujianId)
-        .eq('status', 'active')
-        .single()
-
-      if (ujianError) {
-        throw new Error('Ujian tidak ditemukan atau sudah tidak aktif')
-      }
-
-      // Check apakah ujian belum expired
-      if (ujian.end_time && new Date(ujian.end_time) <= new Date()) {
-        throw new Error('Ujian sudah berakhir')
-      }
-
-      // Check apakah siswa sudah pernah mengerjakan ujian ini
-      const { data: existingUjianSiswa } = await supabase
-        .from('ujian_siswa')
-        .select('id, status')
-        .eq('ujian_id', ujianId)
-        .eq('siswa_id', user.id)
-        .maybeSingle() // FIXED: Use maybeSingle() instead of single() to handle no data
-
-      if (existingUjianSiswa) {
+      // PERBAIKAN: Check cache untuk mencegah duplicate registration
+      const cacheKey = `${user.id}-${ujianId}`
+      if (registrationCache.current.has(cacheKey)) {
+        console.log('🚫 Registration already in progress or completed for:', cacheKey)
         throw new Error('Anda sudah terdaftar untuk ujian ini')
       }
 
-      // Insert record ujian_siswa dengan status in_progress
-      const { data: ujianSiswa, error } = await supabase
-        .from('ujian_siswa')
-        .insert({
-          ujian_id: ujianId,
-          siswa_id: user.id,
-          status: 'in_progress',
-          started_at: now,
-        })
-        .select()
-        .single()
+      // Add to cache
+      registrationCache.current.add(cacheKey)
 
-      if (error) {
+      try {
+        const now = new Date().toISOString()
+
+        // PERBAIKAN: Optimasi query - coba ambil data dari cache React Query dulu
+        const cachedUjianData = queryClient.getQueryData(['ujian', 'siswa', ujianId])
+        let ujian
+
+        if (cachedUjianData && typeof cachedUjianData === 'object' && cachedUjianData !== null) {
+          ujian = cachedUjianData as any
+          console.log('📂 Using cached ujian data for registration check')
+        } else {
+          // Fallback ke database jika tidak ada cache
+          console.log('🔍 Fetching ujian data from database for registration')
+          const { data: ujianData, error: ujianError } = await supabase
+            .from('ujian')
+            .select('id, name, status, end_time')
+            .eq('id', ujianId)
+            .eq('status', 'active')
+            .single()
+
+          if (ujianError) {
+            throw new Error('Ujian tidak ditemukan atau sudah tidak aktif')
+          }
+          ujian = ujianData
+        }
+
+        // Check apakah ujian belum expired
+        if (ujian.end_time && new Date(ujian.end_time) <= new Date()) {
+          throw new Error('Ujian sudah berakhir')
+        }
+
+        // Check apakah siswa sudah pernah mengerjakan ujian ini
+        const { data: existingUjianSiswa } = await supabase
+          .from('ujian_siswa')
+          .select('id, status')
+          .eq('ujian_id', ujianId)
+          .eq('siswa_id', user.id)
+          .maybeSingle() // FIXED: Use maybeSingle() instead of single() to handle no data
+
+        if (existingUjianSiswa) {
+          throw new Error('Anda sudah terdaftar untuk ujian ini')
+        }
+
+        // Insert record ujian_siswa dengan status in_progress
+        const { data: ujianSiswa, error } = await supabase
+          .from('ujian_siswa')
+          .insert({
+            ujian_id: ujianId,
+            siswa_id: user.id,
+            status: 'in_progress',
+            started_at: now,
+          })
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        console.log('✅ Siswa started ujian:', { ujianId, siswaId: user.id })
+        return ujianSiswa
+      } catch (error) {
+        // Remove from cache on error untuk allow retry
+        registrationCache.current.delete(cacheKey)
         throw error
       }
-
-      console.log('✅ Siswa started ujian:', { ujianId, siswaId: user.id })
-      return ujianSiswa
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['available-ujian-siswa'] })
