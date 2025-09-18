@@ -25,37 +25,37 @@ function ActivityItem({ activity }: { activity: any }) {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'ujian_aktif':
-        return { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-50' }
+        return { icon: CheckCircle, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950/30' }
       case 'ujian_dibuat':
-        return { icon: BookOpen, color: 'text-blue-600', bgColor: 'bg-blue-50' }
+        return { icon: BookOpen, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-950/30' }
       case 'siswa_mulai_ujian':
-        return { icon: Activity, color: 'text-purple-600', bgColor: 'bg-purple-50' }
+        return { icon: Activity, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-950/30' }
       case 'siswa_selesai_ujian':
-        return { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-50' }
+        return { icon: CheckCircle, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950/30' }
       case 'siswa_mengerjakan':
-        return { icon: Clock, color: 'text-orange-600', bgColor: 'bg-orange-50' }
+        return { icon: Clock, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/30' }
       case 'jawaban_masuk':
-        return { icon: FileText, color: 'text-indigo-600', bgColor: 'bg-indigo-50' }
+        return { icon: FileText, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-50 dark:bg-indigo-950/30' }
       default:
-        return { icon: AlertCircle, color: 'text-amber-600', bgColor: 'bg-amber-50' }
+        return { icon: AlertCircle, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-950/30' }
     }
   }
 
   const { icon: Icon, color, bgColor } = getActivityIcon(activity.type)
   
   return (
-    <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+    <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
       <div className={`p-2 rounded-full ${bgColor}`}>
         <Icon className={`h-4 w-4 ${color}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
           {activity.title}
         </p>
-        <p className="text-sm text-gray-500 truncate">
+        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
           {activity.description}
         </p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
           {format(activity.time, 'dd MMM, HH:mm', { locale: id })}
         </p>
       </div>
@@ -84,6 +84,8 @@ export default function GuruDashboardClient() {
     error: activityError 
   } = useRecentActivity()
 
+  console.log('Dashboard Stats:', stats)
+  console.log('Recent Activity:', recentActivity)
   return (
     <>
       {/* Stats Cards */}
@@ -206,7 +208,7 @@ export default function GuruDashboardClient() {
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -245,7 +247,7 @@ export default function GuruDashboardClient() {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </>
   )

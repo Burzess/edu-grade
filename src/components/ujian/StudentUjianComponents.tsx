@@ -23,7 +23,7 @@ export function AvailableUjianList() {
   }
 
   if (isLoading) return <div className="p-4">Loading ujian tersedia...</div>
-  if (error) return <div className="p-4 text-red-600">Error: {error.message}</div>
+  if (error) return <div className="p-4 text-red-600 dark:text-red-400">Error: {error.message}</div>
 
   return (
     <div className="p-6">
@@ -143,15 +143,15 @@ export function UjianWorkspace({ ujianId }: { ujianId: string }) {
 
   return (
     <div className="p-6 text-center">
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-4">
-        <h3 className="text-lg font-semibold text-orange-800 mb-2">
+      <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50 rounded-lg p-6 mb-4">
+        <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-300 mb-2">
           Komponen Sedang Diperbaiki
         </h3>
-        <p className="text-orange-700 mb-4">
+        <p className="text-orange-700 dark:text-orange-400 mb-4">
           Komponen UjianWorkspace sedang di-disable untuk mencegah infinite requests. 
           Anda akan dialihkan ke halaman ujian yang sudah diperbaiki.
         </p>
-        <p className="text-sm text-orange-600">
+        <p className="text-sm text-orange-600 dark:text-orange-400">
           Jika tidak teralihkan otomatis, <a href={`/siswa/ujian/${ujianId}`} className="underline font-medium">klik di sini</a>
         </p>
       </div>

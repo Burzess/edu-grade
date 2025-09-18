@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeft, Save, FileText, Clock, Filter, X } from 'lucide-react'
+import { ArrowLeft, Save, FileText, Clock, Filter, X, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
@@ -131,11 +131,97 @@ function SoalSkeleton() {
   )
 }
 
+interface MultiSelectTagProps {
+  options: string[]
+  selected: string[]
+  onSelectionChange: (selected: string[]) => void
+  placeholder?: string
+}
+
+function MultiSelectTag({ options, selected, onSelectionChange, placeholder = "Pilih tag..." }: MultiSelectTagProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const toggleTag = (tag: string) => {
+    if (selected.includes(tag)) {
+      onSelectionChange(selected.filter(t => t !== tag))
+    } else {
+      onSelectionChange([...selected, tag])
+    }
+  }
+
+  const displayText = selected.length === 0 
+    ? placeholder 
+    : selected.length === 1 
+      ? selected[0] 
+      : `${selected.length} tag dipilih`
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        role="combobox"
+        aria-expanded={isOpen}
+        className="w-40 justify-between"
+        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+      >
+        <span className="truncate">{displayText}</span>
+        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      {isOpen && (
+        <div className="absolute top-full left-0 z-50 w-60 mt-1 bg-background border rounded-md shadow-lg">
+          <div className="p-2 space-y-2 max-h-64 overflow-y-auto">
+            {options.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-2">
+                Tidak ada tag tersedia
+              </div>
+            ) : (
+              options.map((tag) => (
+                <div key={tag} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`tag-${tag}`}
+                    checked={selected.includes(tag)}
+                    onCheckedChange={() => toggleTag(tag)}
+                  />
+                  <label
+                    htmlFor={`tag-${tag}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                  >
+                    {tag}
+                  </label>
+                </div>
+              ))
+            )}
+            {selected.length > 0 && (
+              <div className="pt-2 border-t">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onSelectionChange([])}
+                  className="w-full"
+                >
+                  Hapus semua
+                </Button>
+              </div>
+            )}
+          </div>
+          {/* Backdrop to close dropdown */}
+          <div 
+            className="fixed inset-0 z-[-1]" 
+            onClick={() => setIsOpen(false)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CreateUjianPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [filterType, setFilterType] = useState<string>('all')
-  const [filterTag, setFilterTag] = useState<string>('all')
+  const [filterTag, setFilterTag] = useState<string[]>([])
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all')
 
   const createUjianMutation = useCreateUjian()
@@ -168,8 +254,8 @@ export default function CreateUjianPage() {
       // Question type filter
       const matchesType = filterType === 'all' || soal.question_type === filterType
 
-      // Tag filter
-      const matchesTag = filterTag === 'all' || soal.tags?.includes(filterTag)
+      // Tag filter - support multiple tags
+      const matchesTag = filterTag.length === 0 || filterTag.some(tag => soal.tags?.includes(tag))
 
       // Difficulty filter
       const matchesDifficulty = filterDifficulty === 'all' || soal.difficulty_level === filterDifficulty
@@ -183,12 +269,12 @@ export default function CreateUjianPage() {
   // Clear filters function
   const clearFilters = () => {
     setFilterType('all')
-    setFilterTag('all')
+    setFilterTag([])
     setFilterDifficulty('all')
   }
 
   // Check if any filters are active
-  const hasActiveFilters = filterType !== 'all' || filterTag !== 'all' || filterDifficulty !== 'all'
+  const hasActiveFilters = filterType !== 'all' || filterTag.length > 0 || filterDifficulty !== 'all'
 
   const handleSoalToggle = (soalId: string) => {
     const current = form.getValues('selected_soal')
@@ -441,17 +527,12 @@ export default function CreateUjianPage() {
                       </SelectContent>
                     </Select>
 
-                    <Select value={filterTag} onValueChange={setFilterTag}>
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Tag" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Tag</SelectItem>
-                        {availableTags.map(tag => (
-                          <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <MultiSelectTag
+                      options={availableTags}
+                      selected={filterTag}
+                      onSelectionChange={setFilterTag}
+                      placeholder="Pilih tag..."
+                    />
 
                     <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
                       <SelectTrigger className="w-40">
@@ -487,6 +568,23 @@ export default function CreateUjianPage() {
                         <span className="ml-2 text-primary">
                           (dengan filter aktif)
                         </span>
+                      )}
+                      {filterTag.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <span className="text-xs">Tag dipilih:</span>
+                          {filterTag.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                              <button
+                                type="button"
+                                className="ml-1 hover:bg-muted-foreground/20 rounded-full"
+                                onClick={() => setFilterTag(filterTag.filter(t => t !== tag))}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <Button

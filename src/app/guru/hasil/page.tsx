@@ -89,12 +89,15 @@ function UjianCard({ ujian }: UjianCardProps) {
             <span>Durasi: {ujian.duration_minutes || 60} menit</span>
           </div>
           
-          {ujian.start_time && (
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              <span>Dimulai: {format(new Date(ujian.start_time), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
+            <CheckCircle className="h-4 w-4" />
+            <span>
+              Dimulai: {ujian.start_time 
+              ? format(new Date(ujian.start_time), 'dd MMM yyyy, HH:mm', { locale: id })
+              : '-'
+              }
+            </span>
             </div>
-          )}
         </div>
 
         {/* Tombol Aksi */}
@@ -165,10 +168,10 @@ export default function GuruHasilDashboard() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Hasil Ujian Siswa
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
             Lihat dan kelola hasil ujian yang telah dikerjakan siswa
           </p>
         </div>

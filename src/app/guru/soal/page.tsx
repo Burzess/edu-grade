@@ -76,8 +76,8 @@ function SoalListPageContent() {
             {/* Header & Create Button */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Bank Soal</h1>
-                    <p className="text-gray-600 mt-1">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Bank Soal</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mt-1">
                         Kelola bank soal untuk ujian
                     </p>
                 </div>

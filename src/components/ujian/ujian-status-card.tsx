@@ -77,7 +77,7 @@ export function UjianStatusCard({ ujian, onStatusChange }: UjianStatusCardProps)
           </div>
           <div className="flex items-center gap-1">
             <Clock className="h-4 w-4" />
-            <span className={isExpired ? 'text-red-600 font-medium' : ''}>
+            <span className={isExpired ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
               {isExpired 
                 ? `Berakhir ${formatDistanceToNow(endTime, { addSuffix: true, locale: id })}`
                 : `Berakhir ${formatDistanceToNow(endTime, { addSuffix: true, locale: id })}`
@@ -85,7 +85,7 @@ export function UjianStatusCard({ ujian, onStatusChange }: UjianStatusCardProps)
             </span>
           </div>
           {isExpired && (
-            <div className="text-red-600 font-medium mt-1">
+            <div className="text-red-600 dark:text-red-400 font-medium mt-1">
               ⚠️ Ujian sudah berakhir - pertimbangkan untuk mengakhiri
             </div>
           )}

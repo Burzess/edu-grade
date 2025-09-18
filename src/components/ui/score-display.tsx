@@ -31,15 +31,15 @@ export function ScoreDisplay({ score, feedback, isGraded, questionType }: ScoreD
     }
 
     const getScoreColor = (score: number) => {
-        if (score >= 80) return 'text-green-700 bg-green-50 border-green-200'
-        if (score >= 60) return 'text-yellow-700 bg-yellow-50 border-yellow-200'
-        return 'text-red-700 bg-red-50 border-red-200'
+        if (score >= 80) return 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/50'
+        if (score >= 60) return 'text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800/50'
+        return 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50'
     }
 
     const getScoreIcon = (score: number) => {
-        if (score >= 80) return <CheckCircle className="h-4 w-4 text-green-600" />
-        if (score >= 60) return <Trophy className="h-4 w-4 text-yellow-600" />
-        return <XCircle className="h-4 w-4 text-red-600" />
+        if (score >= 80) return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+        if (score >= 60) return <Trophy className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        return <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
     }
 
     return (

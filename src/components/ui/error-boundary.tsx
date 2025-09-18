@@ -62,11 +62,11 @@ class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
 
               {/* Error details - hanya tampil dalam development */}
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-left">
-                  <h3 className="text-sm font-medium text-red-800 mb-2">
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-lg text-left">
+                  <h3 className="text-sm font-medium text-red-800 dark:text-red-300 mb-2">
                     Error Details:
                   </h3>
-                  <pre className="text-xs text-red-600 overflow-auto max-h-32">
+                  <pre className="text-xs text-red-600 dark:text-red-400 overflow-auto max-h-32">
                     {this.state.error.message}
                   </pre>
                 </div>
@@ -75,7 +75,7 @@ class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
               <div className="space-y-3">
                 <button 
                   onClick={this.handleRefresh}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="w-full bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   🔄 Refresh Halaman
                 </button>

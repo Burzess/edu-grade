@@ -143,11 +143,11 @@ function UjianCard({ ujian, onDelete, onStartUjian }: UjianCardProps) {
               </div>
             )}
 
-            {ujian.status === 'draft' && (
-              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+            {/* {ujian.status === 'draft' && (
+              <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 p-2 rounded">
                 💡 Ujian belum dimulai. Klik "Mulai Ujian" untuk mengaktifkan.
               </div>
-            )}
+            )} */}
           </div>
 
           {/* Tombol Mulai Ujian */}
