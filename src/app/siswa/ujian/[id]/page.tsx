@@ -7,12 +7,14 @@ import { useOptimizedJawabanByUjian } from '@/hooks/use-optimized-jawaban'
 import { useUjianLogic } from '@/hooks/use-ujian-logic'
 import { useAuthStore } from '@/store/auth' // PERBAIKAN: Tambah import useAuthStore
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
+import { ExamSecurityProvider } from '@/components/providers/exam-security-provider'
 import { 
     QuestionCard, 
     QuestionNavigator, 
     UjianHeader, 
     SectionTabs, 
-    SubmitDialog 
+    SubmitDialog,
+    ExamSecurityStatus
 } from '@/components/ujian'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -186,6 +188,25 @@ function UjianSiswaPageContent() {
         setShowSubmitDialog(true)
     }, [])
 
+    // Handler untuk pelanggaran keamanan
+    const handleSecurityViolation = useCallback((violationType: string, details?: any) => {
+        // Log security violation untuk audit trail
+        console.warn(`🚨 Security Violation in Exam ${ujianId}:`, {
+            type: violationType,
+            details,
+            userId: user?.id,
+            examId: ujianId,
+            timestamp: new Date().toISOString()
+        })
+
+        // Jika siswa terlalu sering melanggar, bisa ditambahkan logic untuk submit otomatis
+        // atau memberikan peringatan kepada guru
+        if (violationType === 'tab_switch' && details?.tabSwitchCount > 5) {
+            // Optional: Auto-submit jika terlalu banyak tab switching
+            // handleSubmitAll(true)
+        }
+    }, [ujianId, user?.id])
+
     // Keyboard navigation
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent) => {
@@ -281,16 +302,29 @@ function UjianSiswaPageContent() {
 
     return (
         <div className="min-h-screen bg-background">
-            {/* Enhanced Header with timer */}
-            <UjianHeader
-                ujian={ujian}
-                answeredCount={answeredCount}
-                totalQuestions={organizedQuestions.length}
-                timeLeft={timeLeft}
-                onSubmit={handleShowSubmitDialog}
-                isSubmitting={batchSubmit.isPending}
-                formatTime={formatTime}
-            />
+            {/* Enhanced Header with timer and security status */}
+            <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+                <div className="container mx-auto px-4">
+                    <div className="flex items-center justify-between py-3">
+                        <div className="flex-1">
+                            <UjianHeader
+                                ujian={ujian}
+                                answeredCount={answeredCount}
+                                totalQuestions={organizedQuestions.length}
+                                timeLeft={timeLeft}
+                                onSubmit={handleShowSubmitDialog}
+                                isSubmitting={batchSubmit.isPending}
+                                formatTime={formatTime}
+                            />
+                        </div>
+                        
+                        {/* Security Status Indicator */}
+                        <div className="flex-shrink-0 ml-4">
+                            <ExamSecurityStatus showDetails={false} />
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Enhanced Section Progress Tabs */}
             <SectionTabs
@@ -385,7 +419,12 @@ function UjianSiswaPageContent() {
 export default function UjianSiswaPage() {
     return (
         <SiswaOnlyGuard>
-            <UjianSiswaPageContent />
+            <ExamSecurityProvider 
+                examTitle="Ujian Online"
+                autoEnable={true}
+            >
+                <UjianSiswaPageContent />
+            </ExamSecurityProvider>
         </SiswaOnlyGuard>
     )
 }

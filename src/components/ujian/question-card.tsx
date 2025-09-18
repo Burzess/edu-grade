@@ -98,41 +98,48 @@ export const QuestionCard = memo(({
                     ) : (
                         // Multiple choice options - Enhanced for desktop
                         <div className="space-y-2 sm:space-y-3 xl:space-y-4">
-                            {soal.options?.map((option: any, optIndex: number) => (
-                                <label 
-                                    key={option.id} 
-                                    className={`
-                                        flex items-start space-x-3 xl:space-x-4 p-3 sm:p-4 xl:p-5 rounded-lg xl:rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
-                                        ${answer === option.id 
-                                            ? 'border-primary bg-primary/5 shadow-md' 
-                                            : 'border-border bg-card hover:border-border/60 hover:shadow-sm'
-                                        }
-                                    `}
-                                >
-                                    <input
-                                        type="radio"
-                                        name={`question-${soal.id}`}
-                                        value={option.id}
-                                        checked={answer === option.id}
-                                        onChange={(e) => onAnswerChange(e.target.value)}
-                                        className="mt-0.5 sm:mt-1 w-4 h-4 xl:w-5 xl:h-5 text-primary border-border focus:ring-primary flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <span className={`
-                                            font-semibold mr-2 xl:mr-3 text-sm sm:text-base xl:text-lg
-                                            ${answer === option.id ? 'text-primary' : 'text-muted-foreground'}
-                                        `}>
-                                            {String.fromCharCode(65 + optIndex)}.
-                                        </span>
-                                        <span className={`
-                                            text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose break-words
-                                            ${answer === option.id ? 'text-primary' : 'text-foreground'}
-                                        `}>
-                                            {option.text}
-                                        </span>
-                                    </div>
-                                </label>
-                            ))}
+                            {soal.options?.map((option: any, optIndex: number) => {
+                                // Use label as the identifier since that's what the data structure has
+                                const optionId = option.id || option.label || `option-${optIndex}`
+                                const isSelected = answer && optionId && String(answer).trim() === String(optionId).trim()
+                                
+                                return (
+                                    <label 
+                                        key={optionId} 
+                                        className={`
+                                            flex items-start space-x-3 xl:space-x-4 p-3 sm:p-4 xl:p-5 rounded-lg xl:rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+                                            ${isSelected
+                                                ? 'border-primary bg-primary/5 shadow-md' 
+                                                : 'border-border bg-card hover:border-border/60 hover:shadow-sm'
+                                            }
+                                        `}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name={`question-${soal.id}`}
+                                            value={String(optionId)}
+                                            checked={isSelected}
+                                            onChange={(e) => onAnswerChange(e.target.value)}
+                                            className="mt-0.5 sm:mt-1 w-4 h-4 xl:w-5 xl:h-5 text-primary border-border focus:ring-primary flex-shrink-0"
+                                        />
+
+                                        <div className="flex-1 min-w-0">
+                                            <span className={`
+                                                font-semibold mr-2 xl:mr-3 text-sm sm:text-base xl:text-lg
+                                                ${isSelected ? 'text-primary' : 'text-muted-foreground'}
+                                            `}>
+                                                {option.label || String.fromCharCode(65 + optIndex)}.
+                                            </span>
+                                            <span className={`
+                                                text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose break-words
+                                                ${isSelected ? 'text-primary' : 'text-foreground'}
+                                            `}>
+                                                {option.text}
+                                            </span>
+                                        </div>
+                                    </label>
+                                )
+                            })}
                             
                             {/* Clear selection option - Enhanced */}
                             {answer && (

@@ -221,7 +221,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
             return updated
         })
 
-        console.log('🔄 Answer changed for soal:', soalId, 'triggering auto-save...')
+        console.log('🔄 Answer changed for soal:', soalId, 'answer', answer, 'triggering auto-save...')
         
         // Trigger optimized auto-save dengan debouncing
         debouncedSubmit({
