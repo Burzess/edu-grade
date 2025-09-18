@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { FloatingThemeToggle } from '@/components/ui/theme-toggle'
 import { useAuthStore } from '@/store/auth'
 import { useAuth } from '@/components/providers/auth-provider'
 import {
