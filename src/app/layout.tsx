@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Edu-Grade | Sistem Penilaian Otomatis",
-  description: "Platform pembelajaran dengan penilaian otomatis menggunakan AI",
+  description: "Platform ujian dengan penilaian otomatis menggunakan AI",
 };
 
 export default async function RootLayout({
@@ -52,7 +52,6 @@ export default async function RootLayout({
               <AuthProvider initialUser={user}>
                 {children}
                 {/* Floating Theme Toggle - Available on all pages */}
-                {/* Ubah position ke "bottom-left" jika ingin di kiri bawah */}
                 <FloatingThemeToggle position="bottom-right" />
               </AuthProvider>
             </QueryProvider>
