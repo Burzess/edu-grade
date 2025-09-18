@@ -387,7 +387,15 @@ function HasilUjianPageContent() {
         
         {jawaban
           .sort((a, b) => {
-            // Sort by question order if available, otherwise by creation time
+            // Sort by question type first (multiple_choice first, then essay), then by order
+            const aType = a.soal?.question_type || 'essay'
+            const bType = b.soal?.question_type || 'essay'
+            
+            // Multiple choice comes first
+            if (aType === 'multiple_choice' && bType === 'essay') return -1
+            if (aType === 'essay' && bType === 'multiple_choice') return 1
+            
+            // If same type, sort by question order
             if (!ujian.ujian_soal) return 0;
             const aOrder = ujian.ujian_soal.find((us: any) => us.soal_id === a.soal_id)?.urutan || 0
             const bOrder = ujian.ujian_soal.find((us: any) => us.soal_id === b.soal_id)?.urutan || 0
