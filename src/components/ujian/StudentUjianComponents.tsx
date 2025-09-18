@@ -34,10 +34,10 @@ export function AvailableUjianList() {
             <div key={ujian.id} className="border rounded-lg p-4 shadow-sm">
               <h3 className="text-xl font-semibold mb-2">{ujian.name}</h3>
               {ujian.description && (
-                <p className="text-gray-600 mb-3">{ujian.description}</p>
+                <p className="text-muted-foreground mb-3">{ujian.description}</p>
               )}
               <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   <p>Durasi: {ujian.duration_minutes} menit</p>
                   <p>Jumlah Soal: {ujian.ujian_soal?.[0]?.count || 0}</p>
                   {ujian.end_time && (
@@ -47,7 +47,7 @@ export function AvailableUjianList() {
                 <button
                   onClick={() => handleStartUjian(ujian.id)}
                   disabled={startUjianMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md disabled:opacity-50"
                 >
                   {startUjianMutation.isPending ? 'Memulai...' : 'Mulai Ujian'}
                 </button>
@@ -56,7 +56,7 @@ export function AvailableUjianList() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-muted-foreground">
           Tidak ada ujian tersedia saat ini
         </div>
       )}
@@ -79,15 +79,15 @@ export function MyUjianList() {
             <div key={us.id} className="border rounded-lg p-4 shadow-sm">
               <h3 className="text-xl font-semibold mb-2">{us.ujian.name}</h3>
               {us.ujian.description && (
-                <p className="text-gray-600 mb-3">{us.ujian.description}</p>
+                <p className="text-muted-foreground mb-3">{us.ujian.description}</p>
               )}
 
               <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <p>Status:
-                    <span className={`ml-2 px-2 py-1 rounded text-xs ${us.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      us.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
+                    <span className={`ml-2 px-2 py-1 rounded text-xs ${us.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                      us.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                        'bg-muted text-muted-foreground'
                       }`}>
                       {us.status === 'completed' ? 'Selesai' :
                         us.status === 'in_progress' ? 'Sedang Dikerjakan' :
@@ -106,7 +106,7 @@ export function MyUjianList() {
                 {us.status === 'in_progress' && (
                   <button
                     onClick={() => window.location.href = `/siswa/ujian/${us.ujian_id}`}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md dark:bg-green-700 dark:hover:bg-green-800"
                   >
                     Lanjutkan
                   </button>
@@ -115,7 +115,7 @@ export function MyUjianList() {
                 {us.status === 'completed' && (
                   <button
                     onClick={() => window.location.href = `/siswa/hasil/${us.ujian_id}`}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md"
                   >
                     Lihat Hasil
                   </button>
@@ -125,7 +125,7 @@ export function MyUjianList() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-muted-foreground">
           Anda belum mengikuti ujian apapun
         </div>
       )}

@@ -71,19 +71,19 @@ export const QuestionCard = memo(({
 
             <CardContent className="space-y-4 sm:space-y-6 xl:space-y-8 px-4 sm:px-6 xl:px-8">
                 {/* Question - Improved desktop styling */}
-                <div className="p-4 sm:p-6 xl:p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg xl:rounded-2xl border border-blue-200">
-                    <div className="font-semibold mb-3 xl:mb-4 text-blue-900 text-sm sm:text-base xl:text-lg">
+                <div className="p-4 sm:p-6 xl:p-8 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg xl:rounded-2xl border border-primary/20">
+                    <div className="font-semibold mb-3 xl:mb-4 text-primary text-sm sm:text-base xl:text-lg">
                         Pertanyaan:
                     </div>
-                    <div className="text-gray-800 whitespace-pre-wrap text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose">
+                    <div className="text-foreground whitespace-pre-wrap text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose">
                         {soal.question_text}
                     </div>
                 </div>
 
                 {/* Answer Input - Enhanced for desktop */}
                 <div className="space-y-3 sm:space-y-4 xl:space-y-6">
-                    <label className="text-sm sm:text-base xl:text-lg font-semibold text-gray-700">
-                        Jawaban Anda: <span className="text-xs xl:text-sm text-gray-500 font-normal">(Opsional - boleh dikosongkan)</span>
+                    <label className="text-sm sm:text-base xl:text-lg font-semibold text-foreground">
+                        Jawaban Anda: <span className="text-xs xl:text-sm text-muted-foreground font-normal">(Opsional - boleh dikosongkan)</span>
                     </label>
                     {soal.question_type === 'essay' ? (
                         <div className="space-y-2">
@@ -104,8 +104,8 @@ export const QuestionCard = memo(({
                                     className={`
                                         flex items-start space-x-3 xl:space-x-4 p-3 sm:p-4 xl:p-5 rounded-lg xl:rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
                                         ${answer === option.id 
-                                            ? 'border-blue-500 bg-blue-50 shadow-md' 
-                                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                                            ? 'border-primary bg-primary/5 shadow-md' 
+                                            : 'border-border bg-card hover:border-border/60 hover:shadow-sm'
                                         }
                                     `}
                                 >
@@ -115,18 +115,18 @@ export const QuestionCard = memo(({
                                         value={option.id}
                                         checked={answer === option.id}
                                         onChange={(e) => onAnswerChange(e.target.value)}
-                                        className="mt-0.5 sm:mt-1 w-4 h-4 xl:w-5 xl:h-5 text-blue-600 border-gray-300 focus:ring-blue-500 flex-shrink-0"
+                                        className="mt-0.5 sm:mt-1 w-4 h-4 xl:w-5 xl:h-5 text-primary border-border focus:ring-primary flex-shrink-0"
                                     />
                                     <div className="flex-1 min-w-0">
                                         <span className={`
                                             font-semibold mr-2 xl:mr-3 text-sm sm:text-base xl:text-lg
-                                            ${answer === option.id ? 'text-blue-700' : 'text-gray-600'}
+                                            ${answer === option.id ? 'text-primary' : 'text-muted-foreground'}
                                         `}>
                                             {String.fromCharCode(65 + optIndex)}.
                                         </span>
                                         <span className={`
                                             text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose break-words
-                                            ${answer === option.id ? 'text-blue-900' : 'text-gray-800'}
+                                            ${answer === option.id ? 'text-primary' : 'text-foreground'}
                                         `}>
                                             {option.text}
                                         </span>
@@ -138,7 +138,7 @@ export const QuestionCard = memo(({
                             {answer && (
                                 <button
                                     onClick={() => onAnswerChange('')}
-                                    className="w-full p-2 mt-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="w-full p-2 mt-2 text-sm text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors"
                                 >
                                     🗑️ Hapus Pilihan (Kosongkan Jawaban)
                                 </button>
@@ -163,12 +163,12 @@ export const QuestionCard = memo(({
                     <div className="flex flex-col items-center gap-1 xl:gap-2 text-center px-2">
                         {/* Answer status */}
                         {answer.trim() ? (
-                            <div className="flex items-center gap-2 xl:gap-3 text-green-600">
+                            <div className="flex items-center gap-2 xl:gap-3 text-green-600 dark:text-green-400">
                                 <CheckCircle className="h-4 w-4 xl:h-5 xl:w-5" />
                                 <span className="text-xs sm:text-sm xl:text-base font-medium">Dijawab</span>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 xl:gap-3 text-gray-500">
+                            <div className="flex items-center gap-2 xl:gap-3 text-muted-foreground">
                                 <AlertCircle className="h-4 w-4 xl:h-5 xl:w-5" />
                                 <span className="text-xs sm:text-sm xl:text-base font-medium">Kosong (skor 0)</span>
                             </div>
@@ -182,7 +182,7 @@ export const QuestionCard = memo(({
                         <Button 
                             onClick={onSubmit} 
                             disabled={isSaving}
-                            className="bg-green-600 hover:bg-green-700 flex items-center gap-2 xl:gap-3 px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base"
+                            className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 flex items-center gap-2 xl:gap-3 px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base text-white"
                         >
                             <Send className="h-4 w-4 xl:h-5 xl:w-5" />
                             <span className="hidden sm:inline">

@@ -37,14 +37,14 @@ export const QuestionNavigator = memo(({
 
             {/* Enhanced Navigator Panel for desktop */}
             <div className={`
-                fixed top-0 right-0 h-full bg-white border-l border-gray-200 shadow-xl z-30 transition-transform duration-300
+                fixed top-0 right-0 h-full bg-card border-l border-border shadow-xl z-30 transition-transform duration-300
                 w-72 sm:w-80 xl:w-full
                 ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-                xl:translate-x-0 xl:relative xl:shadow-none xl:z-10 xl:bg-gray-50/50 xl:border-gray-300
+                xl:translate-x-0 xl:relative xl:shadow-none xl:z-10 xl:bg-muted/50 xl:border-border
             `}>
-                <div className="p-3 sm:p-4 xl:p-6 border-b border-gray-200 xl:border-gray-300 xl:bg-white">
+                <div className="p-3 sm:p-4 xl:p-6 border-b border-border xl:bg-card">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-gray-900 text-sm sm:text-base xl:text-lg">
+                        <h3 className="font-semibold text-foreground text-sm sm:text-base xl:text-lg">
                             {sectionType === 'multiple_choice' ? '📝 PILIHAN GANDA' : '✍️ ESSAY'}
                         </h3>
                         <Button
@@ -56,7 +56,7 @@ export const QuestionNavigator = memo(({
                             ✕
                         </Button>
                     </div>
-                    <div className="text-xs xl:text-sm text-gray-500 mt-1">
+                    <div className="text-xs xl:text-sm text-muted-foreground mt-1">
                         {questions.length} soal tersedia
                     </div>
                 </div>
@@ -77,10 +77,10 @@ export const QuestionNavigator = memo(({
                                     className={`
                                         w-10 h-10 sm:w-12 sm:h-12 xl:w-14 xl:h-14 rounded-md xl:rounded-lg border-2 text-sm xl:text-base font-semibold transition-all duration-200 relative hover:scale-105
                                         ${isCurrent 
-                                            ? 'border-blue-500 bg-blue-500 text-white shadow-lg scale-105 ring-2 ring-blue-300 ring-offset-2' 
+                                            ? 'border-primary bg-primary text-primary-foreground shadow-lg scale-105 ring-2 ring-primary/30 ring-offset-2' 
                                             : isAnswered
-                                                ? 'border-green-500 bg-green-100 text-green-800 hover:bg-green-200 hover:shadow-md'
-                                                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 hover:shadow-sm'
+                                                ? 'border-green-500 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/30 hover:shadow-md'
+                                                : 'border-border bg-card text-muted-foreground hover:border-border/60 hover:bg-accent hover:shadow-sm'
                                         }
                                     `}
                                 >
@@ -94,24 +94,24 @@ export const QuestionNavigator = memo(({
                     </div>
                     
                     {/* Enhanced Legend for desktop */}
-                    <div className="mt-4 xl:mt-6 pt-4 xl:pt-6 border-t border-gray-200 xl:border-gray-300">
-                        <div className="text-xs xl:text-sm text-gray-600 space-y-2 xl:space-y-3">
+                    <div className="mt-4 xl:mt-6 pt-4 xl:pt-6 border-t border-border">
+                        <div className="text-xs xl:text-sm text-muted-foreground space-y-2 xl:space-y-3">
                             <div className="flex items-center gap-2 xl:gap-3">
-                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-blue-500 rounded xl:rounded-md border-2 border-blue-500 ring-2 ring-blue-300 ring-offset-1"></div>
+                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-primary rounded xl:rounded-md border-2 border-primary ring-2 ring-primary/30 ring-offset-1"></div>
                                 <span className="xl:font-medium">Soal saat ini</span>
                             </div>
                             <div className="flex items-center gap-2 xl:gap-3">
-                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-green-100 rounded xl:rounded-md border-2 border-green-500 relative">
-                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 xl:w-3 xl:h-3 bg-green-500 rounded-full border border-white"></div>
+                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-green-100 dark:bg-green-900/20 rounded xl:rounded-md border-2 border-green-500 relative">
+                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 xl:w-3 xl:h-3 bg-green-500 rounded-full border border-card"></div>
                                 </div>
                                 <span className="xl:font-medium">Sudah dijawab</span>
                             </div>
                             <div className="flex items-center gap-2 xl:gap-3">
-                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-white rounded xl:rounded-md border-2 border-gray-300"></div>
+                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-card rounded xl:rounded-md border-2 border-border"></div>
                                 <span className="xl:font-medium">Kosong (skor 0)</span>
                             </div>
                         </div>
-                        <div className="mt-3 xl:mt-4 p-2 xl:p-3 bg-yellow-50 rounded xl:rounded-lg text-xs xl:text-sm text-yellow-700">
+                        <div className="mt-3 xl:mt-4 p-2 xl:p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded xl:rounded-lg text-xs xl:text-sm text-yellow-700 dark:text-yellow-200">
                             💡 <span className="xl:font-medium">Soal yang tidak dijawab akan otomatis mendapat skor 0</span>
                         </div>
                     </div>

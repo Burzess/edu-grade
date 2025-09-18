@@ -157,7 +157,7 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-sm border-border dark:bg-background/90 dark:backdrop-blur-md dark:border-border/50">
         <DialogHeader>
           <DialogTitle>Buat Soal Baru</DialogTitle>
           <DialogDescription>
@@ -330,9 +330,9 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
 
             {/* Essay Reference Answer Section */}
             {questionType === 'essay' && (
-              <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-                <h4 className="text-sm font-medium text-gray-700">Kunci Jawaban Essay (Opsional)</h4>
-                <p className="text-sm text-gray-600">
+              <div className="space-y-4 border rounded-lg p-4 bg-muted/30 dark:bg-muted/20">
+                <h4 className="text-sm font-medium text-foreground">Kunci Jawaban Essay (Opsional)</h4>
+                <p className="text-sm text-muted-foreground">
                   Berikan kunci jawaban untuk membantu AI melakukan penilaian yang lebih akurat dan konsisten.
                 </p>
                 

@@ -47,16 +47,16 @@ class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-          <div className="bg-white shadow-lg rounded-lg p-8 max-w-md w-full">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+          <div className="bg-card shadow-lg rounded-lg p-8 max-w-md w-full border border-border">
             <div className="text-center">
               <div className="text-red-500 text-6xl mb-4">💥</div>
               
-              <h2 className="text-xl font-bold text-gray-800 mb-2">
+              <h2 className="text-xl font-bold text-foreground mb-2">
                 Oops! Terjadi Kesalahan
               </h2>
               
-              <p className="text-gray-600 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Aplikasi mengalami error yang tidak terduga. Tim kami akan segera memperbaikinya.
               </p>
 
@@ -82,20 +82,20 @@ class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
                 
                 <button 
                   onClick={this.handleGoBack}
-                  className="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="w-full bg-muted hover:bg-muted/80 text-muted-foreground font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   ⬅️ Kembali
                 </button>
                 
                 <button 
                   onClick={this.handleGoHome}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   🏠 Ke Halaman Utama
                 </button>
               </div>
 
-              <div className="mt-6 text-xs text-gray-500">
+              <div className="mt-6 text-xs text-muted-foreground">
                 <p>Jika masalah terus berlanjut, hubungi tim support.</p>
               </div>
             </div>

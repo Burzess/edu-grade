@@ -45,7 +45,7 @@ export const SectionTabs = memo(({
     }
 
     return (
-        <div className="bg-white border-b">
+        <div className="bg-card border-b border-border">
             <div className="container mx-auto px-3 sm:px-4 xl:px-8">
                 <div className="flex gap-2 sm:gap-4 xl:gap-12 overflow-x-auto scrollbar-hide">
                     {questionSections.multipleChoice.length > 0 && (
@@ -54,8 +54,8 @@ export const SectionTabs = memo(({
                             className={`
                                 flex-shrink-0 py-3 xl:py-4 px-3 xl:px-4 border-b-3 xl:border-b-4 transition-all duration-300 hover:scale-105
                                 ${currentSectionType === 'multiple_choice' 
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50 shadow-sm' 
-                                    : 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-25'
+                                    ? 'border-blue-600 text-blue-600 bg-blue-50 shadow-sm dark:bg-blue-950/30 dark:text-blue-400' 
+                                    : 'border-transparent text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-25 dark:hover:bg-blue-950/20'
                                 }
                             `}
                         >
@@ -71,10 +71,10 @@ export const SectionTabs = memo(({
                                     </Badge>
                                 </div>
                                 {currentSectionType !== 'multiple_choice' && (
-                                    <span className="text-xs text-gray-400 hidden sm:inline xl:text-sm">↗ Klik untuk beralih</span>
+                                    <span className="text-xs text-muted-foreground hidden sm:inline xl:text-sm">↗ Klik untuk beralih</span>
                                 )}
                             </div>
-                            <div className="w-20 xl:w-32 bg-gray-200 rounded-full h-1 xl:h-2 mt-2">
+                            <div className="w-20 xl:w-32 bg-muted rounded-full h-1 xl:h-2 mt-2">
                                 <div 
                                     className="bg-blue-600 h-1 xl:h-2 rounded-full transition-all duration-500" 
                                     style={{ width: `${sectionProgress.multipleChoice.percentage}%` }}
@@ -89,8 +89,8 @@ export const SectionTabs = memo(({
                             className={`
                                 flex-shrink-0 py-3 xl:py-4 px-3 xl:px-4 border-b-3 xl:border-b-4 transition-all duration-300 hover:scale-105
                                 ${currentSectionType === 'essay' 
-                                    ? 'border-green-600 text-green-600 bg-green-50 shadow-sm' 
-                                    : 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300 hover:bg-green-25'
+                                    ? 'border-green-600 text-green-600 bg-green-50 shadow-sm dark:bg-green-950/30 dark:text-green-400' 
+                                    : 'border-transparent text-muted-foreground hover:text-green-600 hover:border-green-300 hover:bg-green-25 dark:hover:bg-green-950/20'
                                 }
                             `}
                         >
@@ -100,16 +100,16 @@ export const SectionTabs = memo(({
                                     <span className="text-sm xl:text-lg font-semibold">ESSAY</span>
                                     <Badge 
                                         variant={currentSectionType === 'essay' ? 'default' : 'secondary'}
-                                        className="text-xs xl:text-sm px-2 py-1 xl:px-3 xl:py-1 bg-green-100 text-green-800"
+                                        className="text-xs xl:text-sm px-2 py-1 xl:px-3 xl:py-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
                                     >
                                         {sectionProgress.essay.answered}/{sectionProgress.essay.total}
                                     </Badge>
                                 </div>
                                 {currentSectionType !== 'essay' && (
-                                    <span className="text-xs text-gray-400 hidden sm:inline xl:text-sm">↗ Klik untuk beralih</span>
+                                    <span className="text-xs text-muted-foreground hidden sm:inline xl:text-sm">↗ Klik untuk beralih</span>
                                 )}
                             </div>
-                            <div className="w-20 xl:w-32 bg-gray-200 rounded-full h-1 xl:h-2 mt-2">
+                            <div className="w-20 xl:w-32 bg-muted rounded-full h-1 xl:h-2 mt-2">
                                 <div 
                                     className="bg-green-600 h-1 xl:h-2 rounded-full transition-all duration-500" 
                                     style={{ width: `${sectionProgress.essay.percentage}%` }}
