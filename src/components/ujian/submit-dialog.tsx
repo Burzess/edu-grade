@@ -54,7 +54,7 @@ export const SubmitDialog = memo(({
                 
                 {/* Progress dan informasi dikumpulkan ke dalam body content terpisah */}
                 <div className="space-y-3">
-                    <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                    <div className="bg-primary/10 p-3 rounded-lg text-sm">
                         <div className="font-medium mb-2">📊 Progress Anda:</div>
                         <div className="space-y-1">
                             <div>📝 Pilihan Ganda: {sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total} soal</div>
@@ -64,15 +64,15 @@ export const SubmitDialog = memo(({
                     </div>
                     
                     {unansweredCount > 0 && (
-                        <div className="bg-yellow-50 p-3 rounded-lg text-sm">
-                            <div className="font-medium text-yellow-800 mb-1">⚠️ Perhatian:</div>
-                            <div className="text-yellow-700">
+                        <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-lg text-sm">
+                            <div className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">⚠️ Perhatian:</div>
+                            <div className="text-yellow-700 dark:text-yellow-300">
                                 {unansweredCount} soal yang tidak dijawab akan otomatis mendapat skor 0.
                             </div>
                         </div>
                     )}
                     
-                    <div className="text-red-600 text-sm">
+                    <div className="text-destructive text-sm">
                         ⚠️ Setelah dikumpulkan, Anda tidak bisa mengubah jawaban lagi.
                     </div>
                 </div>

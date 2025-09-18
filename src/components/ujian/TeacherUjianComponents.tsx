@@ -15,22 +15,22 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
   return (
     <div className="max-w-6xl mx-auto p-6">
       {/* Header */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="bg-card shadow rounded-lg p-6 mb-6">
         <h1 className="text-3xl font-bold mb-2">{ujian.name}</h1>
         {ujian.description && (
-          <p className="text-gray-600 mb-4">{ujian.description}</p>
+          <p className="text-muted-foreground mb-4">{ujian.description}</p>
         )}
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
           <div>
             <p>Durasi: {ujian.duration_minutes} menit</p>
           </div>
           <div>
             <p>Status: 
               <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                ujian.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                ujian.status === 'active' ? 'bg-green-100 text-green-800' :
-                'bg-yellow-100 text-yellow-800'
+                ujian.status === 'completed' ? 'bg-muted text-muted-foreground' :
+                ujian.status === 'active' ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' :
+                'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
               }`}>
                 {ujian.status === 'completed' ? 'Selesai' :
                  ujian.status === 'active' ? 'Aktif' : 'Draft'}
@@ -50,56 +50,56 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
 
       {/* Statistik Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-card shadow rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Siswa</p>
-              <p className="text-3xl font-bold text-gray-900">{statistics.totalSiswa}</p>
+              <p className="text-sm text-muted-foreground">Total Siswa</p>
+              <p className="text-3xl font-bold text-foreground">{statistics.totalSiswa}</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 bg-primary/10 rounded-full">
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-card shadow rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Sedang Mengerjakan</p>
-              <p className="text-3xl font-bold text-yellow-600">{statistics.siswaInProgress}</p>
+              <p className="text-sm text-muted-foreground">Sedang Mengerjakan</p>
+              <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{statistics.siswaInProgress}</p>
             </div>
-            <div className="p-3 bg-yellow-100 rounded-full">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-full">
+              <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-card shadow rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Sudah Selesai</p>
-              <p className="text-3xl font-bold text-green-600">{statistics.siswaCompleted}</p>
+              <p className="text-sm text-muted-foreground">Sudah Selesai</p>
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">{statistics.siswaCompleted}</p>
             </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
+              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-card shadow rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tingkat Penyelesaian</p>
-              <p className="text-3xl font-bold text-purple-600">{statistics.completionRate}%</p>
+              <p className="text-sm text-muted-foreground">Tingkat Penyelesaian</p>
+              <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{statistics.completionRate}%</p>
             </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-full">
+              <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
@@ -109,24 +109,24 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
 
       {/* Progress Bar */}
       {statistics.totalSiswa > 0 && (
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <div className="bg-card shadow rounded-lg p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">Progress Ujian</h3>
           <div className="relative">
-            <div className="overflow-hidden h-4 mb-4 text-xs flex rounded bg-gray-200">
+            <div className="overflow-hidden h-4 mb-4 text-xs flex rounded bg-muted">
               <div
                 style={{
                   width: `${(statistics.siswaCompleted / statistics.totalSiswa) * 100}%`
                 }}
-                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 dark:bg-green-600"
               ></div>
               <div
                 style={{
                   width: `${(statistics.siswaInProgress / statistics.totalSiswa) * 100}%`
                 }}
-                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-yellow-500"
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-yellow-500 dark:bg-yellow-600"
               ></div>
             </div>
-            <div className="flex justify-between text-xs text-gray-600">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>0%</span>
               <span>{statistics.completionRate}% selesai</span>
               <span>100%</span>
@@ -136,30 +136,30 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
       )}
 
       {/* Daftar Siswa */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-card shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-border">
           <h3 className="text-lg font-semibold">Daftar Siswa ({statistics.totalSiswa})</h3>
         </div>
         
         {statistics.totalSiswa > 0 ? (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border">
             {ujian.ujian_siswa?.map((us: any) => (
               <div key={us.id} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
                       <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700">
+                        <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-muted-foreground">
                             {us.profiles?.full_name?.charAt(0)?.toUpperCase() || '?'}
                           </span>
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {us.profiles?.full_name || 'Nama tidak tersedia'}
                         </p>
-                        <p className="text-sm text-gray-500 truncate">
+                        <p className="text-sm text-muted-foreground truncate">
                           {us.profiles?.email || 'Email tidak tersedia'}
                         </p>
                       </div>
@@ -168,7 +168,7 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
                   
                   <div className="flex items-center space-x-4">
                     {/* Waktu informasi */}
-                    <div className="text-right text-xs text-gray-500">
+                    <div className="text-right text-xs text-muted-foreground">
                       {us.started_at && (
                         <p>Mulai: {new Date(us.started_at).toLocaleString('id-ID')}</p>
                       )}
@@ -179,9 +179,9 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
                     
                     {/* Status badge */}
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      us.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      us.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
+                      us.status === 'completed' ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' :
+                      us.status === 'in_progress' ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200' :
+                      'bg-muted text-muted-foreground'
                     }`}>
                       {us.status === 'completed' ? 'Selesai' :
                        us.status === 'in_progress' ? 'Mengerjakan' :
@@ -190,7 +190,7 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
                     
                     {/* Duration if completed */}
                     {us.status === 'completed' && us.started_at && us.submitted_at && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {(() => {
                           const duration = new Date(us.submitted_at).getTime() - new Date(us.started_at).getTime()
                           const minutes = Math.floor(duration / (1000 * 60))
@@ -205,7 +205,7 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
             ))}
           </div>
         ) : (
-          <div className="px-6 py-8 text-center text-gray-500">
+          <div className="px-6 py-8 text-center text-muted-foreground">
             Belum ada siswa yang mengikuti ujian ini
           </div>
         )}
@@ -213,10 +213,10 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
 
       {/* Action buttons (bisa ditambahkan jika perlu) */}
       <div className="mt-6 flex justify-end space-x-3">
-        <button className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <button className="px-4 py-2 border border-border rounded-md text-sm font-medium text-foreground hover:bg-accent">
           Export Data
         </button>
-        <button className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700">
+        <button className="px-4 py-2 bg-primary border border-transparent rounded-md text-sm font-medium text-primary-foreground hover:bg-primary/90">
           Refresh Data
         </button>
       </div>
@@ -236,12 +236,12 @@ export function TeacherUjianApp({ ujianId }: { ujianId: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
         <div className="mb-6">
           <button 
             onClick={() => window.history.back()}
-            className="text-blue-600 hover:text-blue-700 flex items-center space-x-2"
+            className="text-primary hover:text-primary/80 flex items-center space-x-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -268,34 +268,34 @@ export function UjianMonitor({ ujianId }: { ujianId: string }) {
   const { statistics } = data
 
   return (
-    <div className="fixed bottom-4 right-4 bg-white shadow-lg rounded-lg p-4 border-l-4 border-blue-500 max-w-sm">
+    <div className="fixed bottom-4 right-4 bg-card shadow-lg rounded-lg p-4 border-l-4 border-primary max-w-sm">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-gray-900">Monitor Ujian</h4>
-        <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-800">
+        <h4 className="font-semibold text-foreground">Monitor Ujian</h4>
+        <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
           Static
         </span>
       </div>
       
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-600">Total:</span>
+          <span className="text-muted-foreground">Total:</span>
           <span className="font-medium">{statistics.totalSiswa}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Mengerjakan:</span>
-          <span className="font-medium text-yellow-600">{statistics.siswaInProgress}</span>
+          <span className="text-muted-foreground">Mengerjakan:</span>
+          <span className="font-medium text-yellow-600 dark:text-yellow-400">{statistics.siswaInProgress}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Selesai:</span>
-          <span className="font-medium text-green-600">{statistics.siswaCompleted}</span>
+          <span className="text-muted-foreground">Selesai:</span>
+          <span className="font-medium text-green-600 dark:text-green-400">{statistics.siswaCompleted}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Progress:</span>
-          <span className="font-medium text-blue-600">{statistics.completionRate}%</span>
+          <span className="text-muted-foreground">Progress:</span>
+          <span className="font-medium text-primary">{statistics.completionRate}%</span>
         </div>
       </div>
       
-      <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+      <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
         Data saat halaman dimuat
       </div>
     </div>

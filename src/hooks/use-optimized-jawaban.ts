@@ -11,12 +11,28 @@ export function useOptimizedDebouncedSubmitJawaban() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pendingSubmissions = useRef<Map<string, any>>(new Map())
   const isSubmittingRef = useRef(false)
+  const lastSubmissionTime = useRef<number>(0)
 
   const submitBatch = useCallback(async () => {
     if (isSubmittingRef.current || pendingSubmissions.current.size === 0) return
 
+    // TAMBAHAN: Implementasi minimum delay antar submission
+    const now = Date.now()
+    const timeSinceLastSubmission = now - lastSubmissionTime.current
+    const MIN_DELAY = 5000 // 5 detik minimum delay antar submission
+
+    if (timeSinceLastSubmission < MIN_DELAY) {
+      console.log('🕒 Skipping auto-save - too recent submission')
+      // Re-schedule dengan sisa waktu
+      const remainingDelay = MIN_DELAY - timeSinceLastSubmission
+      timeoutRef.current = setTimeout(submitBatch, remainingDelay)
+      return
+    }
+
     try {
       isSubmittingRef.current = true
+      lastSubmissionTime.current = now
+      
       const submissions = Array.from(pendingSubmissions.current.values())
       const submissionsBackup = [...submissions] // Backup untuk error handling
       pendingSubmissions.current.clear()
@@ -73,8 +89,8 @@ export function useOptimizedDebouncedSubmitJawaban() {
       clearTimeout(timeoutRef.current)
     }
 
-    // Set new timeout
-    timeoutRef.current = setTimeout(submitBatch, 3000) // 3 seconds debounce
+    // DIPERPANJANG: Set new timeout dengan delay yang lebih panjang
+    timeoutRef.current = setTimeout(submitBatch, 8000) // NAIK dari 3 detik ke 8 detik
   }, [user?.id, submitBatch])
 
   // Cleanup on unmount
@@ -140,9 +156,14 @@ export function useOptimizedJawabanByUjian(ujianId: string) {
         .sort((a, b) => a.soal_id.localeCompare(b.soal_id))
     },
     enabled: !!ujianId && !!user?.id,
-    staleTime: 30000, // 30 seconds
+    staleTime: 60000, // DIPERPANJANG: 60 seconds (dari 30 detik)
+    gcTime: 300000, // DIPERPANJANG: 5 menit cache (dari default)
     refetchInterval: false, // Tidak perlu auto-refetch
     refetchOnWindowFocus: false, // Tidak refetch ketika focus
+    refetchOnMount: false, // TAMBAHAN: Tidak refetch saat mount
+    refetchOnReconnect: false, // TAMBAHAN: Tidak refetch saat reconnect
+    retry: 1, // TAMBAHAN: Hanya retry 1x
+    retryDelay: 5000, // TAMBAHAN: 5 detik delay antar retry
   })
 }
 

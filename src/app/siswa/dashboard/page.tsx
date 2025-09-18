@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireSiswa } from '@/lib/auth-server'
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -22,12 +23,12 @@ export default async function SiswaDashboard() {
   const user = await requireSiswa()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <nav className="bg-card shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-xl font-semibold text-foreground">
                 Edu-Grade - Dashboard Siswa
               </h1>
             </div>
@@ -62,14 +63,18 @@ export default async function SiswaDashboard() {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0 space-y-6">
           {/* Welcome Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
-            <h2 className="text-2xl font-bold mb-2">
-              Selamat datang, {user.full_name}!
-            </h2>
-            <p className="text-blue-100">
-              Ikuti ujian yang tersedia dan pantau perkembangan belajar Anda
-            </p>
-          </div>
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-primary">
+                Selamat datang, {user.full_name}!
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Ikuti ujian yang tersedia dan pantau perkembangan belajar Anda
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Notification Banner */}
           {/* <NotificationBannerWrapper /> */}

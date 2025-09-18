@@ -165,11 +165,11 @@ export default function CreateSoalPage() {
         <GuruLayout>
             <div className="p-6 space-y-6">
                 <div className="flex items-center space-x-4">
-                    <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                    <Link href="/guru/soal" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
                         <ArrowLeft className="h-4 w-4 mr-1" />
                         Kembali ke Daftar Soal
                     </Link>
-                    <h1 className="text-xl font-semibold text-gray-900">
+                    <h1 className="text-xl font-semibold text-foreground">
                         Buat Soal Baru
                     </h1>
                 </div>
@@ -292,7 +292,7 @@ export default function CreateSoalPage() {
                                                                 <div key={index} className="flex items-center space-x-3">
                                                                     <div className="flex-1">
                                                                         <div className="flex items-center space-x-2">
-                                                                            <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium">
+                                                                            <span className="w-8 h-8 rounded-full bg-muted/70 dark:bg-muted/50 flex items-center justify-center text-sm font-medium">
                                                                                 {option.id}
                                                                             </span>
                                                                             <Input

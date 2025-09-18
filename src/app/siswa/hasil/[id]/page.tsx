@@ -51,7 +51,7 @@ function ExpandableText({
         variant="ghost"
         size="sm"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-2 p-0 h-auto text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-transparent transition-colors duration-150"
+        className="mt-2 p-0 h-auto text-xs font-medium text-primary hover:text-primary/80 hover:bg-transparent transition-colors duration-150"
       >
         {isExpanded ? (
           <>
@@ -90,31 +90,31 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-            <div className="font-medium text-sm text-orange-700 mb-2 flex items-center gap-2">
+          <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+            <div className="font-medium text-sm text-orange-700 dark:text-orange-300 mb-2 flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               Informasi:
             </div>
-            <div className="text-orange-800 text-sm">
+            <div className="text-orange-800 dark:text-orange-200 text-sm">
               Data soal tidak tersedia (ID: {jawaban.soal_id || 'unknown'}).
               <br />
               Kemungkinan soal telah dihapus atau ada masalah dengan database.
             </div>
           </div>
           
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <div className="font-medium text-sm text-blue-600 mb-2">Jawaban Anda:</div>
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="font-medium text-sm text-blue-600 dark:text-blue-300 mb-2">Jawaban Anda:</div>
             <ExpandableText 
               text={jawaban.answer_text || 'Tidak ada jawaban'} 
               maxLength={200}
-              className="text-blue-800"
+              className="text-blue-800 dark:text-blue-200"
             />
           </div>
 
           {hasScore && (
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <div className="font-medium text-sm text-gray-600 mb-2">Skor:</div>
-              <div className="text-gray-800">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="font-medium text-sm text-muted-foreground mb-2">Skor:</div>
+              <div className="text-foreground">
                 {jawaban.score}/100
               </div>
             </div>
@@ -133,7 +133,10 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
             {hasScore && (
               <Badge 
                 variant={jawaban.score >= 70 ? "default" : "secondary"}
-                className={jawaban.score >= 70 ? "bg-green-600" : "bg-red-600"}
+                className={jawaban.score >= 70 
+                  ? "bg-green-600 hover:bg-green-700 text-white" 
+                  : "bg-red-600 hover:bg-red-700 text-white"
+                }
               >
                 {jawaban.score}/100
               </Badge>
@@ -153,30 +156,30 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
       
       <CardContent className="space-y-4">
         {/* Question */}
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <div className="font-medium text-sm text-gray-600 mb-2">Pertanyaan:</div>
+        <div className="p-3 bg-muted/50 rounded-lg">
+          <div className="font-medium text-sm text-muted-foreground mb-2">Pertanyaan:</div>
           <ExpandableText 
             text={jawaban.soal?.question_text || 'Soal tidak tersedia'} 
             maxLength={300}
-            className="text-gray-800"
+            className="text-foreground"
           />
         </div>
 
         {/* Answer */}
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <div className="font-medium text-sm text-blue-600 mb-2">Jawaban Anda:</div>
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="font-medium text-sm text-blue-600 dark:text-blue-300 mb-2">Jawaban Anda:</div>
           <ExpandableText 
             text={jawaban.answer_text || 'Tidak ada jawaban'} 
             maxLength={200}
-            className="text-blue-800"
+            className="text-blue-800 dark:text-blue-200"
           />
         </div>
 
         {/* Correct Answer (for multiple choice) */}
         {jawaban.soal && jawaban.soal.question_type === 'multiple_choice' && jawaban.soal.correct_answer && (
-          <div className="p-3 bg-green-50 rounded-lg">
-            <div className="font-medium text-sm text-green-600 mb-2">Jawaban Benar:</div>
-            <div className="text-green-800">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <div className="font-medium text-sm text-green-600 dark:text-green-300 mb-2">Jawaban Benar:</div>
+            <div className="text-green-800 dark:text-green-200">
               {jawaban.soal.options?.find((opt: any) => opt.id === jawaban.soal.correct_answer)?.text || 'Tidak tersedia'}
             </div>
           </div>
@@ -184,15 +187,15 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
 
         {/* AI Feedback */}
         {hasFeedback && (
-          <div className="p-3 bg-purple-50 rounded-lg">
-            <div className="font-medium text-sm text-purple-600 mb-2 flex items-center gap-2">
+          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div className="font-medium text-sm text-purple-600 dark:text-purple-300 mb-2 flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Feedback AI:
+              Feedback:
             </div>
             <ExpandableText 
               text={jawaban.ai_feedback} 
               maxLength={250}
-              className="text-purple-800"
+              className="text-purple-800 dark:text-purple-200"
             />
           </div>
         )}
@@ -320,11 +323,12 @@ function HasilUjianPageContent() {
             </div>
             <Badge 
               variant="secondary" 
-              className={averageScore !== null && averageScore >= 70 
-                ? "bg-green-100 text-green-800" 
-                : averageScore !== null 
-                ? "bg-red-100 text-red-800"
-                : "bg-gray-100 text-gray-800"
+              className={
+                averageScore !== null && averageScore >= 70 
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800" 
+                  : averageScore !== null 
+                  ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
               }
             >
               {averageScore !== null ? `${averageScore}/100` : 'Belum Dinilai'}
@@ -334,30 +338,30 @@ function HasilUjianPageContent() {
         
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600">{totalQuestions}</div>
-              <div className="text-sm text-blue-600">Total Soal</div>
+            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalQuestions}</div>
+              <div className="text-sm text-blue-600 dark:text-blue-400">Total Soal</div>
             </div>
             
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600">{answeredQuestions}</div>
-              <div className="text-sm text-green-600">Dijawab</div>
+            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{answeredQuestions}</div>
+              <div className="text-sm text-green-600 dark:text-green-400">Dijawab</div>
             </div>
             
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <Trophy className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-purple-600">
+            <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <Trophy className="h-8 w-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {averageScore !== null ? averageScore : '-'}
               </div>
-              <div className="text-sm text-purple-600">Rata-rata Nilai</div>
+              <div className="text-sm text-purple-600 dark:text-purple-400">Rata-rata Nilai</div>
             </div>
             
-            <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-orange-600">{correctAnswers}</div>
-              <div className="text-sm text-orange-600">Benar (≥70)</div>
+            <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+              <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{correctAnswers}</div>
+              <div className="text-sm text-orange-600 dark:text-orange-400">Benar (≥70)</div>
             </div>
           </div>
 

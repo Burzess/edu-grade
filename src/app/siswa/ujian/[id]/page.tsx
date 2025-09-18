@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useUjianForSiswa } from '@/hooks/use-jawaban'
 import { useOptimizedJawabanByUjian } from '@/hooks/use-optimized-jawaban'
 import { useUjianLogic } from '@/hooks/use-ujian-logic'
+import { useAuthStore } from '@/store/auth' // PERBAIKAN: Tambah import useAuthStore
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
 import { 
     QuestionCard, 
@@ -37,6 +38,17 @@ function UjianSiswaPageContent() {
     const ujianId = params.id as string
 
     const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+    
+    // Ambil user untuk registration check
+    const { user } = useAuthStore()
+    const [isRegistered, setIsRegistered] = useState(() => {
+        // Check localStorage untuk registration status
+        if (typeof window !== 'undefined' && user?.id) {
+            const registrationKey = `ujian_registered_${ujianId}_${user.id}`
+            return localStorage.getItem(registrationKey) === 'true'
+        }
+        return false
+    }) // Track registration status dengan localStorage
 
     // Use hooks
     const { data: ujian, isLoading: ujianLoading } = useUjianForSiswa(ujianId)
@@ -139,17 +151,27 @@ function UjianSiswaPageContent() {
         }
     }, [existingAnswers, ujianId, setAnswers])
 
-    // Auto register siswa ke ujian_siswa ketika mengakses halaman ujian
+    // Otomatis mendaftarkan siswa ke ujian_siswa ketika mengakses halaman ujian
     useEffect(() => {
-        if (!ujian || !ujianId || ujianLoading) return
+        if (!ujian || !ujianId || ujianLoading || isRegistered || !user?.id) return
+        
+        // Hanya register sekali saja
         registerToUjian(ujian)
-    }, [ujian, ujianId, ujianLoading, registerToUjian])
+        
+        // Mark sebagai sudah register di state dan localStorage
+        setIsRegistered(true)
+        const registrationKey = `ujian_registered_${ujianId}_${user.id}`
+        localStorage.setItem(registrationKey, 'true')
+    }, [ujian?.id, ujianId, ujianLoading, registerToUjian, isRegistered, user?.id]) // Dependency lebih spesifik
 
-    // Timer logic
+    // Setup timer ujian - stabilisasi untuk mencegah setup berulang
     useEffect(() => {
         if (!ujian?.start_time || !ujian?.duration_minutes) return
-        return setupTimer(ujian)
-    }, [ujian?.start_time, ujian?.duration_minutes, setupTimer])
+        
+        // Hanya setup timer jika belum ada
+        const cleanupTimer = setupTimer(ujian)
+        return cleanupTimer
+    }, [ujian?.start_time, ujian?.duration_minutes, setupTimer]) // Dependency lebih spesifik
 
     // Handle answer changes with current question context
     const handleCurrentAnswerChange = useCallback((answer: string) => {
@@ -258,7 +280,7 @@ function UjianSiswaPageContent() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
             {/* Enhanced Header with timer */}
             <UjianHeader
                 ujian={ujian}
@@ -314,7 +336,7 @@ function UjianSiswaPageContent() {
 
                 {/* Desktop Question Navigator Sidebar */}
                 {organizedQuestions.length > 0 && (
-                    <div className="xl:w-80 xl:flex-shrink-0 xl:border-l xl:bg-gray-50/50">
+                    <div className="xl:w-80 xl:flex-shrink-0 xl:border-l xl:bg-muted/50">
                         <div className="xl:sticky xl:top-20 xl:max-h-[calc(100vh-5rem)] xl:overflow-hidden">
                             <QuestionNavigator
                                 questions={currentSectionType === 'multiple_choice' ? questionSections.multipleChoice : questionSections.essay}

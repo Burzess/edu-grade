@@ -70,20 +70,18 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
       return (
         <div className="space-y-2">
           <div className="text-sm font-medium">Jawaban Siswa:</div>
-          <div className={`p-2 rounded border ${jawaban.answer_text === jawaban.soal.correct_answer ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-            {jawaban.answer_text}. {selectedOption?.text || jawaban.answer_text}
-            {jawaban.answer_text === jawaban.soal.correct_answer && (
-              <CheckCircle className="inline h-4 w-4 ml-2 text-green-600" />
-            )}
-            {jawaban.answer_text !== jawaban.soal.correct_answer && (
-              <XCircle className="inline h-4 w-4 ml-2 text-red-600" />
-            )}
-          </div>
-          
-          {jawaban.answer_text !== jawaban.soal.correct_answer && (
+              <div className={`p-2 rounded border ${jawaban.answer_text === jawaban.soal.correct_answer ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+                {jawaban.answer_text}. {selectedOption?.text || jawaban.answer_text}
+                {jawaban.answer_text === jawaban.soal.correct_answer && (
+                  <CheckCircle className="inline h-4 w-4 ml-2 text-green-600 dark:text-green-400" />
+                )}
+                {jawaban.answer_text !== jawaban.soal.correct_answer && (
+                  <XCircle className="inline h-4 w-4 ml-2 text-red-600 dark:text-red-400" />
+                )}
+              </div>          {jawaban.answer_text !== jawaban.soal.correct_answer && (
             <div className="text-sm">
-              <div className="font-medium text-green-600">Jawaban Benar:</div>
-              <div className="p-2 bg-green-50 border border-green-200 rounded">
+              <div className="font-medium text-green-600 dark:text-green-400">Jawaban Benar:</div>
+              <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
                 {jawaban.soal.correct_answer}. {correctOption?.text || jawaban.soal.correct_answer}
               </div>
             </div>
@@ -95,7 +93,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
     return (
       <div className="space-y-2">
         <div className="text-sm font-medium">Jawaban Siswa:</div>
-        <div className="p-3 bg-gray-50 border rounded-md whitespace-pre-wrap">
+        <div className="p-3 bg-muted/50 dark:bg-muted/30 border rounded-md whitespace-pre-wrap">
           {jawaban.answer_text}
         </div>
       </div>
@@ -122,7 +120,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
           {/* Question */}
           <div>
             <Label className="text-sm font-medium">Soal:</Label>
-            <div className="mt-1 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="mt-1 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="text-xs">
                   {getQuestionTypeLabel(jawaban.soal?.question_type)}
@@ -139,7 +137,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
           {jawaban.ai_feedback && (
             <div>
               <Label className="text-sm font-medium">Feedback AI:</Label>
-              <div className="mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+              <div className="mt-1 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm">
                 {jawaban.ai_feedback}
               </div>
             </div>
@@ -163,7 +161,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
               <Label>Status</Label>
               <div className="mt-2">
                 {jawaban.score !== null ? (
-                  <Badge className="bg-blue-100 text-blue-800">Sudah Dinilai</Badge>
+                  <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">Sudah Dinilai</Badge>
                 ) : (
                   <Badge variant="outline">Belum Dinilai</Badge>
                 )}
@@ -259,7 +257,7 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
           <h4 className="font-medium text-sm">Jawaban:</h4>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {siswaResult.jawaban.map((jawaban: any, index: number) => (
-              <div key={jawaban.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div key={jawaban.id} className="flex items-center justify-between p-2 bg-muted/50 dark:bg-muted/30 rounded">
                 <div className="flex-1">
                   <div className="text-sm font-medium">
                     Soal {index + 1}
@@ -273,7 +271,7 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {jawaban.score !== null ? (
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                       {jawaban.score}
                     </Badge>
                   ) : (
@@ -372,8 +370,8 @@ export default function HasilUjianDetail() {
             Kembali
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{ujian.name}</h1>
-            <p className="text-gray-600">{ujian.description || 'Tidak ada deskripsi'}</p>
+            <h1 className="text-2xl font-bold text-foreground">{ujian.name}</h1>
+            <p className="text-muted-foreground">{ujian.description || 'Tidak ada deskripsi'}</p>
           </div>
         </div>
 

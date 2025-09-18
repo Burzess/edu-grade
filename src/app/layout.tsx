@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next"
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { FloatingThemeToggle } from "@/components/ui/floating-theme-toggle";
 import { getCurrentUser } from "@/lib/auth-server";
 import ErrorBoundary from "@/components/ui/error-boundary";
 
@@ -18,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Edu-Grade | Sistem Penilaian Otomatis",
-  description: "Platform pembelajaran dengan penilaian otomatis menggunakan AI",
+  description: "Platform ujian dengan penilaian otomatis menggunakan AI",
 };
 
 export default async function RootLayout({
@@ -36,17 +39,26 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <QueryProvider>
-            <AuthProvider initialUser={user}>
-              {children}
-            </AuthProvider>
-          </QueryProvider>
+          <ThemeProvider
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <QueryProvider>
+              <AuthProvider initialUser={user}>
+                {children}
+                {/* Floating Theme Toggle - Available on all pages */}
+                <FloatingThemeToggle position="bottom-right" />
+              </AuthProvider>
+            </QueryProvider>
+          </ThemeProvider>
         </ErrorBoundary>
+        <Analytics />
       </body>
     </html>
   );

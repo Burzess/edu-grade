@@ -449,9 +449,14 @@ export function useSubmitJawaban() {
         onSuccess: (data) => {
             console.log('🎉 useSubmitJawaban onSuccess triggered:', data)
 
-            // Invalidate related queries
-            queryClient.invalidateQueries({ queryKey: ['jawaban'] })
-            queryClient.invalidateQueries({ queryKey: ['jawaban', 'ujian', data.ujian_id] })
+            // PERBAIKAN: Throttled invalidation untuk mencegah excessive requests
+            setTimeout(() => {
+                // Invalidate related queries dengan lebih spesifik
+                queryClient.invalidateQueries({ 
+                    queryKey: ['jawaban', 'ujian', data.ujian_id],
+                    exact: true // Hanya invalidate query yang exact match
+                })
+            }, 500) // Delay 500ms untuk batching invalidation
 
             // Auto-grade based on question type
             console.log('🚀 Starting auto-grading process for:', {
@@ -632,8 +637,18 @@ export function useBatchSubmitJawaban() {
             return data
         },
         onSuccess: (data) => {
-            // Invalidate related queries
-            queryClient.invalidateQueries({ queryKey: ['jawaban'] })
+            // PERBAIKAN: Throttled dan specific invalidation
+            setTimeout(() => {
+                queryClient.invalidateQueries({ 
+                    queryKey: ['jawaban'], 
+                    exact: false,
+                    predicate: (query) => {
+                        // Hanya invalidate query jawaban yang relevan dengan ujian ini
+                        return query.queryKey.includes('jawaban') && 
+                               query.queryKey.includes(data?.[0]?.ujian_id)
+                    }
+                })
+            }, 1000) // Delay lebih lama untuk batch submit
 
             // Auto-grade for all submitted answers
             data?.forEach(jawaban => {
@@ -1050,8 +1065,8 @@ export function useAvailableUjian() {
             }
         },
         enabled: !!user?.id,
-        staleTime: 10 * 60 * 1000, // 10 menit - data ujian tidak berubah sering
-        gcTime: 15 * 60 * 1000, // 15 menit cache
+        staleTime: 30 * 60 * 1000, // DIPERPANJANG: 30 menit - data ujian available jarang berubah
+        gcTime: 60 * 60 * 1000, // DIPERPANJANG: 60 menit cache
         refetchInterval: false, // Disable auto-refetch
         refetchOnWindowFocus: false, // Disable refetch saat window focus
         refetchOnMount: false, // Disable refetch saat mount
@@ -1077,7 +1092,7 @@ export function useUjianForSiswa(ujianId: string) {
     })
     
     // Rate limiter untuk membatasi frequency
-    const rateLimiter = useRateLimiter(5, 60000) // Max 5 calls per minute
+    const rateLimiter = useRateLimiter(3, 60000) // DIKURANGI: Max 3 calls per minute (dari 5)
 
     return useQuery({
         queryKey: ['ujian', 'siswa', ujianId],
@@ -1200,13 +1215,13 @@ export function useUjianForSiswa(ujianId: string) {
             }
         },
         enabled: !!ujianId && !!user?.id && ujianId.length > 0,
-        staleTime: 10 * 60 * 1000, // 10 menit - increase significantly  
-        gcTime: 15 * 60 * 1000, // 15 menit cache
+        staleTime: 60 * 60 * 1000, // DIPERPANJANG: 60 menit - data ujian sangat jarang berubah saat exam  
+        gcTime: 90 * 60 * 1000, // DIPERPANJANG: 90 menit cache
         refetchInterval: false, // Disable auto-refetch
         refetchOnWindowFocus: false, // Disable refetch saat window focus
         refetchOnMount: false, // Disable refetch saat mount
         refetchOnReconnect: false, // Disable refetch on reconnect
         retry: 1, // Only retry once to prevent endless loops
-        retryDelay: 5000, // 5 second delay between retries
+        retryDelay: 10000, // DIPERPANJANG: 10 second delay between retries
     })
 }

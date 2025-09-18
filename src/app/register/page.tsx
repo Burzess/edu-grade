@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/components/providers/auth-provider"
 import { AuthRedirectGuard } from "@/components/auth/role-guard"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -20,13 +19,9 @@ const registerSchema = z.object({
     password: z.string().min(6, "Password minimal 6 karakter"),
     confirmPassword: z.string(),
     fullName: z.string().min(2, "Nama lengkap minimal 2 karakter"),
-    role: z.enum(["siswa", "guru"]).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Konfirmasi password tidak cocok",
     path: ["confirmPassword"],
-}).refine((data) => data.role !== undefined, {
-    message: "Pilih peran Anda",
-    path: ["role"],
 })
 
 type RegisterForm = z.infer<typeof registerSchema>
@@ -45,7 +40,6 @@ export default function RegisterPage() {
             password: "",
             confirmPassword: "",
             fullName: "",
-            role: undefined,
         },
     })
 
@@ -54,12 +48,7 @@ export default function RegisterPage() {
             setLoading(true)
             setError(null)
 
-            if (!data.role) {
-                setError("Pilih peran Anda")
-                return
-            }
-
-            const result = await signUp(data.email, data.password, data.fullName, data.role)
+            const result = await signUp(data.email, data.password, data.fullName, "siswa")
 
             if (result.user && !result.session) {
                 // Email confirmation required
@@ -78,7 +67,8 @@ export default function RegisterPage() {
   if (success) {
     return (
       <AuthRedirectGuard>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-background relative">
+          
           <Card className="w-full max-w-md">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center text-green-600">
@@ -89,7 +79,7 @@ export default function RegisterPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              <div className="space-y-3 text-sm text-gray-600">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>📧 Kami telah mengirimkan link konfirmasi ke email Anda.</p>
                 <p>🔗 Klik link tersebut untuk mengaktifkan akun.</p>
                 <p>⏰ Setelah konfirmasi, Anda bisa langsung masuk.</p>
@@ -108,14 +98,15 @@ export default function RegisterPage() {
 
   return (
     <AuthRedirectGuard>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-background relative">
+            
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold text-center">
                         Daftar ke Edu-Grade
                     </CardTitle>
                     <CardDescription className="text-center">
-                        Buat akun baru untuk mulai menggunakan platform
+                        Buat akun siswa untuk mulai menggunakan platform
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -162,7 +153,7 @@ export default function RegisterPage() {
                                 )}
                             />
 
-                            <FormField
+                            {/* <FormField
                                 control={form.control}
                                 name="role"
                                 render={({ field }) => (
@@ -182,7 +173,7 @@ export default function RegisterPage() {
                                         <FormMessage />
                                     </FormItem>
                                 )}
-                            />
+                            /> */}
 
                             <FormField
                                 control={form.control}
@@ -221,14 +212,18 @@ export default function RegisterPage() {
                             />
 
                             <Button type="submit" className="w-full" disabled={loading}>
-                                {loading ? "Memproses..." : "Daftar"}
+                                {loading ? "Memproses..." : "Daftar sebagai Siswa"}
                             </Button>
                         </form>
                     </Form>
 
+                    {/* <div className="mt-4 text-center text-xs text-muted-foreground">
+                        Akun guru dibuat oleh administrator sekolah
+                    </div> */}
+
                     <div className="mt-4 text-center text-sm">
                         Sudah punya akun?{" "}
-                        <Link href="/login" className="text-blue-600 hover:underline">
+                        <Link href="/login" className="text-primary hover:underline">
                             Masuk di sini
                         </Link>
                     </div>
