@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { GuruSidebar, MobileGuruSidebar } from '@/components/sidebar/guru-sidebar'
 import { Button } from '@/components/ui/button'
-import { FloatingThemeToggle } from '@/components/ui/floating-theme-toggle'
 import { Menu } from 'lucide-react'
 import { GuruOnlyGuard } from '@/components/auth/role-guard'
 
@@ -46,7 +45,6 @@ export function GuruLayout({ children }: GuruLayoutProps) {
                   Edu-Grade
                 </h1>
               </div>
-              <FloatingThemeToggle position='top-right'/>
             </div>
           </div>
 
