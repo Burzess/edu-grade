@@ -437,7 +437,7 @@ export default function CreateUjianPage() {
                         <SelectItem value="all">Semua Tipe</SelectItem>
                         <SelectItem value="multiple_choice">Pilihan Ganda</SelectItem>
                         <SelectItem value="essay">Essay</SelectItem>
-                        <SelectItem value="short_answer">Isian Singkat</SelectItem>
+                        {/* <SelectItem value="short_answer">Isian Singkat</SelectItem> */}
                       </SelectContent>
                     </Select>
 
