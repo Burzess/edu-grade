@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { FloatingThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function UnauthorizedPage() {
   return (

@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FloatingThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/components/providers/auth-provider"
 import { AuthRedirectGuard } from "@/components/auth/role-guard"
 import { zodResolver } from "@hookform/resolvers/zod"
