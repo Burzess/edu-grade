@@ -49,12 +49,12 @@ const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => 
                 <CardContent className="pt-8 pb-8">
                     <div className="flex flex-col items-center space-y-4">
                         <Loader2 className={`h-8 w-8 animate-spin ${timeoutWarning ? 'text-orange-500' : 'text-blue-600'}`} />
-                        <p className={`text-sm font-medium ${timeoutWarning ? 'text-orange-600' : 'text-gray-600'}`}>
+                        <p className={`text-sm font-medium ${timeoutWarning ? 'text-orange-600' : 'text-muted-foreground'}`}>
                             {timeoutWarning ? "Memverifikasi akses (membutuhkan waktu lebih lama)..." : message}
                         </p>
                         
                         {/* Progress bar */}
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div className="w-full bg-muted rounded-full h-1.5">
                             <div 
                                 className={`h-1.5 rounded-full transition-all duration-300 ${
                                     timeoutWarning ? 'bg-orange-500' : 'bg-blue-600'

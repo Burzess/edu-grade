@@ -135,7 +135,7 @@ function SoalListPageContent() {
                     {/* Tag Filters */}
                     {availableTags && availableTags.length > 0 && (
                         <div>
-                            <p className="text-sm font-medium text-gray-700 mb-2">Filter berdasarkan tag:</p>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Filter berdasarkan tag:</p>
                             <div className="flex flex-wrap gap-2">
                                 {availableTags.map((tag) => (
                                     <Badge

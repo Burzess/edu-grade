@@ -42,10 +42,10 @@ interface SoalItemProps {
 function SoalItem({ soal, isSelected, onToggle }: SoalItemProps) {
   const getDifficultyColor = (level: string) => {
     switch (level) {
-      case 'easy': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'hard': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'easy': return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+      case 'hard': return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
     }
   }
 
@@ -59,7 +59,7 @@ function SoalItem({ soal, isSelected, onToggle }: SoalItemProps) {
   }
 
   return (
-    <Card className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:shadow-md'}`}>
+    <Card className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/5 dark:bg-primary/10' : 'hover:shadow-md'}`}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <Checkbox
@@ -247,11 +247,11 @@ export default function CreateUjianPage() {
     <GuruLayout>
       <div className="p-6 space-y-6">
         <div className="flex items-center space-x-4">
-          <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/guru/ujian" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Kembali ke Daftar Ujian
           </Link>
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-foreground">
             Buat Ujian Baru
           </h1>
         </div>
@@ -345,7 +345,7 @@ export default function CreateUjianPage() {
                                 Durasi dalam menit (minimal 1 menit, maksimal 8 jam/480 menit)
                               </div>
                               {field.value && field.value > 0 && (
-                                <div className="text-sm text-blue-600">
+                                <div className="text-sm text-primary">
                                   = {Math.floor(field.value / 60)} jam {field.value % 60} menit
                                 </div>
                               )}
@@ -362,7 +362,7 @@ export default function CreateUjianPage() {
                       render={() => (
                         <FormItem>
                           <FormLabel>Soal Dipilih</FormLabel>
-                          <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
+                          <div className="flex items-center gap-2 p-3 bg-muted/50 dark:bg-muted/30 rounded-md">
                             <FileText className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm">
                               {selectedCount} dari {totalSoal} soal dipilih
@@ -428,7 +428,7 @@ export default function CreateUjianPage() {
                   </div>
 
                   {/* Filter Controls Row */}
-                  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-4 p-4 bg-muted/50 dark:bg-muted/30 rounded-lg">
                     <Select value={filterType} onValueChange={setFilterType}>
                       <SelectTrigger className="w-40">
                         <SelectValue placeholder="Tipe Soal" />
@@ -484,7 +484,7 @@ export default function CreateUjianPage() {
                     <div className="text-sm text-muted-foreground">
                       Menampilkan {getFilteredSoal().length} dari {totalSoal} soal
                       {hasActiveFilters && (
-                        <span className="ml-2 text-blue-600">
+                        <span className="ml-2 text-primary">
                           (dengan filter aktif)
                         </span>
                       )}

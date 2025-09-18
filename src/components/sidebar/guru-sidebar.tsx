@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { FloatingThemeToggle } from '@/components/ui/theme-toggle'
 import { useAuthStore } from '@/store/auth'
 import { useAuth } from '@/components/providers/auth-provider'
 import {
@@ -101,20 +102,20 @@ export function GuruSidebar({ className }: SidebarProps) {
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-white border-r border-gray-200 transition-all duration-300",
+      "flex flex-col h-full bg-card border-r border-border transition-all duration-300",
       isCollapsed ? "w-16" : "w-64",
       className
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-border">
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Trophy className="h-5 w-5 text-white" />
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Trophy className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Edu-Grade</h1>
-              <p className="text-xs text-gray-500">Panel Guru</p>
+              <h1 className="text-lg font-bold text-foreground">Edu-Grade</h1>
+              <p className="text-xs text-muted-foreground">Panel Guru</p>
             </div>
           </div>
         )}
@@ -129,17 +130,17 @@ export function GuruSidebar({ className }: SidebarProps) {
       </div>
 
       {/* Profile Section */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-            <User className="h-5 w-5 text-gray-600" />
+          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+            <User className="h-5 w-5 text-muted-foreground" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-foreground truncate">
                 {profile?.full_name || 'Guru'}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {profile?.email}
               </p>
             </div>
@@ -160,28 +161,28 @@ export function GuruSidebar({ className }: SidebarProps) {
               className={cn(
                 "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
                 active
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-primary/10 text-primary border-r-2 border-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
               title={isCollapsed ? item.name : undefined}
             >
               <Icon className={cn(
                 "flex-shrink-0",
-                active ? "text-blue-700" : "text-gray-400",
+                active ? "text-primary" : "text-muted-foreground",
                 isCollapsed ? "h-5 w-5" : "h-5 w-5 mr-3"
               )} />
               {!isCollapsed && (
                 <div className="min-w-0 flex-1">
                   <div className="truncate">{item.name}</div>
                   {item.description && (
-                    <div className="text-xs text-gray-400 truncate">
+                    <div className="text-xs text-muted-foreground truncate">
                       {item.description}
                     </div>
                   )}
                 </div>
               )}
               {active && !isCollapsed && (
-                <div className="w-1 h-1 bg-blue-700 rounded-full" />
+                <div className="w-1 h-1 bg-primary rounded-full" />
               )}
             </Link>
           )
@@ -189,20 +190,21 @@ export function GuruSidebar({ className }: SidebarProps) {
       </nav>
 
       {/* Bottom Section */}
-      <div className="p-2 border-t border-gray-200 space-y-1">
+      <div className="p-2 border-t border-border space-y-1">
+        
         <Link
           href="/guru/settings"
           className={cn(
             "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
             pathname === '/guru/settings'
-              ? "bg-blue-50 text-blue-700"
-              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           )}
           title={isCollapsed ? 'Pengaturan' : undefined}
         >
           <Settings className={cn(
             "flex-shrink-0 h-5 w-5",
-            pathname === '/guru/settings' ? "text-blue-700" : "text-gray-400",
+            pathname === '/guru/settings' ? "text-primary" : "text-muted-foreground",
             !isCollapsed && "mr-3"
           )} />
           {!isCollapsed && <span>Pengaturan</span>}
@@ -213,12 +215,12 @@ export function GuruSidebar({ className }: SidebarProps) {
           onClick={handleLogout}
           disabled={isLoggingOut}
           className={cn(
-            "w-full justify-start px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+            "w-full justify-start px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             !isCollapsed && "space-x-3"
           )}
           title={isCollapsed ? 'Keluar' : undefined}
         >
-          <LogOut className="flex-shrink-0 h-5 w-5 text-gray-400" />
+          <LogOut className="flex-shrink-0 h-5 w-5 text-muted-foreground" />
           {!isCollapsed && <span>Keluar</span>}
         </Button>
       </div>
@@ -230,8 +232,8 @@ export function GuruSidebar({ className }: SidebarProps) {
           showCloseButton={false}
         >
           <div className="flex flex-col items-center justify-center py-8 px-4">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Sedang Keluar...
             </h3>
           </div>
@@ -291,17 +293,17 @@ export function MobileGuruSidebar({
       />
       
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 lg:hidden">
+      <div className="fixed inset-y-0 left-0 w-64 bg-card border-r border-border z-50 lg:hidden">
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Trophy className="h-5 w-5 text-white" />
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Trophy className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">Edu-Grade</h1>
-                <p className="text-xs text-gray-500">Panel Guru</p>
+                <h1 className="text-lg font-bold text-foreground">Edu-Grade</h1>
+                <p className="text-xs text-muted-foreground">Panel Guru</p>
               </div>
             </div>
             <Button
@@ -315,16 +317,16 @@ export function MobileGuruSidebar({
           </div>
 
           {/* Profile Section */}
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-gray-600" />
+              <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                <User className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {profile?.full_name || 'Guru'}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {profile?.email}
                 </p>
               </div>
@@ -345,24 +347,24 @@ export function MobileGuruSidebar({
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
                     active
-                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-primary/10 text-primary border-r-2 border-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
                   <Icon className={cn(
                     "flex-shrink-0 h-5 w-5 mr-3",
-                    active ? "text-blue-700" : "text-gray-400"
+                    active ? "text-primary" : "text-muted-foreground"
                   )} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate">{item.name}</div>
                     {item.description && (
-                      <div className="text-xs text-gray-400 truncate">
+                      <div className="text-xs text-muted-foreground truncate">
                         {item.description}
                       </div>
                     )}
                   </div>
                   {active && (
-                    <div className="w-1 h-1 bg-blue-700 rounded-full" />
+                    <div className="w-1 h-1 bg-primary rounded-full" />
                   )}
                 </Link>
               )
@@ -370,20 +372,21 @@ export function MobileGuruSidebar({
           </nav>
 
           {/* Bottom Section */}
-          <div className="p-2 border-t border-gray-200 space-y-1">
+          <div className="p-2 border-t border-border space-y-1">
+
             <Link
               href="/guru/settings"
               onClick={onClose}
               className={cn(
                 "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
                 pathname === '/guru/settings'
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
               <Settings className={cn(
                 "flex-shrink-0 h-5 w-5 mr-3",
-                pathname === '/guru/settings' ? "text-blue-700" : "text-gray-400"
+                pathname === '/guru/settings' ? "text-primary" : "text-muted-foreground"
               )} />
               <span>Pengaturan</span>
             </Link>
@@ -392,9 +395,9 @@ export function MobileGuruSidebar({
               variant="ghost"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full justify-start px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              className="w-full justify-start px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
-              <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-gray-400" />
+              <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-muted-foreground" />
               <span>Keluar</span>
             </Button>
           </div>
@@ -408,11 +411,11 @@ export function MobileGuruSidebar({
           showCloseButton={false}
         >
           <div className="flex flex-col items-center justify-center py-8 px-4">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Sedang Keluar...
             </h3>
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-muted-foreground text-center">
               Mohon tunggu, kami sedang mengeluarkan Anda dari sistem dengan aman.
             </p>
           </div>

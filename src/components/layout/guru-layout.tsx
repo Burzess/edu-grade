@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { GuruSidebar, MobileGuruSidebar } from '@/components/sidebar/guru-sidebar'
 import { Button } from '@/components/ui/button'
+import { FloatingThemeToggle } from '@/components/ui/floating-theme-toggle'
 import { Menu } from 'lucide-react'
 import { GuruOnlyGuard } from '@/components/auth/role-guard'
 
@@ -15,7 +16,7 @@ export function GuruLayout({ children }: GuruLayoutProps) {
 
   return (
     <GuruOnlyGuard>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-background">
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
           <GuruSidebar />
@@ -30,7 +31,7 @@ export function GuruLayout({ children }: GuruLayoutProps) {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Mobile Header */}
-          <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
+          <div className="lg:hidden bg-card border-b border-border px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Button
@@ -41,10 +42,11 @@ export function GuruLayout({ children }: GuruLayoutProps) {
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
-                <h1 className="text-lg font-semibold text-gray-900">
+                <h1 className="text-lg font-semibold text-foreground">
                   Edu-Grade
                 </h1>
               </div>
+              <FloatingThemeToggle position='top-right'/>
             </div>
           </div>
 

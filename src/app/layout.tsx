@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { FloatingThemeToggle } from "@/components/ui/floating-theme-toggle";
 import { getCurrentUser } from "@/lib/auth-server";
 import ErrorBoundary from "@/components/ui/error-boundary";
 
@@ -36,16 +38,25 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <QueryProvider>
-            <AuthProvider initialUser={user}>
-              {children}
-            </AuthProvider>
-          </QueryProvider>
+          <ThemeProvider
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <QueryProvider>
+              <AuthProvider initialUser={user}>
+                {children}
+                {/* Floating Theme Toggle - Available on all pages */}
+                {/* Ubah position ke "bottom-left" jika ingin di kiri bawah */}
+                <FloatingThemeToggle position="bottom-right" />
+              </AuthProvider>
+            </QueryProvider>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>

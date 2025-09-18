@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { FloatingThemeToggle } from "@/components/ui/floating-theme-toggle"
 import { useAuth } from "@/components/providers/auth-provider"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -63,7 +64,8 @@ export default function LoginForm() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-background relative">
+            
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold text-center">
@@ -133,20 +135,20 @@ export default function LoginForm() {
                         </div> */}
                         
                         <div className="border-t pt-3">
-                            <div className="text-center text-sm font-medium text-gray-700 mb-2">
+                            <div className="text-center text-sm font-medium text-foreground mb-2">
                                 Akun Demo Tersedia:
                             </div>
                             <div className="text-xs text-gray-600 space-y-1">
-                                <div className="bg-gray-50 p-2 rounded">
+                                <div className="bg-muted p-2 rounded">
                                     <strong>Guru:</strong> guru@gmail.com
                                 </div>
-                                <div className="bg-gray-50 p-2 rounded">
+                                <div className="bg-muted p-2 rounded">
                                     <strong>Siswa 1:</strong> siswa@demo.com
                                 </div>
-                                <div className="bg-gray-50 p-2 rounded">
+                                <div className="bg-muted p-2 rounded">
                                     <strong>Siswa 2:</strong> siswa1@demo.com
                                 </div>
-                                <div className="text-center mt-2 text-gray-500">
+                                <div className="text-center mt-2 text-muted-foreground">
                                     Password untuk semua akun: <strong>demo123</strong>
                                 </div>
                             </div>

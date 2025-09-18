@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FloatingThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/components/providers/auth-provider"
 import { AuthRedirectGuard } from "@/components/auth/role-guard"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -78,7 +79,8 @@ export default function RegisterPage() {
   if (success) {
     return (
       <AuthRedirectGuard>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-background relative">
+          
           <Card className="w-full max-w-md">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center text-green-600">
@@ -89,7 +91,7 @@ export default function RegisterPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              <div className="space-y-3 text-sm text-gray-600">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>📧 Kami telah mengirimkan link konfirmasi ke email Anda.</p>
                 <p>🔗 Klik link tersebut untuk mengaktifkan akun.</p>
                 <p>⏰ Setelah konfirmasi, Anda bisa langsung masuk.</p>
@@ -108,7 +110,8 @@ export default function RegisterPage() {
 
   return (
     <AuthRedirectGuard>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-background relative">
+            
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold text-center">
@@ -228,7 +231,7 @@ export default function RegisterPage() {
 
                     <div className="mt-4 text-center text-sm">
                         Sudah punya akun?{" "}
-                        <Link href="/login" className="text-blue-600 hover:underline">
+                        <Link href="/login" className="text-primary hover:underline">
                             Masuk di sini
                         </Link>
                     </div>

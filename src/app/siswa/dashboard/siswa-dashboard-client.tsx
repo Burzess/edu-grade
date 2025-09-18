@@ -44,7 +44,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
       return {
         status: 'completed',
         message: 'Ujian selesai',
-        color: 'bg-gray-100 text-gray-800'
+        color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
       }
     }
 
@@ -53,7 +53,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
         return {
           status: 'active',
           message: 'Sedang berlangsung',
-          color: 'bg-green-100 text-green-800'
+          color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
         }
       }
 
@@ -65,19 +65,19 @@ function UjianCard({ ujian, type }: UjianCardProps) {
         return {
           status: 'upcoming',
           message: `Dimulai ${formatDistanceToNow(startTime, { addSuffix: true, locale: id })}`,
-          color: 'bg-blue-100 text-blue-800'
+          color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
         }
       } else if (isAfter(now, endTime)) {
         return {
           status: 'ended',
           message: 'Waktu habis',
-          color: 'bg-red-100 text-red-800'
+          color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
         }
       } else {
         return {
           status: 'active',
           message: `Berakhir ${formatDistanceToNow(endTime, { addSuffix: true, locale: id })}`,
-          color: 'bg-green-100 text-green-800'
+          color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
         }
       }
     }
@@ -103,10 +103,10 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             <Badge
               className={
                 ujian.status === 'active'
-                  ? "bg-green-100 text-green-800"
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
                   : ujian.status === 'draft'
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-gray-100 text-gray-800"
+                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
               }
               variant="secondary"
             >
@@ -173,7 +173,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
 
           <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
             {ujian.status === 'draft' && (
-              <div className="text-yellow-600 bg-yellow-50 p-2 rounded text-center">
+              <div className="text-yellow-600 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded text-center">
                 <Clock className="h-4 w-4 inline mr-1" />
                 Ujian belum dimulai oleh guru
               </div>
@@ -196,7 +196,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             )}
 
             {!ujian.start_time && ujian.status === 'active' && (
-              <div className="text-green-600">
+              <div className="text-green-600 dark:text-green-400">
                 Ujian sudah dimulai, silakan klik "Mulai Ujian"
               </div>
             )}
@@ -210,9 +210,9 @@ function UjianCard({ ujian, type }: UjianCardProps) {
   if (type === 'completed') {
     if (!ujian.id) {
       return (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-red-800">
+            <div className="flex items-center gap-2 text-red-800 dark:text-red-300">
               <AlertCircle className="h-5 w-5" />
               <div>
                 <div className="font-medium">Data Ujian Tidak Valid</div>
@@ -234,7 +234,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
                 {ujian.description || 'Tidak ada deskripsi'}
               </CardDescription>
             </div>
-            <Badge className="bg-blue-100 text-blue-800" variant="secondary">
+            <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" variant="secondary">
               Selesai
             </Badge>
           </div>

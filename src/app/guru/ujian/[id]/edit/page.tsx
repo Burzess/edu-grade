@@ -385,7 +385,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
                       render={() => (
                         <FormItem>
                           <FormLabel>Soal Dipilih</FormLabel>
-                          <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
+                          <div className="flex items-center gap-2 p-3 bg-muted/50 dark:bg-muted/30 rounded-md">
                             <FileText className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm">
                               {selectedCount} dari {totalSoal} soal dipilih
