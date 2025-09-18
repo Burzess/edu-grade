@@ -72,7 +72,7 @@ export default function Loading() {
           <h1 className="text-3xl font-bold bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
             Edu-Grade
           </h1>
-          <p className="text-muted-foreground mt-2">Memuat sistem pembelajaran...</p>
+          <p className="text-muted-foreground mt-2">Memuat sistem...</p>
         </motion.div>
 
         {/* Loading Dots */}

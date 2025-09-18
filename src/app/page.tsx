@@ -15,7 +15,7 @@ function LandingPage() {
             Selamat Datang di <span className="text-primary">Edu-Grade</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Platform pembelajaran modern dengan sistem penilaian otomatis menggunakan AI
+            Platform ujian modern dengan sistem penilaian otomatis menggunakan AI
             untuk membantu guru dan siswa dalam proses belajar mengajar.
           </p>
         </div>
