@@ -17,7 +17,7 @@ export const seededRandom = (seed: string) => {
     return Math.abs(hash) / 2147483647
 }
 
-// Organize and shuffle questions based on question_type
+// Organize and shuffle questions based on question_type (both MC and Essay are shuffled)
 export const organizeQuestions = (ujianSoal: any[], ujianId: string) => {
     if (!ujianSoal?.length) return []
 
@@ -28,19 +28,26 @@ export const organizeQuestions = (ujianSoal: any[], ujianId: string) => {
     const multipleChoice = validQuestions.filter((us: any) => us.soal.question_type === 'multiple_choice')
     const essay = validQuestions.filter((us: any) => us.soal.question_type === 'essay')
 
-    // Acak soal multiple choice untuk setiap siswa (seed berdasarkan user ID + ujian ID)
+    // Acak soal untuk setiap siswa (seed berdasarkan user ID + ujian ID)
     const userId = localStorage.getItem('current_user_id') || Math.random().toString()
     const seed = `${userId}-${ujianId}`
     
+    // Acak soal multiple choice
     const shuffledMC = [...multipleChoice]
-    // Fisher-Yates shuffle dengan seeded random
     for (let i = shuffledMC.length - 1; i > 0; i--) {
-        const j = Math.floor(seededRandom(`${seed}-${i}`) * (i + 1));
+        const j = Math.floor(seededRandom(`${seed}-mc-${i}`) * (i + 1));
         [shuffledMC[i], shuffledMC[j]] = [shuffledMC[j], shuffledMC[i]]
     }
 
-    // Gabungkan: multiple choice dulu, kemudian essay (tetap berurutan)
-    return [...shuffledMC, ...essay]
+    // Acak soal essay juga
+    const shuffledEssay = [...essay]
+    for (let i = shuffledEssay.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom(`${seed}-essay-${i}`) * (i + 1));
+        [shuffledEssay[i], shuffledEssay[j]] = [shuffledEssay[j], shuffledEssay[i]]
+    }
+
+    // Gabungkan: multiple choice dulu (diacak), kemudian essay (diacak)
+    return [...shuffledMC, ...shuffledEssay]
 }
 
 // Group questions for navigator
