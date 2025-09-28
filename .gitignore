@@ -44,3 +44,13 @@ next-env.d.ts
 
 /mcp
 *.sql
+
+/tests
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+/test-results
+
+*.md
