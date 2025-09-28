@@ -100,16 +100,21 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Transform data untuk siswa
-      kelasData = data?.map(item => ({
-        id: item.kelas?.id,
-        nama_kelas: item.kelas?.nama_kelas,
-        deskripsi: item.kelas?.deskripsi,
-        kode_kelas: item.kelas?.kode_kelas,
-        guru_name: item.kelas?.profiles?.full_name,
-        joined_at: item.joined_at,
-        created_at: item.kelas?.created_at
-      }));
+      // Transform data untuk siswa dengan type assertion yang tepat
+      kelasData = data?.map((item: any) => {
+        const kelasInfo = item.kelas;
+        const guruInfo = Array.isArray(kelasInfo?.profiles) ? kelasInfo.profiles[0] : kelasInfo?.profiles;
+        
+        return {
+          id: kelasInfo?.id,
+          nama_kelas: kelasInfo?.nama_kelas,
+          deskripsi: kelasInfo?.deskripsi,
+          kode_kelas: kelasInfo?.kode_kelas,
+          guru_name: guruInfo?.full_name,
+          joined_at: item.joined_at,
+          created_at: kelasInfo?.created_at
+        };
+      });
     }
 
     return NextResponse.json({ 

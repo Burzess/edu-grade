@@ -17,7 +17,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import SiswaLogoutButton from '../../dashboard/siswa-logout-button'
-// @ts-ignore
 import SiswaKelasDetailClient from './siswa-kelas-detail-client'
 
 interface PageProps {
