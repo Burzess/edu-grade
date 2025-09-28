@@ -1,13 +1,17 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import '@/styles/anti-screenshot.css'
 import { useParams, useRouter } from 'next/navigation'
 import { useUjianForSiswa } from '@/hooks/use-jawaban'
 import { useOptimizedJawabanByUjian } from '@/hooks/use-optimized-jawaban'
 import { useUjianLogic } from '@/hooks/use-ujian-logic'
 import { useAuthStore } from '@/store/auth' // PERBAIKAN: Tambah import useAuthStore
+import { toast } from 'sonner'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
-import { ExamSecurityProvider } from '@/components/providers/exam-security-provider'
+import { ExamSecurityProvider, useExamSecurityContext } from '@/components/providers/exam-security-provider'
+import { ScreenshotWarningOverlay, ScreenshotToast } from '@/components/security/ScreenshotWarningOverlay'
+import { SecurityViolationModal } from '@/components/security/SecurityViolationModal'
 import { 
     QuestionCard, 
     QuestionNavigator, 
@@ -16,9 +20,9 @@ import {
     SubmitDialog,
     ExamSecurityStatus
 } from '@/components/ujian'
+import ExamRulesDialog from '@/components/ujian/ExamRulesDialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { toast } from 'sonner'
 import {
     FileText,
     AlertCircle,
@@ -40,6 +44,27 @@ function UjianSiswaPageContent() {
     const ujianId = params.id as string
 
     const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+
+    // State untuk dialog larangan
+    const [showRulesDialog, setShowRulesDialog] = useState(true)
+    
+    // State untuk toggle section tabs
+    const [showSectionTabs, setShowSectionTabs] = useState(true)
+    
+    // State untuk screenshot warning
+    const [showScreenshotWarning, setShowScreenshotWarning] = useState(false)
+    const [screenshotWarningType, setScreenshotWarningType] = useState<'keyboard' | 'touch' | 'api' | 'multiple'>('keyboard')
+    const [screenshotAttemptCount, setScreenshotAttemptCount] = useState(0)
+    const [showScreenshotToast, setShowScreenshotToast] = useState(false)
+    const [screenshotToastMessage, setScreenshotToastMessage] = useState('')
+    const [screenshotDetails, setScreenshotDetails] = useState<any>({})
+    
+    // State untuk security violation modal
+    const [showSecurityModal, setShowSecurityModal] = useState(false)
+    const [securityViolationType, setSecurityViolationType] = useState<'tab_switch' | 'screenshot' | 'right_click' | 'key_combination'>('tab_switch')
+    const [securityViolationCount, setSecurityViolationCount] = useState(0)
+    const [securityViolationDetails, setSecurityViolationDetails] = useState<any>({})
+    const [showAutoSubmitWarning, setShowAutoSubmitWarning] = useState(false)
     
     // Ambil user untuk registration check
     const { user } = useAuthStore()
@@ -77,6 +102,7 @@ function UjianSiswaPageContent() {
         timeLeft,
         navigatorOpen,
         setNavigatorOpen,
+        isSubmitting, // NEW: Get isSubmitting state
         handleSubmitAll,
         handleAnswerChange,
         handleNext,
@@ -188,24 +214,41 @@ function UjianSiswaPageContent() {
         setShowSubmitDialog(true)
     }, [])
 
-    // Handler untuk pelanggaran keamanan
-    const handleSecurityViolation = useCallback((violationType: string, details?: any) => {
-        // Log security violation untuk audit trail
-        console.warn(`🚨 Security Violation in Exam ${ujianId}:`, {
-            type: violationType,
-            details,
-            userId: user?.id,
-            examId: ujianId,
-            timestamp: new Date().toISOString()
-        })
-
-        // Jika siswa terlalu sering melanggar, bisa ditambahkan logic untuk submit otomatis
-        // atau memberikan peringatan kepada guru
-        if (violationType === 'tab_switch' && details?.tabSwitchCount > 5) {
-            // Optional: Auto-submit jika terlalu banyak tab switching
-            // handleSubmitAll(true)
+    // Handle security modal events
+    useEffect(() => {
+        const handleShowSecurityModal = (event: CustomEvent) => {
+            const { violationType, violationCount, details, autoSubmitWarning } = event.detail
+            setSecurityViolationType(violationType)
+            setSecurityViolationCount(violationCount)
+            setSecurityViolationDetails(details)
+            setShowAutoSubmitWarning(autoSubmitWarning)
+            setShowSecurityModal(true)
         }
-    }, [ujianId, user?.id])
+
+        const handleAutoSubmitExam = () => {
+            console.log('Auto-submit triggered by security violation')
+            // Trigger auto submit
+            handleSubmitAll(true).then(() => {
+                // Ensure redirect happens even if handleSubmitAll doesn't redirect
+                setTimeout(() => {
+                    window.location.href = '/siswa/dashboard'
+                }, 2000)
+            }).catch((error) => {
+                console.error('Auto-submit failed:', error)
+                toast.error('Gagal auto-submit ujian. Silakan submit manual.')
+            })
+        }
+
+        window.addEventListener('showSecurityModal', handleShowSecurityModal as EventListener)
+        window.addEventListener('autoSubmitExam', handleAutoSubmitExam)
+
+        return () => {
+            window.removeEventListener('showSecurityModal', handleShowSecurityModal as EventListener)
+            window.removeEventListener('autoSubmitExam', handleAutoSubmitExam)
+        }
+    }, [handleSubmitAll])
+
+
 
     // Keyboard navigation
     useEffect(() => {
@@ -301,9 +344,14 @@ function UjianSiswaPageContent() {
     }
 
     return (
-        <div className="min-h-screen bg-background">
+            <div className="min-h-screen bg-background anti-screenshot-container">
+                {/* Dialog larangan sebelum mulai ujian */}
+                <ExamRulesDialog
+                    open={showRulesDialog}
+                    onConfirm={() => setShowRulesDialog(false)}
+                />
             {/* Enhanced Header with timer and security status */}
-            <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+            <div className={`border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 ${showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}`}>
                 <div className="container mx-auto px-4">
                     <div className="flex items-center justify-between py-3">
                         <div className="flex-1">
@@ -317,27 +365,26 @@ function UjianSiswaPageContent() {
                                 formatTime={formatTime}
                             />
                         </div>
-                        
-                        {/* Security Status Indicator */}
-                        <div className="flex-shrink-0 ml-4">
-                            <ExamSecurityStatus showDetails={false} />
-                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Enhanced Section Progress Tabs */}
-            <SectionTabs
-                questionSections={questionSections}
-                currentSectionType={currentSectionType}
-                sectionProgress={sectionProgress}
-                onSectionSwitch={handleSwitchToSection}
-            />
+            {showSectionTabs && (
+                <div className={showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}>
+                    <SectionTabs
+                        questionSections={questionSections}
+                        currentSectionType={currentSectionType}
+                        sectionProgress={sectionProgress}
+                        onSectionSwitch={handleSwitchToSection}
+                    />
+                </div>
+            )}
 
             {/* Main content with optimized desktop layout */}
             <div className="flex flex-col xl:flex-row gap-0">
                 {/* Main Question Area - Better desktop spacing */}
-                <div className="flex-1 p-3 sm:p-4 lg:p-6 xl:p-8 xl:pr-6 min-h-screen">
+                 <div className={`flex-1 p-3 sm:p-4 lg:p-6 xl:p-8 xl:pr-6 min-h-screen exam-content ${showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}`}>
                     <div className="max-w-4xl mx-auto xl:mx-0">
                         {organizedQuestions.length > 0 && currentQuestion?.soal ? (
                             <QuestionCard
@@ -365,13 +412,55 @@ function UjianSiswaPageContent() {
                                 </p>
                             </div>
                         )}
+                        
+                        {/* DEBUG: Test button untuk tab switch */}
+                        {/* {process.env.NODE_ENV === 'development' && (
+                            <div className="fixed bottom-4 right-4 p-4 bg-yellow-100 border border-yellow-400 rounded-md">
+                                <h4 className="font-bold text-sm mb-2">🔧 Debug Tools</h4>
+                                <button 
+                                    onClick={() => {
+                                        console.log('🧪 Simulating tab switch returned event')
+                                        window.dispatchEvent(new Event('focus'))
+                                        document.dispatchEvent(new Event('visibilitychange'))
+                                    }}
+                                    className="text-xs bg-blue-500 text-white px-2 py-1 rounded mr-2"
+                                >
+                                    Test Tab Return
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        console.log('🧪 Simulating right click')
+                                        document.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }))
+                                    }}
+                                    className="text-xs bg-red-500 text-white px-2 py-1 rounded"
+                                >
+                                    Test Right Click
+                                </button>
+                            </div>
+                        )} */}
                     </div>
                 </div>
 
                 {/* Desktop Question Navigator Sidebar */}
                 {organizedQuestions.length > 0 && (
-                    <div className="xl:w-80 xl:flex-shrink-0 xl:border-l xl:bg-muted/50">
+                    <div className={`xl:w-80 xl:flex-shrink-0 xl:border-l xl:bg-muted/50 ${showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}`}>
                         <div className="xl:sticky xl:top-20 xl:max-h-[calc(100vh-5rem)] xl:overflow-hidden">
+                            {/* Toggle Section Tabs Button - Di header sidebar */}
+                            {/* <div className="p-3 border-b border-border/50">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowSectionTabs(!showSectionTabs)}
+                                    className="w-full text-xs text-muted-foreground hover:text-foreground justify-start"
+                                >
+                                    {showSectionTabs ? (
+                                        <>📄 Sembunyikan Section Tabs</>
+                                    ) : (
+                                        <>📄 Tampilkan Section Tabs</>
+                                    )}
+                                </Button>
+                            </div> */}
+                            
                             <QuestionNavigator
                                 questions={currentSectionType === 'multiple_choice' ? questionSections.multipleChoice : questionSections.essay}
                                 currentIndex={currentSectionType === 'multiple_choice' 
@@ -403,28 +492,160 @@ function UjianSiswaPageContent() {
             </div>
 
             {/* Submit confirmation dialog */}
-            <SubmitDialog
-                isOpen={showSubmitDialog}
-                onOpenChange={setShowSubmitDialog}
-                onConfirm={() => handleSubmitAll(false)}
-                sectionProgress={sectionProgress}
-                totalAnswered={answeredCount}
-                totalQuestions={organizedQuestions.length}
-                isSubmitting={batchSubmit.isPending}
+                <SubmitDialog
+                    isOpen={showSubmitDialog && !showRulesDialog}
+                    onOpenChange={setShowSubmitDialog}
+                    onConfirm={() => handleSubmitAll(false)}
+                    sectionProgress={sectionProgress}
+                    totalAnswered={answeredCount}
+                    totalQuestions={organizedQuestions.length}
+                    isSubmitting={isSubmitting || batchSubmit.isPending} 
+                />
+
+            {/* Screenshot Warning Components */}
+            <ScreenshotWarningOverlay
+                isVisible={showScreenshotWarning}
+                onClose={() => setShowScreenshotWarning(false)}
+                warningType={screenshotWarningType}
+                attemptCount={screenshotAttemptCount}
+                details={{
+                    method: screenshotDetails.method,
+                    deviceType: typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop',
+                    severity: screenshotAttemptCount >= 3 ? 'high' : screenshotAttemptCount >= 2 ? 'medium' : 'low'
+                }}
+            />
+
+            <ScreenshotToast
+                isVisible={showScreenshotToast}
+                onClose={() => setShowScreenshotToast(false)}
+                message={screenshotToastMessage}
+                type={screenshotAttemptCount >= 2 ? 'error' : 'warning'}
+                duration={4000}
+            />
+
+            {/* Security Violation Modal */}
+            <SecurityViolationModal
+                isOpen={showSecurityModal}
+                onClose={() => setShowSecurityModal(false)}
+                violationType={securityViolationType}
+                violationCount={securityViolationCount}
+                details={securityViolationDetails}
+                autoSubmitWarning={showAutoSubmitWarning}
             />
         </div>
+    )
+}
+
+// Wrapper component to handle security violations
+function UjianSiswaWithSecurity() {
+    const params = useParams()
+    const ujianId = params.id as string
+    const { user } = useAuthStore()
+
+    // Handler untuk pelanggaran keamanan di level provider dengan logic alert
+    const handleSecurityViolation = useCallback((violationType: string, details?: any) => {
+        // Debug logging
+        console.log(`🔍 DEBUG - Security Violation Detected:`, {
+            type: violationType,
+            details,
+            action: details?.action,
+            tabSwitchCount: details?.tabSwitchCount
+        })
+
+        // Log security violation untuk audit trail
+        console.warn(`Security Violation in Exam ${ujianId}:`, {
+            type: violationType,
+            details,
+            userId: user?.id,
+            examId: ujianId,
+            timestamp: new Date().toISOString()
+        })
+
+        // Handle ALL security violations - trigger modal from context
+        const totalCount = details?.totalViolationCount || 1
+        
+        if (violationType === 'tab_switch' && details?.action === 'returned') {
+            console.log('🚨 Showing tab switch modal for returned action')
+            // Broadcast event untuk modal
+            window.dispatchEvent(new CustomEvent('showSecurityModal', {
+                detail: {
+                    violationType: 'tab_switch',
+                    violationCount: totalCount,
+                    details,
+                    autoSubmitWarning: totalCount >= 2
+                }
+            }))
+        } else if (violationType === 'tab_switch' && details?.action === 'left') {
+            console.log('📝 Tab switch - left action detected, no modal shown')
+        } else if (violationType === 'right_click') {
+            window.dispatchEvent(new CustomEvent('showSecurityModal', {
+                detail: {
+                    violationType: 'right_click',
+                    violationCount: totalCount,
+                    details,
+                    autoSubmitWarning: totalCount >= 2
+                }
+            }))
+        } else if (violationType === 'key_combination') {
+            window.dispatchEvent(new CustomEvent('showSecurityModal', {
+                detail: {
+                    violationType: 'key_combination',
+                    violationCount: totalCount,
+                    details,
+                    autoSubmitWarning: totalCount >= 2
+                }
+            }))
+        }
+
+        // Handle screenshot violations specifically
+        if (violationType === 'screenshot_attempt') {
+            const method = details?.method || 'unknown'
+            const totalCount = details?.totalViolationCount || 1
+            
+            // Show modal for every violation attempt
+            window.dispatchEvent(new CustomEvent('showSecurityModal', {
+                detail: {
+                    violationType: 'screenshot',
+                    violationCount: totalCount,
+                    details: { ...details, method },
+                    autoSubmitWarning: totalCount >= 2
+                }
+            }))
+            
+            // Auto-submit after 3 attempts (jika diperlukan bisa dihandle di sini)
+            if (totalCount >= 3) {
+                console.warn(`3 total violations reached (${totalCount}), auto-submitting exam`)
+                
+                // Show countdown toast
+                toast.error(`Auto-Submit dalam 3 detik... (Total Pelanggaran: ${totalCount})`, {
+                    description: 'Ujian akan otomatis dikumpulkan dan dialihkan ke dashboard.',
+                    duration: 3000,
+                })
+                
+                // Modal akan menampilkan peringatan auto-submit
+                setTimeout(() => {
+                    // Trigger auto-submit logic
+                    window.dispatchEvent(new CustomEvent('autoSubmitExam'))
+                }, 3000)
+            }
+        }
+    }, [ujianId, user?.id])
+
+    return (
+        <ExamSecurityProvider 
+            examTitle="Ujian Online"
+            autoEnable={true}
+            onSecurityViolation={handleSecurityViolation}
+        >
+            <UjianSiswaPageContent />
+        </ExamSecurityProvider>
     )
 }
 
 export default function UjianSiswaPage() {
     return (
         <SiswaOnlyGuard>
-            <ExamSecurityProvider 
-                examTitle="Ujian Online"
-                autoEnable={true}
-            >
-                <UjianSiswaPageContent />
-            </ExamSecurityProvider>
+            <UjianSiswaWithSecurity />
         </SiswaOnlyGuard>
     )
 }

@@ -14,84 +14,57 @@ export function useOptimizedDebouncedSubmitJawaban() {
   const lastSubmissionTime = useRef<number>(0)
 
   const submitBatch = useCallback(async () => {
-    if (isSubmittingRef.current || pendingSubmissions.current.size === 0) return
-
-    // TAMBAHAN: Implementasi minimum delay antar submission
-    const now = Date.now()
-    const timeSinceLastSubmission = now - lastSubmissionTime.current
-    const MIN_DELAY = 5000 // 5 detik minimum delay antar submission
-
-    if (timeSinceLastSubmission < MIN_DELAY) {
-      console.log('🕒 Skipping auto-save - too recent submission')
-      // Re-schedule dengan sisa waktu
-      const remainingDelay = MIN_DELAY - timeSinceLastSubmission
-      timeoutRef.current = setTimeout(submitBatch, remainingDelay)
-      return
-    }
-
-    try {
-      isSubmittingRef.current = true
-      lastSubmissionTime.current = now
-      
-      const submissions = Array.from(pendingSubmissions.current.values())
-      const submissionsBackup = [...submissions] // Backup untuk error handling
+    // 🚫 DISABLED: Auto-save to database to prevent double submissions
+    // This function previously handled auto-saving to database
+    // NOW: Only used for force cleanup (but doesn't actually submit to database)
+    
+    if (pendingSubmissions.current.size > 0) {
+      console.log('🗑️ Clearing pending submissions (database auto-save disabled):', pendingSubmissions.current.size)
       pendingSubmissions.current.clear()
-
-      console.log('💾 Auto-saving batch:', submissions.length, 'answers')
-
-        // FIXED: Simplified approach - just insert new answers
-        // Tabel jawaban memungkinkan multiple draft, UI akan mengambil yang terbaru
-        const { error } = await supabase
-          .from('jawaban_siswa')
-          .insert(
-            submissions.map(s => ({
-              ...s,
-              siswa_id: user?.id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }))
-          )
-
-        if (error) {
-          console.error('❌ Error in batch auto-save:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
-          })
-          // Re-add failed submissions back to pending untuk retry
-          submissionsBackup.forEach(s => {
-            pendingSubmissions.current.set(s.soal_id, s)
-          })
-        } else {
-          console.log('✅ Batch auto-save successful:', submissions.length, 'answers')
-        }
-    } catch (error) {
-      console.error('❌ Unexpected error in batch auto-save:', {
-        error: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
-      })
-      // Note: submissions variable tidak tersedia di sini, 
-      // tapi sudah di-handle di blok if (error) di atas
-    } finally {
-      isSubmittingRef.current = false
     }
-  }, [user?.id])
+    
+    // Clear any pending timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    
+    console.log('ℹ️ Auto-save system disabled - only localStorage backup active')
+  }, [])
 
   const debouncedSubmit = useCallback((jawaban: any) => {
     if (!user?.id) return
 
-    // Add to pending submissions (overwrites previous for same soal_id)
-    pendingSubmissions.current.set(jawaban.soal_id, jawaban)
-
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
+    // 🚫 DISABLED: Auto-save to database to prevent double submissions
+    // Previously: Add to pending submissions and auto-save to database
+    // NOW: Only save to localStorage for recovery purposes
+    
+    console.log('💾 Auto-saving to localStorage only (database auto-save disabled):', {
+      soalId: jawaban.soal_id,
+      answerLength: jawaban.answer_text?.length || 0
+    })
+    
+    // Save to localStorage for recovery
+    try {
+      const localKey = `ujian_${jawaban.ujian_id}_answers`
+      const existing = localStorage.getItem(localKey)
+      const answers = existing ? JSON.parse(existing) : {}
+      
+      answers[jawaban.soal_id] = {
+        answer_text: jawaban.answer_text,
+        saved_at: new Date().toISOString(),
+        auto_saved: true
+      }
+      
+      localStorage.setItem(localKey, JSON.stringify(answers))
+      console.log('✅ Answer auto-saved to localStorage successfully')
+    } catch (error) {
+      console.error('❌ Error saving to localStorage:', error)
     }
-
-    // DIPERPANJANG: Set new timeout dengan delay yang lebih panjang
-    timeoutRef.current = setTimeout(submitBatch, 8000) // NAIK dari 3 detik ke 8 detik
-  }, [user?.id, submitBatch])
+    
+    // REMOVED: Database auto-save to prevent duplicate submissions
+    // Only final submit will save to database using batch upsert
+  }, [user?.id])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -99,10 +72,10 @@ export function useOptimizedDebouncedSubmitJawaban() {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
-      // Final submit on unmount
-      if (pendingSubmissions.current.size > 0) {
-        submitBatch()
-      }
+      // 🚫 DISABLED: Auto-save on unmount to prevent duplicate submissions
+      // Previously: Final submit on unmount
+      // NOW: Only localStorage cleanup
+      console.log('🧹 Cleanup: Auto-save disabled, localStorage preserved for recovery')
     }
   }, [submitBatch])
 

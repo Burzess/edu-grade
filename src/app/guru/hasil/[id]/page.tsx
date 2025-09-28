@@ -1,8 +1,9 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useHasilUjianDetail, useUpdateScore } from '@/hooks/use-hasil-ujian'
+import { addDebugToWindow } from '@/lib/debug-score-update'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,24 +32,31 @@ import { toast } from 'sonner'
 
 interface ScoringDialogProps {
   jawaban: any
-  onScoreUpdate: (jawabanId: string, score: number, feedback?: string) => void
+  onScoreUpdate: (jawabanId: string, score: number, feedback?: string) => Promise<void>
 }
 
 function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
   const [score, setScore] = useState(jawaban.score?.toString() || '')
   const [feedback, setFeedback] = useState(jawaban.ai_feedback || '')
   const [isOpen, setIsOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const numScore = parseInt(score)
     if (isNaN(numScore) || numScore < 0 || numScore > 100) {
       toast.error('Nilai harus antara 0-100')
       return
     }
 
-    onScoreUpdate(jawaban.id, numScore, feedback.trim() || undefined)
-    setIsOpen(false)
-    toast.success('Nilai berhasil diperbarui')
+    setIsSubmitting(true)
+    try {
+      await onScoreUpdate(jawaban.id, numScore, feedback.trim() || undefined)
+      setIsOpen(false)
+    } catch (error) {
+      // Error sudah ditangani di parent component
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const getQuestionTypeLabel = (type: string) => {
@@ -183,13 +191,13 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
+            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
               <X className="h-4 w-4 mr-1" />
               Batal
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
               <Save className="h-4 w-4 mr-1" />
-              Simpan Nilai
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Nilai'}
             </Button>
           </div>
         </div>
@@ -200,7 +208,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
 
 interface SiswaResultCardProps {
   siswaResult: any
-  onScoreUpdate: (jawabanId: string, score: number, feedback?: string) => void
+  onScoreUpdate: (jawabanId: string, score: number, feedback?: string) => Promise<void>
 }
 
 function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
@@ -320,11 +328,34 @@ export default function HasilUjianDetail() {
   const { data: hasilData, isLoading } = useHasilUjianDetail(ujianId)
   const updateScoreMutation = useUpdateScore()
 
+  // Add debug function to window in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      addDebugToWindow()
+      console.log('🔧 Debug mode enabled. Use window.debugScoreUpdate(jawabanId) to troubleshoot')
+    }
+  }, [])
+
   const handleScoreUpdate = async (jawabanId: string, score: number, feedback?: string) => {
     try {
+      console.log('🎯 Starting score update:', { jawabanId, score, feedback })
+      console.log('🔒 Update mutation state:', {
+        isLoading: updateScoreMutation.isPending,
+        isError: updateScoreMutation.isError,
+        error: updateScoreMutation.error
+      })
+      
       await updateScoreMutation.mutateAsync({ jawabanId, score, feedback })
-    } catch (error) {
-      toast.error('Gagal memperbarui nilai')
+      console.log('✅ Score update completed successfully')
+      toast.success('Nilai berhasil diperbarui')
+    } catch (error: any) {
+      console.error('❌ Error updating score:', error)
+      console.error('❌ Error type:', typeof error)
+      console.error('❌ Error properties:', Object.keys(error || {}))
+      
+      const errorMessage = error?.message || 'Gagal memperbarui nilai'
+      console.error('📝 Showing error toast:', errorMessage)
+      toast.error(errorMessage)
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { toast } from 'sonner'
+import { useAntiScreenshot } from './use-anti-screenshot'
 
 interface UseExamSecurityOptions {
     isExamActive?: boolean
@@ -10,11 +11,12 @@ interface UseExamSecurityOptions {
     enableBeforeUnload?: boolean
     enableFocusDetection?: boolean
     enableTextSelection?: boolean
+    enableAntiScreenshot?: boolean
     examTitle?: string
 }
 
 interface SecurityEvent {
-    type: 'tab_switch' | 'window_blur' | 'before_unload' | 'text_selection' | 'right_click' | 'key_combination' | 'split_screen' | 'viewport_change' | 'orientation_suspicious'
+    type: 'tab_switch' | 'window_blur' | 'before_unload' | 'text_selection' | 'right_click' | 'key_combination' | 'split_screen' | 'viewport_change' | 'orientation_suspicious' | 'screenshot_attempt'
     timestamp: Date
     details?: any
 }
@@ -27,6 +29,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         enableBeforeUnload = true,
         enableFocusDetection = true,
         enableTextSelection = true,
+        enableAntiScreenshot = true,
         examTitle = 'Ujian'
     } = options
 
@@ -34,6 +37,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
     const [isWindowFocused, setIsWindowFocused] = useState(true)
     const [tabSwitchCount, setTabSwitchCount] = useState(0)
     const [isSplitScreenMode, setIsSplitScreenMode] = useState(false)
+    const [totalViolationCount, setTotalViolationCount] = useState(0)
     const [initialViewport, setInitialViewport] = useState<{width: number, height: number} | null>(null)
     const lastVisibilityChange = useRef<Date>(new Date())
     const focusWarningShown = useRef(false)
@@ -42,18 +46,100 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
 
     // Function untuk mencatat event keamanan
     const recordSecurityEvent = useCallback((type: SecurityEvent['type'], details?: any) => {
+        // Increment total violation count for significant violations
+        const significantViolations = ['screenshot_attempt', 'tab_switch', 'right_click', 'key_combination']
+        let newTotalCount = totalViolationCount
+        
+        if (significantViolations.includes(type)) {
+            // Only count 'returned' action for tab_switch, not 'left'
+            if (type === 'tab_switch' && details?.action !== 'returned') {
+                // Don't increment for 'left' action
+            } else {
+                newTotalCount += 1
+                setTotalViolationCount(newTotalCount)
+            }
+        }
+
         const event: SecurityEvent = {
             type,
             timestamp: new Date(),
-            details
+            details: {
+                ...details,
+                totalViolationCount: newTotalCount
+            }
         }
         
+        console.log(`📊 Recording security event:`, { 
+            type, 
+            details: event.details,
+            totalViolations: newTotalCount 
+        })
+        
         setSecurityEvents(prev => [...prev, event])
-        onSecurityViolation?.(type, details)
+        
+        console.log(`📞 Calling onSecurityViolation with:`, { 
+            type, 
+            details: event.details,
+            totalViolations: newTotalCount 
+        })
+        onSecurityViolation?.(type, event.details)
         
         // Log ke console untuk debugging
         console.warn(`🚨 Security Event: ${type}`, event)
     }, [onSecurityViolation])
+
+    // Screenshot attempt handler
+    const handleScreenshotAttempt = useCallback((method: string, details?: any) => {
+        recordSecurityEvent('screenshot_attempt', { method, ...details })
+        
+        // Show appropriate toast based on method
+        switch (method) {
+            case 'printscreen':
+                toast.error('🚫 Print Screen Diblokir!', {
+                    description: 'Screenshot tidak diizinkan selama ujian berlangsung.',
+                    duration: 5000,
+                })
+                break
+            case 'keyboard_shortcut':
+                toast.error('🚫 Shortcut Screenshot Diblokir!', {
+                    description: 'Kombinasi tombol screenshot tidak diizinkan.',
+                    duration: 5000,
+                })
+                break
+            case 'browser_api':
+                toast.warning('⚠️ Aktivitas Screenshot Terdeteksi', {
+                    description: 'Penggunaan API screenshot dipantau dan dicatat.',
+                    duration: 4000,
+                })
+                break
+            case 'touch_gesture':
+                toast.warning('📱 Gesture Screenshot Terdeteksi', {
+                    description: 'Gesture screenshot pada perangkat mobile tidak diizinkan.',
+                    duration: 4000,
+                })
+                break
+            default:
+                toast.error('🚨 Screenshot Attempt Blocked', {
+                    description: 'Percobaan screenshot telah diblokir dan dicatat.',
+                    duration: 4000,
+                })
+        }
+    }, [recordSecurityEvent])
+
+    // Initialize anti-screenshot protection
+    const {
+        screenshotAttempts,
+        isProtectionActive: isAntiScreenshotActive,
+        totalAttempts: screenshotTotalAttempts,
+        recentAttempts: screenshotRecentAttempts
+    } = useAntiScreenshot({
+        isActive: isExamActive && enableAntiScreenshot,
+        onScreenshotAttempt: handleScreenshotAttempt,
+        enableKeyboardBlocking: true,
+        enableAPIBlocking: true,
+        enableTouchBlocking: true,
+        enableVisibilityProtection: true
+    })
 
     // Disable text selection
     useEffect(() => {
@@ -204,18 +290,23 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                     tabSwitchCount: tabSwitchCount + 1
                 })
                 
-                // Show warning toast
-                if (!focusWarningShown.current) {
-                    toast.error('⚠️ Anda meninggalkan halaman ujian!', {
-                        description: 'Kembali ke halaman ujian sekarang. Aktivitas ini akan dicatat.',
-                        duration: 10000,
-                    })
-                    focusWarningShown.current = true
-                }
+                console.log('⬅️ DEBUG - User left tab, sending event:', {
+                    action: 'left',
+                    tabSwitchCount: tabSwitchCount + 1
+                })
+                
+                // Tidak tampilkan toast saat leave, alert akan muncul saat returned
+                focusWarningShown.current = true
             } else {
                 // User returned to tab
                 setIsWindowFocused(true)
                 const timeAway = now.getTime() - lastVisibilityChange.current.getTime()
+                
+                console.log('🔄 DEBUG - User returned to tab, sending event:', {
+                    action: 'returned',
+                    timeAwayMs: timeAway,
+                    tabSwitchCount: tabSwitchCount
+                })
                 
                 recordSecurityEvent('tab_switch', { 
                     action: 'returned',
@@ -223,11 +314,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                     tabSwitchCount: tabSwitchCount
                 })
                 
-                if (timeAway > 5000) { // If away for more than 5 seconds
-                    toast.warning(`Anda meninggalkan ujian selama ${Math.round(timeAway/1000)} detik`, {
-                        description: 'Aktivitas ini telah dicatat. Jangan keluar dari halaman ujian lagi.',
-                    })
-                }
+                // Tidak tampilkan toast di sini, alert sudah ditangani di page level
                 
                 // Reset warning flag after a delay
                 setTimeout(() => {
@@ -433,6 +520,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         isWindowFocused,
         tabSwitchCount,
         isSplitScreenMode,
+        totalViolationCount,
         recordSecurityEvent,
         // Methods to manually trigger security checks
         enableSecurity: () => {
@@ -443,14 +531,24 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         },
         getSecurityReport: () => ({
             totalEvents: securityEvents.length,
+            totalViolationCount,
             tabSwitches: securityEvents.filter(e => e.type === 'tab_switch').length,
             rightClicks: securityEvents.filter(e => e.type === 'right_click').length,
             forbiddenKeys: securityEvents.filter(e => e.type === 'key_combination').length,
             splitScreenDetections: securityEvents.filter(e => e.type === 'split_screen').length,
             viewportChanges: securityEvents.filter(e => e.type === 'viewport_change').length,
             orientationSuspicious: securityEvents.filter(e => e.type === 'orientation_suspicious').length,
+            screenshotAttempts: securityEvents.filter(e => e.type === 'screenshot_attempt').length,
             currentlyFocused: isWindowFocused,
             isSplitScreenMode,
-        })
+            isAntiScreenshotActive,
+            screenshotTotalAttempts,
+            screenshotRecentAttempts,
+        }),
+        // Anti-screenshot specific data
+        screenshotAttempts,
+        screenshotTotalAttempts,
+        screenshotRecentAttempts,
+        isAntiScreenshotActive
     }
 }

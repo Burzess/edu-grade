@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useUjian, useDeleteUjian, useStartUjian } from '@/hooks/use-ujian'
+import { useKelasGuru } from '@/hooks/use-kelas'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +16,13 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu'
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -80,6 +88,15 @@ function UjianCard({ ujian, onDelete, onStartUjian }: UjianCardProps) {
               <Badge className={status.color} variant="secondary">
                 {status.label}
               </Badge>
+              {ujian.kelas_id ? (
+                <Badge variant="outline" className="text-xs">
+                  {ujian.kelas?.nama_kelas || 'Kelas'}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  Global
+                </Badge>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
@@ -229,11 +246,13 @@ function UjianSkeleton() {
 
 function UjianPageContent() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterKelas, setFilterKelas] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [useDebugQuery, setUseDebugQuery] = useState(false)
   const pageSize = 12
 
   const { data: ujianData, isLoading, error } = useUjian(currentPage, pageSize)
+  const { data: kelasData, isLoading: isLoadingKelas } = useKelasGuru()
   const deleteUjianMutation = useDeleteUjian()
   const startUjianMutation = useStartUjian()
 
@@ -278,10 +297,21 @@ function UjianPageContent() {
     )
   }
 
-  const filteredUjian = ujianData?.data?.filter(ujian =>
-    ujian.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ujian.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || []
+  const filteredUjian = ujianData?.data?.filter(ujian => {
+    // Search filter
+    const matchesSearch = ujian.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ujian.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    // Kelas filter
+    let matchesKelas = true
+    if (filterKelas === 'global') {
+      matchesKelas = !ujian.kelas_id
+    } else if (filterKelas !== 'all') {
+      matchesKelas = ujian.kelas_id === filterKelas
+    }
+    
+    return matchesSearch && matchesKelas
+  }) || []
 
   return (
     <div className="p-6 space-y-6">
@@ -301,8 +331,8 @@ function UjianPageContent() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-4">
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -311,6 +341,38 @@ function UjianPageContent() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Filter:</span>
+          <Select value={filterKelas} onValueChange={setFilterKelas}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Semua Kelas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Ujian</SelectItem>
+              <SelectItem value="global">Ujian Global</SelectItem>
+              {kelasData?.map((kelas) => (
+                <SelectItem key={kelas.id} value={kelas.id}>
+                  {kelas.nama_kelas}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {(searchQuery || filterKelas !== 'all') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchQuery('')
+                setFilterKelas('all')
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Reset Filter
+            </Button>
+          )}
         </div>
       </div>
 
@@ -354,6 +416,11 @@ function UjianPageContent() {
           {/* Results info */}
           <div className="text-sm text-muted-foreground">
             Menampilkan {filteredUjian.length} dari {ujianData?.count || 0} ujian
+            {(searchQuery || filterKelas !== 'all') && (
+              <span className="ml-2 text-primary">
+                (dengan filter aktif)
+              </span>
+            )}
           </div>
 
           {/* Ujian Grid */}

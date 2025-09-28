@@ -42,6 +42,12 @@ const navigationItems: NavigationItem[] = [
     description: 'Halaman utama guru'
   },
   {
+    name: 'Kelola Kelas',
+    href: '/guru/kelas',
+    icon: Users,
+    description: 'Kelola kelas dan siswa'
+  },
+  {
     name: 'Kelola Ujian',
     href: '/guru/ujian',
     icon: BookOpen,
@@ -58,12 +64,6 @@ const navigationItems: NavigationItem[] = [
     href: '/guru/soal',
     icon: FileText,
     description: 'Bank soal'
-  },
-  {
-    name: 'Siswa',
-    href: '/guru/siswa',
-    icon: Users,
-    description: 'Daftar siswa'
   }
 ]
 

@@ -3,8 +3,10 @@ import { useCallback, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 import { Database } from '@/types/database'
+import { BatchAIGradingRequest, BatchAIGradingResponse, BatchAIGradingOptions } from '@/types/ai-grading'
 import { useNotifications } from './use-notifications'
 import { useCircuitBreaker, useRateLimiter } from './use-circuit-breaker'
+import { toast } from 'sonner'
 
 const supabase = createClient()
 
@@ -154,6 +156,7 @@ async function calculateUjianScore(ujianId: string, siswaId: string) {
         console.error('❌ Error calculating ujian score:', error)
     }
 }
+// LEGACY: Individual AI grading (deprecated)
 async function triggerAIGrading(jawabanId: string, soalId: string) {
     try {
         console.log('🤖 Checking if AI grading needed for jawaban:', jawabanId)
@@ -195,6 +198,59 @@ async function triggerAIGrading(jawabanId: string, soalId: string) {
         console.log('✅ AI grading triggered successfully:', result)
     } catch (error) {
         console.error('❌ Error triggering AI grading:', error)
+    }
+}
+
+// NEW: Batch AI grading untuk semua jawaban dalam satu ujian
+async function triggerBatchAIGrading(
+    ujianId: string, 
+    options: BatchAIGradingOptions = {}
+): Promise<BatchAIGradingResponse> {
+    try {
+        const {
+            useOptimized = true,
+            useBatching = true,
+            forceAI = false
+        } = options
+
+        console.log('🚀 Triggering batch AI grading for ujian:', ujianId, {
+            useOptimized,
+            useBatching,
+            forceAI
+        })
+
+        const response = await fetch('/api/ai-grading', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                ujianId,
+                useOptimized,
+                useBatching,
+                forceAI
+            }),
+        })
+
+        if (!response.ok) {
+            console.error('❌ Batch AI grading request failed:', response.statusText)
+            const errorData = await response.json().catch(() => null)
+            throw new Error(errorData?.error || 'Batch AI grading failed')
+        }
+
+        const result: BatchAIGradingResponse = await response.json()
+        console.log('✅ Batch AI grading completed successfully:', {
+            autoGraded: result.autoGradedCount,
+            aiGraded: result.aiGradedCount,
+            errors: result.errorCount,
+            costSavings: result.costSavingsPercent + '%',
+            processingTime: result.processingTimeMs + 'ms'
+        })
+
+        return result
+    } catch (error) {
+        console.error('❌ Error triggering batch AI grading:', error)
+        throw error
     }
 }
 
@@ -623,6 +679,9 @@ export function useBatchSubmitJawaban() {
                 updated_at: new Date().toISOString()
             }))
 
+            console.log('🔄 Using standard UPSERT (soal can be reused across ujian)')
+
+            // Use standard upsert - let database handle existing records naturally
             const { data, error } = await supabase
                 .from('jawaban_siswa')
                 .upsert(jawabanData)
@@ -634,6 +693,16 @@ export function useBatchSubmitJawaban() {
             }
 
             console.log('✅ Batch submit successful:', data?.length, 'answers saved')
+            
+            // Log any discrepancy for debugging (but don't treat as error)
+            if (data && data.length !== jawabans.length) {
+                console.log('ℹ️ Info: Response count difference (normal with upserts)', {
+                    expected: jawabans.length,
+                    actual: data.length,
+                    note: 'Upsert may update existing records instead of creating new ones'
+                })
+            }
+            
             return data
         },
         onSuccess: (data) => {
@@ -650,10 +719,11 @@ export function useBatchSubmitJawaban() {
                 })
             }, 1000) // Delay lebih lama untuk batch submit
 
-            // Auto-grade for all submitted answers
+            // Auto-grade for multiple choice questions only
+            // AI grading untuk essay akan dilakukan secara batch dari frontend
             data?.forEach(jawaban => {
                 checkMultipleChoiceAnswer(jawaban.id, jawaban.soal_id, jawaban.answer_text)
-                triggerAIGrading(jawaban.id, jawaban.soal_id)
+                // REMOVED: triggerAIGrading - sekarang menggunakan batch AI grading
             })
 
             // Calculate final score once for the ujian (if we have data)
@@ -1223,5 +1293,28 @@ export function useUjianForSiswa(ujianId: string) {
         refetchOnReconnect: false, // Disable refetch on reconnect
         retry: 1, // Only retry once to prevent endless loops
         retryDelay: 10000, // DIPERPANJANG: 10 second delay between retries
+    })
+}
+
+// Hook untuk batch AI grading semua jawaban dalam satu ujian
+export function useBatchAIGrading() {
+    return useMutation({
+        mutationFn: async (request: BatchAIGradingRequest) => {
+            return await triggerBatchAIGrading(request.ujianId, request.options)
+        },
+        onSuccess: (data: BatchAIGradingResponse) => {
+            toast.success(
+                `Penilaian selesai! Auto: ${data.autoGradedCount}, AI: ${data.aiGradedCount}`, 
+                {
+                    description: `Hemat biaya: ${data.costSavingsPercent}% • Waktu: ${Math.round(data.processingTimeMs / 1000)}s`
+                }
+            )
+        },
+        onError: (error) => {
+            console.error('❌ Batch AI grading failed:', error)
+            toast.error('Gagal menjalankan penilaian AI secara batch', {
+                description: error instanceof Error ? error.message : 'Terjadi kesalahan'
+            })
+        }
     })
 }

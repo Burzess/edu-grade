@@ -41,6 +41,7 @@ export async function middleware(request: NextRequest) {
             if (!isPublicRoute) {
                 url.pathname = '/login'
                 url.searchParams.set('error', 'session_expired')
+                url.searchParams.set('redirect', pathname)
                 return NextResponse.redirect(url)
             }
             return response

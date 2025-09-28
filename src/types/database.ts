@@ -74,6 +74,7 @@ export interface Database {
                     created_by: string
                     created_at: string
                     updated_at: string
+                    kelas_id: string | null
                 }
                 Insert: {
                     id?: string
@@ -86,6 +87,7 @@ export interface Database {
                     created_by: string
                     created_at?: string
                     updated_at?: string
+                    kelas_id?: string | null
                 }
                 Update: {
                     id?: string
@@ -98,6 +100,7 @@ export interface Database {
                     created_by?: string
                     created_at?: string
                     updated_at?: string
+                    kelas_id?: string | null
                 }
             }
             ujian_soal: {

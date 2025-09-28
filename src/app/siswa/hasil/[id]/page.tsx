@@ -168,19 +168,68 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
         {/* Answer */}
         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <div className="font-medium text-sm text-blue-600 dark:text-blue-300 mb-2">Jawaban Anda:</div>
-          <ExpandableText 
-            text={jawaban.answer_text || 'Tidak ada jawaban'} 
-            maxLength={200}
-            className="text-blue-800 dark:text-blue-200"
-          />
+          {jawaban.soal?.question_type === 'multiple_choice' ? (
+            <div className="text-blue-800 dark:text-blue-200">
+              <div className="font-medium">
+                {(() => {
+                  // Simplified approach - get answer text
+                  let answerText = jawaban.answer_text;
+                  
+                  if (jawaban.soal.options && Array.isArray(jawaban.soal.options)) {
+                    for (const opt of jawaban.soal.options) {
+                      if (opt.id === jawaban.answer_text) {
+                        answerText = opt.text;
+                        break;
+                      }
+                    }
+                  }
+                  
+                  return `${jawaban.answer_text}. ${answerText}`;
+                })()}
+              </div>
+              {/* Status jawaban */}
+              {jawaban.soal.correct_answer && (
+                <div className={`text-xs mt-2 px-2 py-1 rounded inline-block ${
+                  jawaban.answer_text === jawaban.soal.correct_answer 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                }`}>
+                  {jawaban.answer_text === jawaban.soal.correct_answer ? '✓ Benar' : '✗ Salah'}
+                </div>
+              )}
+            </div>
+          ) : (
+            <ExpandableText 
+              text={jawaban.answer_text || 'Tidak ada jawaban'} 
+              maxLength={200}
+              className="text-blue-800 dark:text-blue-200"
+            />
+          )}
         </div>
 
-        {/* Correct Answer (for multiple choice) */}
-        {jawaban.soal && jawaban.soal.question_type === 'multiple_choice' && jawaban.soal.correct_answer && (
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <div className="font-medium text-sm text-green-600 dark:text-green-300 mb-2">Jawaban Benar:</div>
-            <div className="text-green-800 dark:text-green-200">
-              {jawaban.soal.options?.find((opt: any) => opt.id === jawaban.soal.correct_answer)?.text || 'Tidak tersedia'}
+        {/* Correct Answer (for multiple choice when answer is wrong) */}
+        {jawaban.soal && 
+         jawaban.soal.question_type === 'multiple_choice' && 
+         jawaban.soal.correct_answer && 
+         jawaban.answer_text !== jawaban.soal.correct_answer && (
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="font-medium text-sm text-green-600 dark:text-green-300 mb-2">Jawaban yang Benar:</div>
+            <div className="text-green-800 dark:text-green-200 font-medium">
+              {(() => {
+                // Simplified approach - get correct answer text
+                let correctText = 'Teks tidak tersedia';
+                
+                if (jawaban.soal.options && Array.isArray(jawaban.soal.options)) {
+                  for (const opt of jawaban.soal.options) {
+                    if (opt.id === jawaban.soal.correct_answer) {
+                      correctText = opt.text;
+                      break;
+                    }
+                  }
+                }
+                
+                return `${jawaban.soal.correct_answer}. ${correctText}`;
+              })()}
             </div>
           </div>
         )}
@@ -205,15 +254,15 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
           {hasScore ? (
             <span>
               {jawaban.soal?.question_type === 'multiple_choice' 
-                ? 'Dinilai otomatis oleh sistem' 
-                : 'Dinilai otomatis oleh AI'
+                ? 'Dinilai otomatis oleh sistem (instant)' 
+                : 'Dinilai otomatis oleh AI (batch processing)'
               }
             </span>
           ) : (
             <span>
               {jawaban.soal?.question_type === 'multiple_choice'
                 ? 'Menunggu penilaian otomatis...'
-                : 'Sedang dalam proses penilaian AI'
+                : 'Sedang dalam proses penilaian AI batch'
               }
             </span>
           )}

@@ -25,19 +25,19 @@ export const QuestionNavigator = memo(({
 }: QuestionNavigatorProps) => {
     return (
         <>
-            {/* Mobile Toggle Button - Hidden on desktop */}
+            {/* Mobile Toggle Button - Hidden on desktop and when sidebar is open */}
             <Button
                 variant="outline"
                 size="sm"
                 onClick={onToggle}
-                className="fixed top-16 sm:top-20 right-2 sm:right-4 z-20 xl:hidden shadow-lg p-2"
+                className={`fixed top-48 sm:top-45 right-2 sm:right-4 z-[60] xl:hidden shadow-lg p-2 transition-opacity duration-300 ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
                 <Grid3X3 className="h-4 w-4" />
             </Button>
 
             {/* Enhanced Navigator Panel for desktop */}
             <div className={`
-                fixed top-0 right-0 h-full bg-card border-l border-border shadow-xl z-30 transition-transform duration-300
+                fixed top-0 right-0 h-full bg-card border-l border-border shadow-xl z-[55] transition-transform duration-300
                 w-72 sm:w-80 xl:w-full
                 ${isOpen ? 'translate-x-0' : 'translate-x-full'}
                 xl:translate-x-0 xl:relative xl:shadow-none xl:z-10 xl:bg-muted/50 xl:border-border

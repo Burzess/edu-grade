@@ -1,10 +1,19 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+// import { GoogleGenerativeAI } from '@google/generative-ai'
+import { OpenAI } from 'openai'
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is not set in environment variables')
+// if (!process.env.GEMINI_API_KEY) {
+//   throw new Error('GEMINI_API_KEY is not set in environment variables')
+// }
+
+if (!process.env.OPENROUTER_API_KEY) {
+  throw new Error('OPENROUTER_API_KEY is not set in environment variables')
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 export interface AIGradingResponse {
   score: number // 0-100
@@ -39,13 +48,13 @@ export async function gradeEssayAnswer(
       }
     }
 
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 1000,
-      }
-    })
+    // const model = genAI.getGenerativeModel({ 
+    //   model: 'gemini-1.5-flash',
+    //   generationConfig: {
+    //     temperature: 0.3,
+    //     maxOutputTokens: 1000,
+    //   }
+    // })
 
     let prompt = ''
 
@@ -150,9 +159,19 @@ export async function gradeEssayAnswer(
       }
     }
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    const result = await openai.chat.completions.create({
+      model: "google/gemini-2.0-flash-exp:free",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1000,
+    })
+
+    const text = result.choices[0]?.message?.content || ''
 
     console.log('🤖 Raw AI response:', text.substring(0, 200) + '...')
 
@@ -399,13 +418,13 @@ async function gradeMultipleEssaysInOneRequest(
   
   if (answers.length === 0) return []
   
-  const model = genAI.getGenerativeModel({ 
-    model: 'gemini-1.5-flash',
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 2000, // Increased for multiple responses
-    }
-  })
+  // const model = genAI.getGenerativeModel({ 
+  //   model: 'gemini-1.5-flash',
+  //   generationConfig: {
+  //     temperature: 0.3,
+  //     maxOutputTokens: 2000, // Increased for multiple responses
+  //   }
+  // })
 
   // Create batch prompt for multiple essays
   const question = answers[0].question
@@ -446,9 +465,19 @@ async function gradeMultipleEssaysInOneRequest(
     PENTING: Berikan penilaian yang objektif dan konsisten untuk semua jawaban.
     `
 
-  const result = await model.generateContent(prompt)
-  const response = await result.response
-  const text = response.text()
+  const result = await openai.chat.completions.create({
+    model: "google/gemini-2.0-flash-exp:free",
+    messages: [
+      {
+        role: "user",
+        content: prompt
+      }
+    ],
+    temperature: 0.3,
+    max_tokens: 2000,
+  })
+
+  const text = result.choices[0]?.message?.content || ''
 
   console.log('🤖 Smart batch AI response preview:', text.substring(0, 300) + '...')
 

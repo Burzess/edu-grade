@@ -171,37 +171,43 @@ export default function GuruDashboardClient() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Aksi Cepat</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Button asChild className="h-20 flex-col gap-2">
-            <Link href="/guru/ujian/new">
-              <PlusCircle className="h-6 w-6" />
-              <span>Buat Ujian Baru</span>
-            </Link>
-          </Button>
-          
-          <Button variant="outline" asChild className="h-20 flex-col gap-2">
-            <Link href="/guru/soal">
-              <FileText className="h-6 w-6" />
-              <span>Kelola Bank Soal</span>
-            </Link>
-          </Button>
-          
-          <Button variant="outline" asChild className="h-20 flex-col gap-2">
-            <Link href="/guru/hasil">
-              <BarChart3 className="h-6 w-6" />
-              <span>Lihat Hasil</span>
-            </Link>
-          </Button>
-          
-          <Button variant="outline" asChild className="h-20 flex-col gap-2">
-            <Link href="/guru/siswa">
-              <Users className="h-6 w-6" />
-              <span>Kelola Siswa</span>
-            </Link>
-          </Button>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      
+        {/* Quick Actions */}
+        <div className="lg:col-span-3">
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Aksi Cepat</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button asChild className="h-20 flex-col gap-2">
+                <Link href="/guru/ujian/new">
+                  <PlusCircle className="h-6 w-6" />
+                  <span>Buat Ujian Baru</span>
+                </Link>
+              </Button>
+              
+              <Button variant="outline" asChild className="h-20 flex-col gap-2">
+                <Link href="/guru/soal">
+                  <FileText className="h-6 w-6" />
+                  <span>Kelola Bank Soal</span>
+                </Link>
+              </Button>
+              
+              <Button variant="outline" asChild className="h-20 flex-col gap-2">
+                <Link href="/guru/hasil">
+                  <BarChart3 className="h-6 w-6" />
+                  <span>Lihat Hasil</span>
+                </Link>
+              </Button>
+              
+              <Button variant="outline" asChild className="h-20 flex-col gap-2">
+                <Link href="/guru/kelas">
+                  <Users className="h-6 w-6" />
+                  <span>Kelola Kelas</span>
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -173,14 +173,28 @@ export const RoleGuard = memo(({ children, allowedRoles, fallbackPath }: RoleGua
         // Skip if still loading
         if (loading) return
 
+        // Debug untuk kelas routes
+        if (typeof window !== 'undefined' && window.location.pathname.includes('/kelas')) {
+            console.log('🔍 RoleGuard kelas route check:', {
+                isAuthenticated,
+                hasAccess,
+                userRole,
+                allowedRoles,
+                loading,
+                pathname: window.location.pathname
+            })
+        }
+
         // Jika tidak loading dan user belum login, redirect ke halaman login
         if (!isAuthenticated) {
+            console.log('🔍 RoleGuard: User not authenticated, redirecting to login')
             redirectTo('/login')
             return
         }
 
         // Jika user sudah login tapi role tidak diizinkan, redirect sesuai role
         if (isAuthenticated && !hasAccess && userRole) {
+            console.log('🔍 RoleGuard: Access denied, redirecting to appropriate dashboard')
             if (fallbackPath) {
                 redirectTo(fallbackPath)
             } else {

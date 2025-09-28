@@ -22,12 +22,14 @@ import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
 import { GuruLayout } from '@/components/layout/guru-layout'
+import { KelasSelector } from '@/components/ui/kelas-selector'
 
 const ujianSchema = z.object({
   name: z.string().min(3, 'Nama ujian minimal 3 karakter'),
   description: z.string().optional(),
   duration_minutes: z.number().min(1, 'Durasi minimal 1 menit').max(480, 'Durasi maksimal 8 jam'),
   selected_soal: z.array(z.string()).min(1, 'Pilih minimal 1 soal'),
+  kelas_id: z.string().nullable().optional(),
 })
 
 type UjianForm = z.infer<typeof ujianSchema>
@@ -243,6 +245,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
       description: '',
       duration_minutes: 60,
       selected_soal: [],
+      kelas_id: null,
     },
   })
 
@@ -295,6 +298,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
         description: ujian.description || '',
         duration_minutes: ujian.duration_minutes || 60,
         selected_soal: ujian.ujian_soal?.map((us: any) => us.soal_id) || [],
+        kelas_id: ujian.kelas_id || null,
       })
     }
   }, [ujian, form])
@@ -335,6 +339,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
         description: data.description,
         duration_minutes: data.duration_minutes,
         selected_soal: data.selected_soal,
+        kelas_id: data.kelas_id,
       })
 
       router.push('/guru/ujian')
@@ -482,6 +487,29 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
 
                     <FormField
                       control={form.control}
+                      name="kelas_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kelas Target</FormLabel>
+                          <FormControl>
+                            <KelasSelector
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Pilih kelas atau biarkan kosong untuk ujian global"
+                              allowNone={true}
+                              showDetails={true}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Pilih kelas tertentu atau biarkan kosong untuk membuat ujian global yang bisa diakses semua siswa
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name="duration_minutes"
                       render={({ field }) => (
                         <FormItem>
@@ -535,11 +563,33 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
                       render={() => (
                         <FormItem>
                           <FormLabel>Soal Dipilih</FormLabel>
-                          <div className="flex items-center gap-2 p-3 bg-muted/50 dark:bg-muted/30 rounded-md">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {selectedCount} dari {totalSoal} soal dipilih
-                            </span>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 p-3 bg-muted/50 dark:bg-muted/30 rounded-md">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">
+                                {selectedCount} dari {totalSoal} soal dipilih
+                              </span>
+                            </div>
+                            {form.watch('kelas_id') && (
+                              <div className="flex items-center gap-2 p-2 bg-primary/10 border border-primary/20 rounded-md">
+                                <Badge variant="secondary" className="text-xs">
+                                  Ujian Kelas
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Hanya siswa dari kelas yang dipilih yang dapat mengakses ujian ini
+                                </span>
+                              </div>
+                            )}
+                            {!form.watch('kelas_id') && (
+                              <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md">
+                                <Badge variant="outline" className="text-xs">
+                                  Ujian Global
+                                </Badge>
+                                <span className="text-xs text-muted-foreground dark:text-gray-300">
+                                  Semua siswa dapat mengakses ujian ini
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <FormMessage />
                         </FormItem>

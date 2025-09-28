@@ -8,6 +8,7 @@ interface ExamSecurityContextValue {
     isSecurityEnabled: boolean
     securityReport: {
         totalEvents: number
+        totalViolationCount: number
         tabSwitches: number
         rightClicks: number
         forbiddenKeys: number
@@ -18,6 +19,7 @@ interface ExamSecurityContextValue {
         isSplitScreenMode: boolean
     }
     tabSwitchCount: number
+    totalViolationCount: number
     isWindowFocused: boolean
     isSplitScreenMode: boolean
     enableSecurity: () => void
@@ -50,10 +52,11 @@ export function ExamSecurityProvider({
         // Default handling berdasarkan jenis pelanggaran
         switch (violationType) {
             case 'tab_switch':
-                if (details?.action === 'left') {
-                    toast.error('🚨 Peringatan: Anda meninggalkan halaman ujian!', {
-                        description: 'Kembali sekarang! Aktivitas ini dicatat dan dapat mempengaruhi nilai.',
-                        duration: 8000,
+                // Tidak tampilkan toast untuk 'left', alert akan muncul saat 'returned'
+                if (details?.action === 'returned') {
+                    toast.warning('� Kembali ke Ujian', {
+                        description: 'Anda telah kembali ke halaman ujian. Tetap fokus untuk menyelesaikan ujian.',
+                        duration: 4000,
                     })
                 }
                 break
@@ -90,6 +93,17 @@ export function ExamSecurityProvider({
                 })
                 break
                 
+            case 'screenshot_attempt':
+                // Different handling based on screenshot method
+                const method = details?.method || 'unknown'
+                if (details?.attemptCount >= 3) {
+                    toast.error('🚨 Multiple Screenshot Attempts!', {
+                        description: `${details.attemptCount} percobaan screenshot terdeteksi. Aktivitas ini akan dilaporkan.`,
+                        duration: 10000,
+                    })
+                }
+                break
+                
             case 'before_unload':
                 // This is handled by the browser's native dialog
                 break
@@ -109,6 +123,7 @@ export function ExamSecurityProvider({
         isWindowFocused,
         tabSwitchCount,
         isSplitScreenMode,
+        totalViolationCount,
         getSecurityReport
     } = useExamSecurity({
         isExamActive: isSecurityEnabled,
@@ -117,6 +132,7 @@ export function ExamSecurityProvider({
         enableBeforeUnload: true,
         enableFocusDetection: true,
         enableTextSelection: true,
+        enableAntiScreenshot: true,
         examTitle
     })
 
@@ -154,6 +170,7 @@ export function ExamSecurityProvider({
         isSecurityEnabled,
         securityReport: getSecurityReport(),
         tabSwitchCount,
+        totalViolationCount,
         isWindowFocused,
         isSplitScreenMode,
         enableSecurity,
@@ -183,6 +200,7 @@ export function useExamSecurityStatus() {
         isSecurityEnabled: context.isSecurityEnabled,
         isWindowFocused: context.isWindowFocused,
         tabSwitchCount: context.tabSwitchCount,
+        totalViolationCount: context.totalViolationCount,
         isSplitScreenMode: context.isSplitScreenMode,
         securityReport: context.securityReport
     }

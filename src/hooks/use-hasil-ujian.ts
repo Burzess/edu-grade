@@ -300,6 +300,35 @@ export function useUpdateScore() {
         }) => {
             console.log('📝 Updating score:', { jawabanId, score, feedback })
 
+            // Validasi input
+            if (!jawabanId) {
+                throw new Error('ID jawaban tidak boleh kosong')
+            }
+            
+            if (score < 0 || score > 100) {
+                throw new Error('Score harus antara 0-100')
+            }
+
+            // Cek dulu apakah jawaban ada
+            const { data: existingData, error: checkError } = await supabase
+                .from('jawaban_siswa')
+                .select('id, ujian_id, siswa_id, soal_id')
+                .eq('id', jawabanId)
+                .maybeSingle()
+
+            if (checkError) {
+                console.error('❌ Error checking jawaban:', checkError)
+                throw new Error(`Error saat cek jawaban: ${checkError.message}`)
+            }
+
+            if (!existingData) {
+                console.error('❌ Jawaban tidak ditemukan dengan ID:', jawabanId)
+                throw new Error(`Jawaban dengan ID ${jawabanId} tidak ditemukan`)
+            }
+
+            console.log('✅ Jawaban ditemukan:', existingData)
+
+            // Update score
             const { data, error } = await supabase
                 .from('jawaban_siswa')
                 .update({
@@ -309,20 +338,29 @@ export function useUpdateScore() {
                 })
                 .eq('id', jawabanId)
                 .select()
-                .single()
 
             if (error) {
                 console.error('❌ Error updating score:', error)
-                throw error
+                throw new Error(`Gagal update score: ${error.message}`)
             }
 
-            console.log('✅ Score updated successfully:', data)
-            return data
+            if (!data || data.length === 0) {
+                console.error('❌ Update tidak menghasilkan data:', data)
+                throw new Error('Update score tidak berhasil - tidak ada data yang berubah')
+            }
+
+            console.log('✅ Score updated successfully:', data[0])
+            return data[0]
         },
         onSuccess: (data) => {
-            // Invalidate related queries
+            console.log('🔄 Invalidating related queries after score update')
+            // Invalidate related queries untuk refresh UI
             queryClient.invalidateQueries({ queryKey: ['hasil'] })
             queryClient.invalidateQueries({ queryKey: ['jawaban'] })
+            queryClient.invalidateQueries({ queryKey: ['ujian'] })
         },
+        onError: (error) => {
+            console.error('❌ Mutation error:', error)
+        }
     })
 }

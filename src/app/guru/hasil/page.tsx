@@ -168,7 +168,7 @@ export default function GuruHasilDashboard() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-2xl font-bold">
             Hasil Ujian Siswa
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mt-1">

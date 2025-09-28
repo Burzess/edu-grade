@@ -1,8 +1,6 @@
-"use client"
-
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useBatchSubmitJawaban } from '@/hooks/use-jawaban'
+import { useBatchSubmitJawaban, useBatchAIGrading } from '@/hooks/use-jawaban'
 import { useStartUjianSiswa, useSubmitUjianSiswa } from '@/hooks/use-ujian'
 import { useOptimizedDebouncedSubmitJawaban } from '@/hooks/use-optimized-jawaban'
 import { toast } from 'sonner'
@@ -13,9 +11,12 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
     const [answers, setAnswers] = useState<{ [key: string]: string }>({})
     const [timeLeft, setTimeLeft] = useState<number | null>(null)
     const [navigatorOpen, setNavigatorOpen] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false) // Submission state flag
+    const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0) // Prevent rapid submissions
 
     // Use hooks
     const batchSubmit = useBatchSubmitJawaban()
+    const batchAIGrading = useBatchAIGrading()
     const { debouncedSubmit, forceSubmit } = useOptimizedDebouncedSubmitJawaban()
     const startUjianSiswaMutation = useStartUjianSiswa()
     const submitUjianSiswaMutation = useSubmitUjianSiswa()
@@ -27,20 +28,41 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
         let submissions: any[] = []
         
         try {
+            const now = Date.now()
+            
+            // ENHANCED: Multiple layers of duplicate prevention
+            if (isSubmitting) {
+                console.log('🛑 Submit already in progress (isSubmitting=true), aborting...')
+                return
+            }
+
+            if (batchSubmit.isPending) {
+                console.log('🛑 Submit already pending (batchSubmit.isPending=true), aborting...')
+                return
+            }
+
+            // Prevent rapid successive submissions (< 2 seconds apart)
+            if (now - lastSubmissionTime < 2000) {
+                console.log('🛑 Rapid submission prevented (< 2 seconds since last attempt)')
+                toast.warning('Mohon tunggu sebelum mencoba submit lagi')
+                return
+            }
+
+            // Set submission flag and timestamp immediately
+            setIsSubmitting(true)
+            setLastSubmissionTime(now)
+            console.log('🔒 Setting isSubmitting=true to prevent duplicates')
+
             // PERBAIKAN: Validasi lebih ketat sebelum submit
             if (!ujianId) {
                 toast.error('ID ujian tidak valid')
+                setIsSubmitting(false)
                 return
             }
 
             if (!organizedQuestions || organizedQuestions.length === 0) {
                 toast.error('Tidak ada soal untuk dikumpulkan')
-                return
-            }
-
-            // PERBAIKAN: Cek apakah sedang dalam proses submit untuk mencegah double submit
-            if (batchSubmit.isPending) {
-                console.log('⏳ Submit sudah dalam proses, menunggu...')
+                setIsSubmitting(false)
                 return
             }
 
@@ -52,16 +74,26 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
                 const confirmSubmit = window.confirm(
                     `Masih ada ${unansweredQuestions.length} soal yang tidak dijawab dan akan mendapat skor 0. Yakin ingin mengumpulkan ujian?`
                 )
-                if (!confirmSubmit) return
+                if (!confirmSubmit) {
+                    setIsSubmitting(false) // Reset flag if user cancels
+                    return
+                }
             }
 
-            console.log('📤 Final submit - saving all answers...', {
+            console.log('� FINAL SUBMIT - This should be the ONLY database submission:', {
                 isAutoSubmit,
                 totalQuestions: organizedQuestions.length,
                 answeredQuestions: organizedQuestions.length - unansweredQuestions.length,
-                unansweredQuestions: unansweredQuestions.length
+                unansweredQuestions: unansweredQuestions.length,
+                ujianId,
+                autoSaveDisabled: true,
+                onlyFinalSubmit: true,
+                timestamp: new Date().toISOString()
             })
 
+            // ENHANCED: Create unique submissions by filtering duplicates at application level
+            const uniqueSubmissions = new Map()
+            
             submissions = organizedQuestions
                 .filter((q: any) => q?.soal?.id)
                 .map((q: any) => ({
@@ -69,15 +101,34 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
                     soal_id: q.soal.id,
                     answer_text: answers[q.soal.id] || ''
                 }))
+                .filter((submission) => {
+                    // Deduplicate by creating unique key
+                    const key = `${submission.ujian_id}-${submission.soal_id}`
+                    if (uniqueSubmissions.has(key)) {
+                        console.warn('🔄 Duplicate submission detected and filtered:', key)
+                        return false
+                    }
+                    uniqueSubmissions.set(key, true)
+                    return true
+                })
 
             if (submissions.length === 0) {
                 toast.error('Tidak ada jawaban valid untuk dikumpulkan')
+                setIsSubmitting(false) // Reset flag on error
                 return
             }
 
-            console.log('📊 Submitting answers with proper batch mutation...', {
+            // ENHANCED: Log submission details for debugging
+            console.log('📊 Prepared unique submissions:', {
                 submissionCount: submissions.length,
-                ujianId
+                originalCount: organizedQuestions.filter(q => q?.soal?.id).length,
+                duplicatesFiltered: organizedQuestions.filter(q => q?.soal?.id).length - submissions.length,
+                ujianId,
+                soalIds: submissions.map(s => s.soal_id),
+                nonEmptyAnswers: submissions.filter(s => s.answer_text.trim() !== '').length,
+                emptyAnswers: submissions.filter(s => s.answer_text.trim() === '').length,
+                uniqueKeys: Array.from(uniqueSubmissions.keys()),
+                timestamp: new Date().toISOString()
             })
             
             // PERBAIKAN: Gunakan try-catch yang lebih spesifik untuk batch submit
@@ -91,6 +142,9 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
                     message: batchError instanceof Error ? batchError.message : 'Unknown error',
                     submissions: submissions.length
                 })
+                
+                // Reset submission flag on error
+                setIsSubmitting(false)
                 
                 // PERBAIKAN: Error message yang lebih informatif
                 if (batchError instanceof Error) {
@@ -107,28 +161,27 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
                 return
             }
                 
-            // Trigger AI grading for essay questions in background
-            if (Array.isArray(result)) {
-                result.forEach(async (savedJawaban) => {
-                    const question = organizedQuestions.find((q: any) => q.soal.id === savedJawaban.soal_id)
-                    if (question?.soal?.question_type === 'essay' && savedJawaban.answer_text) {
-                        try {
-                            const response = await fetch('/api/ai-grading', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ jawabanId: savedJawaban.id }),
-                            })
-                            
-                            if (response.ok) {
-                                console.log('🤖 AI grading triggered for essay jawaban:', savedJawaban.id)
-                            }
-                        } catch (error) {
-                            console.log('⚠️ AI grading trigger failed (background):', error)
+            // NEW: Trigger batch AI grading untuk semua jawaban sekaligus
+            if (Array.isArray(result) && result.length > 0) {
+                console.log('🚀 Starting batch AI grading for all answers...')
+                
+                try {
+                    // Trigger batch AI grading dengan optimized mode
+                    await batchAIGrading.mutateAsync({
+                        ujianId,
+                        options: {
+                            useOptimized: true,
+                            useBatching: true,
+                            forceAI: false // Akan auto-grade multiple choice, AI untuk essay
                         }
-                    }
-                })
+                    })
+                    
+                    console.log('✅ Batch AI grading completed successfully')
+                } catch (aiGradingError) {
+                    console.error('❌ Batch AI grading failed (non-critical):', aiGradingError)
+                    // Don't fail the submission if AI grading fails
+                    toast.warning('Jawaban tersimpan, tapi penilaian AI mengalami masalah. Akan diproses ulang nanti.')
+                }
             }
 
             // PERBAIKAN: Update status ujian_siswa dengan error handling
@@ -144,6 +197,10 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
             // Cleanup localStorage
             localStorage.removeItem(`ujian_${ujianId}_answers`)
 
+            // SUCCESS: Reset submission flag
+            setIsSubmitting(false)
+            console.log('🔓 Setting isSubmitting=false (success)')
+
             toast.success(
                 isAutoSubmit
                     ? 'Waktu habis! Ujian berhasil dikumpulkan otomatis!'
@@ -151,10 +208,15 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
             )
 
             setTimeout(() => {
-                router.push('/siswa/dashboard')
+                // Redirect dengan force refresh untuk memastikan data terbaru
+                window.location.href = '/siswa/dashboard'
             }, isAutoSubmit ? 2000 : 1000)
 
         } catch (error) {
+            // CRITICAL ERROR: Reset submission flag
+            setIsSubmitting(false)
+            console.log('🔓 Setting isSubmitting=false (error)')
+            
             console.error('❌ Critical error in handleSubmitAll:', {
                 error,
                 message: error instanceof Error ? error.message : 'Unknown error',
@@ -352,6 +414,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
         timeLeft,
         navigatorOpen,
         setNavigatorOpen,
+        isSubmitting, // NEW: Add isSubmitting state
         handleSubmitAll,
         handleAnswerChange,
         handleNext,

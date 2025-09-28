@@ -75,7 +75,7 @@ export const QuestionCard = memo(({
                     <div className="font-semibold mb-3 xl:mb-4 text-primary text-sm sm:text-base xl:text-lg">
                         Pertanyaan:
                     </div>
-                    <div className="text-foreground whitespace-pre-wrap text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose">
+                    <div className="text-foreground whitespace-pre-wrap text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose exam-question-text">
                         {soal.question_text}
                     </div>
                 </div>
@@ -92,7 +92,7 @@ export const QuestionCard = memo(({
                                 value={answer}
                                 onChange={(e) => onAnswerChange(e.target.value)}
                                 rows={6}
-                                className="min-h-[150px] sm:min-h-[200px] xl:min-h-[250px] text-sm sm:text-base xl:text-lg leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 border-2"
+                                className="min-h-[150px] sm:min-h-[200px] xl:min-h-[250px] text-sm sm:text-base xl:text-lg leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 border-2 exam-answer-input"
                             />
                         </div>
                     ) : (

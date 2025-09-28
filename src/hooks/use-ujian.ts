@@ -46,6 +46,11 @@ export function useUjian(page = 1, limit = 10) {
         .from('ujian')
         .select(`
           *,
+          kelas:kelas_id(
+            id,
+            nama_kelas,
+            kode_kelas
+          ),
           ujian_soal(
             id,
             soal_id,
@@ -150,12 +155,14 @@ export function useCreateUjian() {
       name,
       description,
       duration_minutes,
-      selected_soal
+      selected_soal,
+      kelas_id
     }: {
       name: string
       description?: string
       duration_minutes: number
       selected_soal: string[]
+      kelas_id?: string | null
     }) => {
       console.log('📘 Creating new ujian...', {
         name,
@@ -181,6 +188,7 @@ export function useCreateUjian() {
           description,
           duration_minutes,
           created_by: user.id,
+          kelas_id: kelas_id || null,
         })
         .select()
         .single()
@@ -227,13 +235,15 @@ export function useUpdateUjian() {
       name,
       description,
       duration_minutes,
-      selected_soal
+      selected_soal,
+      kelas_id
     }: {
       id: string
       name: string
       description?: string
       duration_minutes: number
       selected_soal: string[]
+      kelas_id?: string | null
     }) => {
 
       if (!user?.id) {
@@ -250,6 +260,7 @@ export function useUpdateUjian() {
         name,
         description,
         duration_minutes,
+        kelas_id,
       }
 
       const { data: ujian, error: ujianError } = await supabase
