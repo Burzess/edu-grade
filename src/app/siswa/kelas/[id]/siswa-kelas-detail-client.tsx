@@ -347,7 +347,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
     try {
       setIsLoading(true)
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session) {
         router.push('/login')
         return
@@ -392,7 +392,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
     try {
       setIsLoadingUjian(true)
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session) {
         return
       }
@@ -501,11 +501,8 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
                 </CardDescription>
               )}
             </div>
-            <Badge variant="outline" className="text-sm font-mono">
-              {kelasDetail.kode_kelas}
-            </Badge>
           </div>
-          
+
           <div className="flex items-center gap-6 pt-4">
             <div className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-muted-foreground" />
@@ -513,9 +510,9 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
               <span>{kelasDetail.guru_name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">Bergabung:</span>
-              <span>{formatDate(kelasDetail.joined_at)}</span>
+              <Badge variant="outline" className="text-sm font-mono">
+                Kode: {kelasDetail.kode_kelas}
+              </Badge>
             </div>
           </div>
         </CardHeader>
@@ -546,19 +543,6 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
           <CardContent>
             <div className="text-2xl font-bold">{completedUjian.length}</div>
             <p className="text-xs text-muted-foreground">Sudah diselesaikan</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Total Ujian
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{availableUjian.length}</div>
-            <p className="text-xs text-muted-foreground">Ujian tersedia</p>
           </CardContent>
         </Card>
       </div>

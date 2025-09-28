@@ -34,13 +34,15 @@ interface ExamSecurityProviderProps {
     examTitle?: string
     onSecurityViolation?: (violationType: string, details?: any) => void
     autoEnable?: boolean
+    isSubmitted?: boolean // NEW: Flag to disable security after successful submission
 }
 
 export function ExamSecurityProvider({ 
     children, 
     examTitle = "Ujian",
     onSecurityViolation,
-    autoEnable = true
+    autoEnable = true,
+    isSubmitted = false
 }: ExamSecurityProviderProps) {
     const [isSecurityEnabled, setIsSecurityEnabled] = useState(autoEnable)
     
@@ -133,7 +135,8 @@ export function ExamSecurityProvider({
         enableFocusDetection: true,
         enableTextSelection: true,
         enableAntiScreenshot: true,
-        examTitle
+        examTitle,
+        isSubmitted // Pass isSubmitted to disable security after submission
     })
 
     const enableSecurity = () => {

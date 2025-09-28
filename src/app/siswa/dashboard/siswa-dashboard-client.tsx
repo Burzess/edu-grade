@@ -198,18 +198,6 @@ export default function SiswaDashboardClient() {
       <div className="space-y-6">
         {/* Welcome Card with Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 bg-gradient-to-r from-primary/5 to-primary/10">
-            <CardHeader>
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Users className="h-6 w-6 text-primary" />
-                Kelas Saya
-              </CardTitle>
-              <p className="text-muted-foreground">
-                Pilih kelas untuk melihat ujian dan materi yang tersedia
-              </p>
-            </CardHeader>
-          </Card>
-          
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">

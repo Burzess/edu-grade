@@ -334,10 +334,22 @@ function HasilUjianPageContent() {
               : 'Anda belum mengerjakan ujian ini atau hasil belum tersedia.'
             }
           </p>
-          <Button onClick={() => router.push('/siswa/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali ke Dashboard
-          </Button>
+          {ujian?.kelas_id ? (
+            <div className="space-x-2">
+              <Button onClick={() => router.push(`/siswa/kelas/${ujian.kelas_id}`)}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Kembali ke Kelas
+              </Button>
+              <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
+                Dashboard
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => router.push('/siswa/dashboard')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Kembali ke Dashboard
+            </Button>
+          )}
         </div>
       </div>
     )
@@ -354,11 +366,25 @@ function HasilUjianPageContent() {
 
   return (
     <div className="container mx-auto px-4 md:px-8 py-6 space-y-8">
-      {/* Back button */}
-      <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Kembali ke Dashboard
-      </Button>
+      {/* Back buttons */}
+      <div className="flex items-center gap-2">
+        {ujian?.kelas_id ? (
+          <>
+            <Button variant="default" onClick={() => router.push(`/siswa/kelas/${ujian.kelas_id}`)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Kembali ke Kelas
+            </Button>
+            <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
+              Dashboard
+            </Button>
+          </>
+        ) : (
+          <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Kembali ke Dashboard
+          </Button>
+        )}
+      </div>
 
       {/* Header */}
       <Card>

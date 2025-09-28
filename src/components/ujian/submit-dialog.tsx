@@ -29,6 +29,7 @@ interface SubmitDialogProps {
     totalAnswered: number
     totalQuestions: number
     isSubmitting: boolean
+    ujian?: any // NEW: Added ujian parameter for redirect info
 }
 
 export const SubmitDialog = memo(({
@@ -38,7 +39,8 @@ export const SubmitDialog = memo(({
     sectionProgress,
     totalAnswered,
     totalQuestions,
-    isSubmitting
+    isSubmitting,
+    ujian
 }: SubmitDialogProps) => {
     const unansweredCount = totalQuestions - totalAnswered
 
@@ -75,6 +77,15 @@ export const SubmitDialog = memo(({
                     <div className="text-destructive text-sm">
                         ⚠️ Setelah dikumpulkan, Anda tidak bisa mengubah jawaban lagi.
                     </div>
+                    
+                    {ujian?.kelas_id && (
+                        <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg text-sm">
+                            <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">ℹ️ Setelah submit:</div>
+                            <div className="text-blue-700 dark:text-blue-300">
+                                Anda akan diarahkan kembali ke halaman kelas untuk melihat hasil ujian.
+                            </div>
+                        </div>
+                    )}
                 </div>
                 
                 <AlertDialogFooter>

@@ -30,9 +30,19 @@ export const UjianHeader = memo(({
                 <div className="flex items-center justify-between gap-2 xl:gap-6">
                     <div className="flex-1 min-w-0">
                         <h1 className="text-base sm:text-lg xl:text-2xl font-semibold truncate">{ujian.name}</h1>
-                        <p className="text-xs sm:text-sm xl:text-base text-muted-foreground truncate">
-                            Guru: {ujian.profiles?.full_name}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs sm:text-sm xl:text-base text-muted-foreground truncate">
+                                Guru: {ujian.profiles?.full_name}
+                            </p>
+                            {ujian.kelas_id && (
+                                <Badge 
+                                    variant="secondary" 
+                                    className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+                                >
+                                    Ujian Kelas
+                                </Badge>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2 xl:gap-6 flex-shrink-0">

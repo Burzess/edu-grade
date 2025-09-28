@@ -13,6 +13,7 @@ interface UseExamSecurityOptions {
     enableTextSelection?: boolean
     enableAntiScreenshot?: boolean
     examTitle?: string
+    isSubmitted?: boolean // NEW: Flag to disable security after successful submission
 }
 
 interface SecurityEvent {
@@ -30,7 +31,8 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         enableFocusDetection = true,
         enableTextSelection = true,
         enableAntiScreenshot = true,
-        examTitle = 'Ujian'
+        examTitle = 'Ujian',
+        isSubmitted = false
     } = options
 
     const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([])
@@ -271,7 +273,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         }
     }, [isExamActive, enableAntiCheating, recordSecurityEvent])
 
-    // Window focus detection
+    // Window focus detection - Skip violations if exam is submitted
     useEffect(() => {
         if (!isExamActive || !enableFocusDetection) return
 
@@ -285,10 +287,13 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                 setTabSwitchCount(prev => prev + 1)
                 lastVisibilityChange.current = now
                 
-                recordSecurityEvent('tab_switch', { 
-                    action: 'left',
-                    tabSwitchCount: tabSwitchCount + 1
-                })
+                // Don't record violation if exam is successfully submitted
+                if (!isSubmitted) {
+                    recordSecurityEvent('tab_switch', { 
+                        action: 'left',
+                        tabSwitchCount: tabSwitchCount + 1
+                    })
+                }
                 
                 console.log('⬅️ DEBUG - User left tab, sending event:', {
                     action: 'left',
@@ -305,14 +310,18 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                 console.log('🔄 DEBUG - User returned to tab, sending event:', {
                     action: 'returned',
                     timeAwayMs: timeAway,
-                    tabSwitchCount: tabSwitchCount
+                    tabSwitchCount: tabSwitchCount,
+                    isSubmitted
                 })
                 
-                recordSecurityEvent('tab_switch', { 
-                    action: 'returned',
-                    timeAwayMs: timeAway,
-                    tabSwitchCount: tabSwitchCount
-                })
+                // Don't record violation if exam is successfully submitted
+                if (!isSubmitted) {
+                    recordSecurityEvent('tab_switch', { 
+                        action: 'returned',
+                        timeAwayMs: timeAway,
+                        tabSwitchCount: tabSwitchCount
+                    })
+                }
                 
                 // Tidak tampilkan toast di sini, alert sudah ditangani di page level
                 
@@ -341,13 +350,19 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
             window.removeEventListener('blur', handleWindowBlur)
             window.removeEventListener('focus', handleWindowFocus)
         }
-    }, [isExamActive, enableFocusDetection, recordSecurityEvent, tabSwitchCount])
+    }, [isExamActive, enableFocusDetection, recordSecurityEvent, tabSwitchCount, isSubmitted])
 
-    // Before unload warning
+    // Before unload warning - Skip if exam is successfully submitted
     useEffect(() => {
-        if (!isExamActive || !enableBeforeUnload) return
+        if (!isExamActive || !enableBeforeUnload || isSubmitted) return
 
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            // Don't record or show warning if exam is successfully submitted
+            if (isSubmitted) {
+                console.log('✅ Exam submitted - skipping beforeunload warning')
+                return
+            }
+            
             recordSecurityEvent('before_unload', { timestamp: new Date() })
             
             const message = `Anda akan keluar dari ${examTitle}. Semua jawaban yang belum disimpan akan hilang. Yakin ingin keluar?`
@@ -361,7 +376,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload)
         }
-    }, [isExamActive, enableBeforeUnload, examTitle, recordSecurityEvent])
+    }, [isExamActive, enableBeforeUnload, examTitle, recordSecurityEvent, isSubmitted])
 
     // Mobile-specific security measures
     useEffect(() => {

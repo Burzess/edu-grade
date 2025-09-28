@@ -38,7 +38,7 @@ import {
     formatTime 
 } from '@/lib/ujian-utils'
 
-function UjianSiswaPageContent() {
+function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
     const params = useParams()
     const router = useRouter()
     const ujianId = params.id as string
@@ -103,6 +103,7 @@ function UjianSiswaPageContent() {
         navigatorOpen,
         setNavigatorOpen,
         isSubmitting, // NEW: Get isSubmitting state
+        isSubmitted, // NEW: Get isSubmitted state
         handleSubmitAll,
         handleAnswerChange,
         handleNext,
@@ -111,7 +112,7 @@ function UjianSiswaPageContent() {
         registerToUjian,
         setupTimer,
         batchSubmit
-    } = useUjianLogic(ujianId, organizedQuestions)
+    } = useUjianLogic(ujianId, organizedQuestions, ujian, onSubmitted)
 
     const currentQuestion = organizedQuestions[currentQuestionIndex]
     const currentSectionType = currentQuestion?.soal?.question_type || 'multiple_choice'
@@ -499,7 +500,8 @@ function UjianSiswaPageContent() {
                     sectionProgress={sectionProgress}
                     totalAnswered={answeredCount}
                     totalQuestions={organizedQuestions.length}
-                    isSubmitting={isSubmitting || batchSubmit.isPending} 
+                    isSubmitting={isSubmitting || batchSubmit.isPending}
+                    ujian={ujian} 
                 />
 
             {/* Screenshot Warning Components */}
@@ -541,6 +543,7 @@ function UjianSiswaWithSecurity() {
     const params = useParams()
     const ujianId = params.id as string
     const { user } = useAuthStore()
+    const [isSubmitted, setIsSubmitted] = useState(false)
 
     // Handler untuk pelanggaran keamanan di level provider dengan logic alert
     const handleSecurityViolation = useCallback((violationType: string, details?: any) => {
@@ -636,8 +639,9 @@ function UjianSiswaWithSecurity() {
             examTitle="Ujian Online"
             autoEnable={true}
             onSecurityViolation={handleSecurityViolation}
+            isSubmitted={isSubmitted}
         >
-            <UjianSiswaPageContent />
+            <UjianSiswaPageContent onSubmitted={() => setIsSubmitted(true)} />
         </ExamSecurityProvider>
     )
 }

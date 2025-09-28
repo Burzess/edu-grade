@@ -1195,6 +1195,7 @@ export function useUjianForSiswa(ujianId: string) {
                     .from('ujian')
                     .select(`
                         *,
+                        kelas_id,
                         profiles (full_name)
                     `)
                     .eq('id', ujianId)

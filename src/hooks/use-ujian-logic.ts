@@ -5,7 +5,7 @@ import { useStartUjianSiswa, useSubmitUjianSiswa } from '@/hooks/use-ujian'
 import { useOptimizedDebouncedSubmitJawaban } from '@/hooks/use-optimized-jawaban'
 import { toast } from 'sonner'
 
-export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
+export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?: any, onSubmitted?: () => void) => {
     const router = useRouter()
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
     const [answers, setAnswers] = useState<{ [key: string]: string }>({})
@@ -13,6 +13,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
     const [navigatorOpen, setNavigatorOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false) // Submission state flag
     const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0) // Prevent rapid submissions
+    const [isSubmitted, setIsSubmitted] = useState(false) // Track if exam is successfully submitted
 
     // Use hooks
     const batchSubmit = useBatchSubmitJawaban()
@@ -197,19 +198,50 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
             // Cleanup localStorage
             localStorage.removeItem(`ujian_${ujianId}_answers`)
 
-            // SUCCESS: Reset submission flag
+            // SUCCESS: Reset submission flag and mark as submitted
             setIsSubmitting(false)
+            setIsSubmitted(true) // Mark as successfully submitted
+            onSubmitted?.() // Call callback to notify parent component
             console.log('🔓 Setting isSubmitting=false (success)')
 
-            toast.success(
-                isAutoSubmit
-                    ? 'Waktu habis! Ujian berhasil dikumpulkan otomatis!'
-                    : 'Ujian berhasil dikumpulkan!'
-            )
+            // Tampilkan pesan toast yang informatif tergantung tujuan redirect
+            if (ujian?.kelas_id) {
+                toast.success(
+                    isAutoSubmit
+                        ? 'Waktu habis! Ujian berhasil dikumpulkan otomatis!'
+                        : 'Ujian berhasil dikumpulkan!',
+                    {
+                        description: 'Anda akan diarahkan ke halaman kelas...'
+                    }
+                )
+            } else {
+                toast.success(
+                    isAutoSubmit
+                        ? 'Waktu habis! Ujian berhasil dikumpulkan otomatis!'
+                        : 'Ujian berhasil dikumpulkan!'
+                )
+            }
 
             setTimeout(() => {
-                // Redirect dengan force refresh untuk memastikan data terbaru
-                window.location.href = '/siswa/dashboard'
+                // PERBAIKAN: Redirect ke halaman kelas jika ujian terkait dengan kelas tertentu
+                if (ujian?.kelas_id) {
+                    const kelasUrl = `/siswa/kelas/${ujian.kelas_id}`
+                    console.log('🎯 Redirecting to kelas page:', {
+                        ujianId,
+                        kelasId: ujian.kelas_id,
+                        ujianName: ujian.name,
+                        redirectUrl: kelasUrl
+                    })
+                    window.location.href = kelasUrl
+                } else {
+                    console.log('🎯 Redirecting to dashboard (no kelas_id):', {
+                        ujianId,
+                        ujianName: ujian?.name || 'Unknown',
+                        kelasId: 'null/undefined',
+                        redirectUrl: '/siswa/dashboard'
+                    })
+                    window.location.href = '/siswa/dashboard'
+                }
             }, isAutoSubmit ? 2000 : 1000)
 
         } catch (error) {
@@ -245,25 +277,35 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
                     : errorMessage
             )
         }
-    }, [organizedQuestions, answers, batchSubmit, submitUjianSiswaMutation, ujianId, router]) // PERBAIKAN: Dependency yang lebih spesifik
+    }, [organizedQuestions, answers, batchSubmit, submitUjianSiswaMutation, ujianId, ujian?.kelas_id, ujian?.name]) // PERBAIKAN: Dependency yang lebih spesifik
 
     // Setup auto submit ref
     useEffect(() => {
         autoSubmitRef.current = () => handleSubmitAll(true)
     })
 
-    // Handle force save (for page unload, etc.)
+    // Handle force save (for page unload, etc.) - Skip if exam is submitted
     useEffect(() => {
-        const handleBeforeUnload = async () => {
+        const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+            // If exam is successfully submitted, allow navigation without warning
+            if (isSubmitted) {
+                console.log('✅ Exam submitted - allowing navigation without warning')
+                return
+            }
+            
+            // Only force submit if exam is not yet submitted
             await forceSubmit()
         }
 
         window.addEventListener('beforeunload', handleBeforeUnload)
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload)
-            forceSubmit()
+            // Only force submit on cleanup if not submitted
+            if (!isSubmitted) {
+                forceSubmit()
+            }
         }
-    }, [forceSubmit])
+    }, [forceSubmit, isSubmitted])
 
     // Handle perubahan jawaban dengan optimized auto-save
     const handleAnswerChange = useCallback((soalId: string, answer: string) => {
@@ -415,6 +457,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[]) => {
         navigatorOpen,
         setNavigatorOpen,
         isSubmitting, // NEW: Add isSubmitting state
+        isSubmitted, // NEW: Add isSubmitted state
         handleSubmitAll,
         handleAnswerChange,
         handleNext,
