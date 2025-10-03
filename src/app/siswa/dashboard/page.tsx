@@ -28,7 +28,7 @@ export default function SiswaDashboard() {
   return (
     <AuthGuard 
       requiredRole="siswa"
-      loadingMessage="Memuat dashboard siswa..."
+      showLoading={false}
     >
       <div className="min-h-screen bg-background">
         <nav className="bg-card shadow-sm border-b">

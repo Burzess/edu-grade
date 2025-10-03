@@ -19,8 +19,6 @@ import {
   Clock,
   School,
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { id } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 

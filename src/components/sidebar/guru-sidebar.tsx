@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useAuthStore } from '@/store/auth'
 import { useAuth } from '@/components/providers/auth-provider'
+import { usePreloadNavigation, useHoverPreload } from '@/hooks/use-preload-navigation'
 import {
   BookOpen,
   BarChart3,
@@ -73,6 +74,14 @@ export function GuruSidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const { profile } = useAuthStore()
   const { signOut } = useAuth()
+  
+  // Preload navigation untuk performa yang lebih baik
+  usePreloadNavigation({ 
+    userRole: 'guru', 
+    priority: 'high', 
+    delay: 1000 
+  })
+  const { preloadOnHover } = useHoverPreload()
 
   const isActive = (href: string) => {
     if (href === '/guru/dashboard') {
@@ -164,6 +173,7 @@ export function GuruSidebar({ className }: SidebarProps) {
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
               title={isCollapsed ? item.name : undefined}
+              {...preloadOnHover(item.href)}
             >
               <Icon className={cn(
                 "flex-shrink-0",

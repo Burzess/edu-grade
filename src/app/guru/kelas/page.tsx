@@ -6,7 +6,7 @@ import { AuthGuard } from '@/components/auth/auth-guards';
 
 export default function GuruKelasPage() {
   return (
-    <AuthGuard requiredRole="guru">
+    <AuthGuard requiredRole="guru" showLoading={false}>
       <GuruLayout>
         <KelolaKelasPage />
       </GuruLayout>

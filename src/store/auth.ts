@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { subscribeWithSelector } from 'zustand/middleware'
+import { subscribeWithSelector, persist } from 'zustand/middleware'
 import { User } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
@@ -12,18 +12,12 @@ interface AuthState {
     error: string | null
     lastUpdated: number
     profileCache: { [userId: string]: { profile: Profile; timestamp: number } }
-    // Middleware integration
-    isMiddlewareAuth: boolean // Flag untuk tahu data berasal dari middleware
-    middlewareChecked: boolean // Flag untuk tahu middleware sudah dicek
     setUser: (user: User | null) => void
     setProfile: (profile: Profile | null) => void
     setLoading: (loading: boolean) => void
     setError: (error: string | null) => void
     logout: () => void
     reset: () => void
-    // Middleware methods
-    setMiddlewareAuth: (isMiddleware: boolean) => void
-    setMiddlewareChecked: (checked: boolean) => void
     // Computed getters untuk mencegah re-computation
     isAuthenticated: () => boolean
     getUserRole: () => string | null
@@ -34,16 +28,38 @@ interface AuthState {
 }
 
 // Initial state untuk reset
-const initialState = {
-    user: null,
-    profile: null,
-    loading: true,
-    error: null,
-    lastUpdated: 0,
-    profileCache: {},
-    isMiddlewareAuth: false,
-    middlewareChecked: false
+const getInitialState = () => {
+    // Check session storage untuk state yang di-cache
+    if (typeof window !== 'undefined') {
+        try {
+            const cached = sessionStorage.getItem('auth-state-cache')
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                // Hanya gunakan cache jika masih fresh (< 5 menit)
+                if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+                    return {
+                        ...parsed.state,
+                        loading: false, // Set loading false jika ada cache
+                        lastUpdated: parsed.timestamp
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to parse auth cache:', error)
+        }
+    }
+    
+    return {
+        user: null,
+        profile: null,
+        loading: true,
+        error: null,
+        lastUpdated: 0,
+        profileCache: {}
+    }
 }
+
+const initialState = getInitialState()
 
 export const useAuthStore = create<AuthState>()(
     subscribeWithSelector((set, get) => ({
@@ -52,22 +68,48 @@ export const useAuthStore = create<AuthState>()(
         setUser: (user) => {
             const currentState = get()
             if (currentState.user?.id !== user?.id) {
-                set({ 
+                const newState = { 
                     user, 
                     lastUpdated: Date.now(),
                     error: null // Clear error saat user berubah
-                })
+                }
+                set(newState)
+                
+                // Cache ke session storage untuk navigasi yang smooth
+                if (typeof window !== 'undefined' && user) {
+                    try {
+                        sessionStorage.setItem('auth-state-cache', JSON.stringify({
+                            state: { ...get(), ...newState },
+                            timestamp: Date.now()
+                        }))
+                    } catch (error) {
+                        console.warn('Failed to cache auth state:', error)
+                    }
+                }
             }
         },
         
         setProfile: (profile) => {
             const currentState = get()
             if (currentState.profile?.id !== profile?.id || currentState.profile?.role !== profile?.role) {
-                set({ 
+                const newState = { 
                     profile, 
                     lastUpdated: Date.now(),
                     error: null
-                })
+                }
+                set(newState)
+                
+                // Cache ke session storage
+                if (typeof window !== 'undefined' && profile) {
+                    try {
+                        sessionStorage.setItem('auth-state-cache', JSON.stringify({
+                            state: { ...get(), ...newState },
+                            timestamp: Date.now()
+                        }))
+                    } catch (error) {
+                        console.warn('Failed to cache auth state:', error)
+                    }
+                }
             }
         },
         
@@ -87,10 +129,22 @@ export const useAuthStore = create<AuthState>()(
         
         logout: () => {
             set({ 
-                ...initialState,
+                user: null,
+                profile: null,
                 loading: false,
-                lastUpdated: Date.now()
+                error: null,
+                lastUpdated: Date.now(),
+                profileCache: {}
             })
+            
+            // Clear session storage cache
+            if (typeof window !== 'undefined') {
+                try {
+                    sessionStorage.removeItem('auth-state-cache')
+                } catch (error) {
+                    console.warn('Failed to clear auth cache:', error)
+                }
+            }
         },
         
         reset: () => {
@@ -98,15 +152,6 @@ export const useAuthStore = create<AuthState>()(
                 ...initialState,
                 lastUpdated: Date.now()
             })
-        },
-
-        // Middleware methods
-        setMiddlewareAuth: (isMiddleware: boolean) => {
-            set({ isMiddlewareAuth: isMiddleware })
-        },
-
-        setMiddlewareChecked: (checked: boolean) => {
-            set({ middlewareChecked: checked })
         },
 
         // Caching methods dengan optimasi

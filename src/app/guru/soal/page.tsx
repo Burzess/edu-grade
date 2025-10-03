@@ -310,7 +310,7 @@ function SoalListPageContent() {
 
 export default function SoalListPage() {
     return (
-        <AuthGuard requiredRole="guru">
+        <AuthGuard requiredRole="guru" showLoading={false}>
             <GuruLayout>
                 <SoalListPageContent />
             </GuruLayout>

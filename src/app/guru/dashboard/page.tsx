@@ -14,7 +14,7 @@ export default function GuruDashboard() {
   return (
     <AuthGuard 
       requiredRole="guru"
-      loadingMessage="Memuat dashboard guru..."
+      showLoading={false}
     >
       <GuruLayout>
         <div className="p-6 space-y-6">

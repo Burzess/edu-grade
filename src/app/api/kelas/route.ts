@@ -168,26 +168,42 @@ export async function GET(request: NextRequest) {
         .order('joined_at', { ascending: false });
 
       if (error) {
+        console.error('❌ Siswa kelas query failed:', error);
         return NextResponse.json(
-          { error: 'Failed to fetch kelas data' },
+          { error: 'Failed to fetch kelas data', details: error.message },
           { status: 400 }
         );
       }
+
+      console.log('📊 Raw siswa kelas data:', { 
+        dataCount: data?.length, 
+        sampleItem: data?.[0] 
+      });
 
       // Transform data untuk siswa dengan type assertion yang tepat
       kelasData = data?.map((item: any) => {
         const kelasInfo = item.kelas;
         const guruInfo = Array.isArray(kelasInfo?.profiles) ? kelasInfo.profiles[0] : kelasInfo?.profiles;
         
-        return {
+        const transformedItem = {
           id: kelasInfo?.id,
           nama_kelas: kelasInfo?.nama_kelas,
           deskripsi: kelasInfo?.deskripsi,
           kode_kelas: kelasInfo?.kode_kelas,
+          is_active: kelasInfo?.is_active, // Include is_active field
           guru_name: guruInfo?.full_name,
           joined_at: item.joined_at,
           created_at: kelasInfo?.created_at
         };
+        
+        console.log('🔍 Transformed item:', {
+          id: transformedItem.id,
+          nama: transformedItem.nama_kelas,
+          is_active: transformedItem.is_active,
+          typeof_active: typeof transformedItem.is_active
+        });
+        
+        return transformedItem;
       }) || [];
     }
 

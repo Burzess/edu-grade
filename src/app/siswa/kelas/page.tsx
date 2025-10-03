@@ -6,7 +6,7 @@ import { AuthGuard } from '@/components/auth/auth-guards';
 
 export default function SiswaKelasPageRoute() {
   return (
-    <AuthGuard requiredRole="siswa">
+    <AuthGuard requiredRole="siswa" showLoading={false}>
       <SiswaLayout>
         <SiswaKelasPage />
       </SiswaLayout>

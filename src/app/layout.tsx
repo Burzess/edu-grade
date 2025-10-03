@@ -5,8 +5,6 @@ import { Analytics } from "@vercel/analytics/next"
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { SessionMonitorProvider } from "@/components/providers/session-monitor-provider";
-// import { AuthDebugPanel } from "@/components/debug/auth-debug-panel";
 import { FloatingThemeToggle } from "@/components/ui/floating-theme-toggle";
 import { getCurrentUser } from "@/lib/auth-server";
 import ErrorBoundary from "@/components/ui/error-boundary";
@@ -54,7 +52,6 @@ export default async function RootLayout({
           >
             <QueryProvider>
               <AuthProvider initialUser={user}>
-                <SessionMonitorProvider>
                   {children}
                   {/* Toast Notifications */}
                   <Toaster
@@ -115,7 +112,6 @@ export default async function RootLayout({
                   <FloatingThemeToggle position="bottom-right" />
                   {/* Auth Debug Panel - Development only */}
                   {/* <AuthDebugPanel /> */}
-                </SessionMonitorProvider>
               </AuthProvider>
             </QueryProvider>
           </ThemeProvider>

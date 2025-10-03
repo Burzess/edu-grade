@@ -33,7 +33,7 @@ export const SimpleRoleGuard = memo(({
             </div>
         </div>
     ),
-    showLoading = true,
+    showLoading = false,
     loadingMessage = "Memverifikasi akses..."
 }: SimpleRoleGuardProps) => {
     const { isAuthenticated, userRole, loading, error } = useMiddlewareAuth()
@@ -41,9 +41,10 @@ export const SimpleRoleGuard = memo(({
     // Determine allowed roles
     const roles = allowedRoles || (requiredRole ? [requiredRole] : [])
 
-    // Loading state
+    // Optimized loading state - sangat singkat untuk UX yang smooth
     if (loading && showLoading) {
-        return <InlineAuthLoading message={loadingMessage} />
+        // Hanya tampilkan loading jika benar-benar diperlukan
+        return null // Tidak tampilkan loading untuk navigasi yang smooth
     }
 
     // Error state (middleware should have handled this, but as fallback)
@@ -53,27 +54,49 @@ export const SimpleRoleGuard = memo(({
             console.warn('SimpleRoleGuard: Auth error detected:', error)
         }
         
-        // For AbortErrors, just show loading briefly then let middleware handle
-        if (error.includes('AbortError') || error.includes('signal is aborted')) {
-            return showLoading ? <InlineAuthLoading message="Memverifikasi akses..." /> : null
+        // For AbortErrors or timeout errors, just show content (middleware will handle)
+        if (error.includes('AbortError') || 
+            error.includes('signal is aborted') || 
+            error.includes('timeout')) {
+            // Trust middleware to handle auth and show content immediately
+            return <>{children}</>
         }
         
-        return <InlineAuthLoading message="Terjadi kesalahan, mencoba lagi..." />
+        return null // Minimal error handling untuk smooth UX
     }
 
-    // Not authenticated (middleware should redirect, but as fallback)
-    if (!isAuthenticated) {
-        console.warn('SimpleRoleGuard: User not authenticated - middleware should have redirected')
-        return <InlineAuthLoading message="Mengalihkan ke login..." />
+    // Quick auth check - trust middleware for most cases
+    if (!isAuthenticated && typeof window !== 'undefined') {
+        // Check session storage cache untuk immediate auth state
+        try {
+            const cached = sessionStorage.getItem('auth-state-cache')
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+                    // Use cached auth state untuk immediate rendering
+                    const cachedAuth = parsed.state
+                    if (cachedAuth.user && cachedAuth.profile) {
+                        // Show content immediately if cached auth exists
+                        return <>{children}</>
+                    }
+                }
+            }
+        } catch (error) {
+            // Ignore cache errors
+        }
+        
+        // Only show redirect message if no cache available
+        return null
     }
 
-    // Role check
+    // Role check - lebih lenient untuk UX yang smooth
     if (roles.length > 0 && userRole && !roles.includes(userRole)) {
+        // Log untuk debugging tapi jangan block terlalu agresif
         console.warn('SimpleRoleGuard: Access denied for role:', userRole, 'Required:', roles)
         return <>{fallback}</>
     }
 
-    // All checks passed
+    // Default: show content (trust middleware for protection)
     return <>{children}</>
 })
 SimpleRoleGuard.displayName = 'SimpleRoleGuard'

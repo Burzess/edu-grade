@@ -30,7 +30,7 @@ export default function SiswaKelasDetailPage({ params }: PageProps) {
   const displayName = userEmail?.split('@')[0] || 'Siswa'
 
   return (
-    <AuthGuard requiredRole="siswa">
+    <AuthGuard requiredRole="siswa" showLoading={false}>
       <div className="min-h-screen bg-background">
         <nav className="bg-card shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

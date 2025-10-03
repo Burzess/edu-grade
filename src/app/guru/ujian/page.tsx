@@ -79,25 +79,29 @@ function UjianCard({ ujian, onDelete, onStartUjian }: UjianCardProps) {
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div className="space-y-1">
+            <div className="space-y-1 flex-1">
               <CardTitle className="text-lg">{ujian.name}</CardTitle>
               <CardDescription className="line-clamp-2">
                 {ujian.description || 'Tidak ada deskripsi'}
               </CardDescription>
+              <div className="flex items-center gap-2 pt-2">
+                {ujian.kelas_id ? (
+                  <Badge variant="outline" className="text-xs max-w-[200px]">
+                    <span className="truncate">
+                      {ujian.kelas?.nama_kelas || 'Kelas'}
+                    </span>
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs">
+                    Global
+                  </Badge>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Badge className={status.color} variant="secondary">
                 {status.label}
               </Badge>
-              {ujian.kelas_id ? (
-                <Badge variant="outline" className="text-xs">
-                  {ujian.kelas?.nama_kelas || 'Kelas'}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">
-                  Global
-                </Badge>
-              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
@@ -456,7 +460,7 @@ function UjianPageContent() {
 
 export default function UjianPage() {
   return (
-    <AuthGuard requiredRole="guru">
+    <AuthGuard requiredRole="guru" showLoading={false}>
       <GuruLayout>
         <UjianPageContent />
       </GuruLayout>

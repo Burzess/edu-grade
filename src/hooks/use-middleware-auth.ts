@@ -14,39 +14,35 @@ export interface MiddlewareAuth {
   error: string | null
 }
 
-// Cache auth data untuk mengurangi API calls berulang
-let cachedAuthData: MiddlewareAuth | null = null
-let lastCheckTime = 0
-const CACHE_DURATION = 30000 // 30 detik cache
-
 /**
- * Hook untuk mengakses auth data dari middleware headers
- * Dengan caching untuk mengurangi loading berlebihan saat navigasi
+ * Hook untuk mengakses auth data dari middleware headers dengan cache optimization
  */
 export function useMiddlewareAuth(): MiddlewareAuth {
   const [authData, setAuthData] = useState<MiddlewareAuth>(() => {
-    // Coba ambil dari sessionStorage dulu
+    // Inisialisasi dengan cached state jika ada
     if (typeof window !== 'undefined') {
-      const cached = sessionStorage.getItem('auth-quick-cache')
-      if (cached) {
-        try {
+      try {
+        const cached = sessionStorage.getItem('auth-state-cache')
+        if (cached) {
           const parsed = JSON.parse(cached)
-          const isRecent = Date.now() - parsed.timestamp < 5000 // 5 detik untuk navigasi cepat
-          if (isRecent) {
-            // Emit cache hit event
-            if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('authDebug', {
-                detail: { type: 'auth_cache_hit', data: { source: 'sessionStorage' } }
-              }))
+          if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+            return {
+              userId: parsed.state.user?.id || null,
+              userEmail: parsed.state.user?.email || null,
+              userRole: parsed.state.profile?.role || null,
+              isAuthenticated: !!(parsed.state.user && parsed.state.profile),
+              isGuru: parsed.state.profile?.role === 'guru',
+              isSiswa: parsed.state.profile?.role === 'siswa',
+              loading: false, // Set false untuk immediate rendering
+              error: null
             }
-            return { ...parsed.data, loading: false }
           }
-        } catch (e) {
-          sessionStorage.removeItem('auth-quick-cache')
         }
+      } catch (error) {
+        console.warn('Failed to parse auth cache:', error)
       }
     }
-
+    
     return {
       userId: null,
       userEmail: null,
@@ -59,89 +55,40 @@ export function useMiddlewareAuth(): MiddlewareAuth {
     }
   })
 
-  const { setUser, setProfile, setMiddlewareAuth, setMiddlewareChecked, middlewareChecked } = useAuthStore()
+  const { setUser, setProfile } = useAuthStore()
 
   useEffect(() => {
-    // Skip jika ada cache yang masih fresh
-    const now = Date.now()
-    if (cachedAuthData && (now - lastCheckTime) < CACHE_DURATION && !authData.loading) {
-      setAuthData(cachedAuthData)
-      return
-    }
-
-    // Skip jika middleware sudah dicek dan tidak loading
-    if (middlewareChecked && !authData.loading) return
-
-    // Function untuk mengecek headers dari response dengan optimasi
     const checkMiddlewareHeaders = async () => {
       try {
-        // Set loading hanya jika belum ada cache
-        if (!cachedAuthData) {
-          setAuthData(prev => ({ ...prev, loading: true }))
+        // Jika sudah ada cached data yang fresh, skip fetch untuk performa
+        if (authData.isAuthenticated && !authData.loading) {
+          return
         }
 
-        // Use robust fetch utility
-        const { authFetch } = await import('@/lib/fetch-utils')
-        const response = await authFetch('/api/auth/check')
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout
 
-        // Jika response menunjukkan unauthorized, coba refresh session
+        const response = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-cache',
+          signal: controller.signal
+        })
+
+        clearTimeout(timeoutId)
+
         if (response.status === 401) {
-          console.log('Auth check returned 401, attempting session refresh...')
-          
-          try {
-            const { createClient } = await import('@/lib/supabase/client')
-            const supabase = createClient()
-            const { error: refreshError } = await supabase.auth.refreshSession()
-            
-            if (!refreshError) {
-              console.log('Session refreshed successfully, retrying auth check...')
-              // Retry auth check setelah refresh
-              const retryResponse = await fetch('/api/auth/check', {
-                method: 'GET',
-                credentials: 'include',
-                cache: 'no-cache'
-              })
-              
-              if (retryResponse.ok) {
-                // Use retry response untuk get headers
-                const userId = retryResponse.headers.get('x-user-id')
-                const userEmail = retryResponse.headers.get('x-user-email')
-                const userRole = retryResponse.headers.get('x-user-role') as 'guru' | 'siswa' | null
-
-                const isAuthenticated = !!(userId && userEmail && userRole)
-                
-                const refreshedAuthData = {
-                  userId,
-                  userEmail,
-                  userRole,
-                  isAuthenticated,
-                  isGuru: userRole === 'guru',
-                  isSiswa: userRole === 'siswa',
-                  loading: false,
-                  error: null
-                }
-
-                // Update cache
-                cachedAuthData = refreshedAuthData
-                lastCheckTime = now
-
-                // Simpan ke sessionStorage
-                if (typeof window !== 'undefined') {
-                  sessionStorage.setItem('auth-quick-cache', JSON.stringify({
-                    data: refreshedAuthData,
-                    timestamp: now
-                  }))
-                }
-
-                setAuthData(refreshedAuthData)
-                setMiddlewareAuth(true)
-                setMiddlewareChecked(true)
-                return
-              }
-            }
-          } catch (refreshError) {
-            console.warn('Session refresh failed:', refreshError)
-          }
+          setAuthData({
+            userId: null,
+            userEmail: null,
+            userRole: null,
+            isAuthenticated: false,
+            isGuru: false,
+            isSiswa: false,
+            loading: false,
+            error: null
+          })
+          return
         }
 
         // Ambil data dari headers yang di-set oleh middleware
@@ -162,23 +109,7 @@ export function useMiddlewareAuth(): MiddlewareAuth {
           error: null
         }
 
-        // Update cache
-        cachedAuthData = newAuthData
-        lastCheckTime = now
-
-        // Simpan ke sessionStorage untuk navigasi cepat
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('auth-quick-cache', JSON.stringify({
-            data: newAuthData,
-            timestamp: now
-          }))
-        }
-
         setAuthData(newAuthData)
-
-        // Update store flags
-        setMiddlewareAuth(true)
-        setMiddlewareChecked(true)
 
         // Sync dengan store untuk compatibility
         if (isAuthenticated && userId && userEmail && userRole) {
@@ -192,8 +123,7 @@ export function useMiddlewareAuth(): MiddlewareAuth {
             updated_at: new Date().toISOString(),
             email_confirmed_at: new Date().toISOString(),
             last_sign_in_at: new Date().toISOString(),
-            role: 'authenticated',
-            session_id: 'middleware-session'
+            role: 'authenticated'
           } as any
 
           const minimalProfile = {
@@ -209,17 +139,10 @@ export function useMiddlewareAuth(): MiddlewareAuth {
         }
 
       } catch (error) {
-        // Handle AbortError lebih graceful
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.warn('Auth check was aborted (likely due to timeout or component unmount)')
-          // Jangan set error state untuk AbortError, karena ini normal behavior
-          return
-        }
-        
         console.error('Failed to check middleware auth:', error)
         const errorMessage = error instanceof Error ? error.message : 'Auth check failed'
         
-        const errorAuthData = { 
+        setAuthData({ 
           userId: null,
           userEmail: null,
           userRole: null,
@@ -228,15 +151,12 @@ export function useMiddlewareAuth(): MiddlewareAuth {
           isSiswa: false,
           loading: false, 
           error: errorMessage
-        }
-
-        setAuthData(errorAuthData)
-        setMiddlewareChecked(true)
+        })
       }
     }
 
     checkMiddlewareHeaders()
-  }, [setUser, setProfile, setMiddlewareAuth, setMiddlewareChecked, middlewareChecked])
+  }, [setUser, setProfile])
 
   return authData
 }
@@ -280,8 +200,7 @@ export function useRoleCheck() {
  * Gunakan saat logout atau refresh auth
  */
 export function clearAuthCache() {
-  cachedAuthData = null
-  lastCheckTime = 0
+  // Tidak ada cache lagi, jadi hanya clear sessionStorage jika ada
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('auth-quick-cache')
   }
