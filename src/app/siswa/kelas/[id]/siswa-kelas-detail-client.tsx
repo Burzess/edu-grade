@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { toastSuccess, toastError } from '@/lib/toast'
 import {
   BookOpen,
   Clock,
@@ -337,11 +338,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
   const { user } = useAuthStore()
   const supabase = createClient()
 
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+
 
   const fetchKelasDetail = async () => {
     try {
@@ -361,11 +358,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
 
       if (!response.ok) {
         if (response.status === 404) {
-          toast({
-            title: 'Kelas Tidak Ditemukan',
-            description: 'Kelas yang Anda cari tidak ditemukan atau Anda tidak memiliki akses.',
-            variant: 'destructive',
-          })
+          toastError('Kelas Tidak Ditemukan', 'Kelas yang Anda cari tidak ditemukan atau Anda tidak memiliki akses.')
           router.push('/siswa/dashboard')
           return
         }
@@ -378,11 +371,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
       }
     } catch (error) {
       console.error('Error fetching kelas detail:', error)
-      toast({
-        title: 'Error',
-        description: 'Gagal memuat detail kelas',
-        variant: 'destructive',
-      })
+      toastError('Error', 'Gagal memuat detail kelas')
     } finally {
       setIsLoading(false)
     }

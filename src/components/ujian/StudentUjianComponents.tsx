@@ -7,6 +7,7 @@ import {
   useUjianSiswaStatusChecker
 } from '@/hooks/use-ujian'
 import { useAuthStore } from '@/store/auth'
+import { toastSuccess, toastError } from '@/lib/toast'
 
 // Component untuk menampilkan daftar ujian yang tersedia untuk siswa
 export function AvailableUjianList() {
@@ -16,9 +17,9 @@ export function AvailableUjianList() {
   const handleStartUjian = async (ujianId: string) => {
     try {
       await startUjianMutation.mutateAsync(ujianId)
-      alert('Ujian berhasil dimulai!')
+      toastSuccess('Berhasil!', 'Ujian berhasil dimulai!')
     } catch (error: any) {
-      alert(`Error: ${error.message}`)
+      toastError('Error', error.message)
     }
   }
 

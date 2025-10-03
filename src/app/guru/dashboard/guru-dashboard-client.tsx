@@ -85,9 +85,34 @@ export default function GuruDashboardClient() {
   } = useRecentActivity()
 
   console.log('Dashboard Stats:', stats)
+  console.log('Dashboard Stats Loading:', isStatsLoading)
+  console.log('Dashboard Stats Error:', statsError)
   console.log('Recent Activity:', recentActivity)
+  
+  // Debug informasi untuk troubleshooting
+  if (statsError) {
+    console.error('Stats error details:', statsError)
+  }
+
+  if (activityError) {
+    console.error('Activity error details:', activityError)
+  }
+
   return (
     <>
+      {/* Error Display */}
+      {statsError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-2 text-red-800">
+            <AlertCircle className="h-5 w-5" />
+            <h3 className="font-medium">Error loading dashboard data</h3>
+          </div>
+          <p className="text-red-600 text-sm mt-1">
+            {statsError.message || 'Failed to load dashboard statistics'}
+          </p>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
@@ -98,8 +123,10 @@ export default function GuruDashboardClient() {
             <div className="text-2xl font-bold text-blue-600">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+              ) : statsError ? (
+                <span className="text-red-500">Error</span>
               ) : (
-                stats?.totalUjian || 0
+                stats?.totalUjian ?? 0
               )}
             </div>
             <p className="text-xs text-muted-foreground">Ujian yang dibuat</p>
@@ -114,8 +141,10 @@ export default function GuruDashboardClient() {
             <div className="text-2xl font-bold text-green-600">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+              ) : statsError ? (
+                <span className="text-red-500">Error</span>
               ) : (
-                stats?.activeUjian || 0
+                stats?.activeUjian ?? 0
               )}
             </div>
             <p className="text-xs text-muted-foreground">Sedang berlangsung</p>
@@ -130,8 +159,10 @@ export default function GuruDashboardClient() {
             <div className="text-2xl font-bold text-purple-600">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+              ) : statsError ? (
+                <span className="text-red-500">Error</span>
               ) : (
-                stats?.totalSiswa || 0
+                stats?.totalSiswa ?? 0
               )}
             </div>
             <p className="text-xs text-muted-foreground">Siswa terdaftar</p>
@@ -146,8 +177,10 @@ export default function GuruDashboardClient() {
             <div className="text-2xl font-bold text-orange-600">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+              ) : statsError ? (
+                <span className="text-red-500">Error</span>
               ) : (
-                stats?.siswaAktif || 0
+                stats?.siswaAktif ?? 0
               )}
             </div>
             <p className="text-xs text-muted-foreground">Sedang mengerjakan</p>
@@ -162,6 +195,8 @@ export default function GuruDashboardClient() {
             <div className="text-2xl font-bold text-indigo-600">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+              ) : statsError ? (
+                <span className="text-red-500">Error</span>
               ) : (
                 stats?.averageScore ? `${stats.averageScore}%` : '-'
               )}

@@ -12,12 +12,18 @@ interface AuthState {
     error: string | null
     lastUpdated: number
     profileCache: { [userId: string]: { profile: Profile; timestamp: number } }
+    // Middleware integration
+    isMiddlewareAuth: boolean // Flag untuk tahu data berasal dari middleware
+    middlewareChecked: boolean // Flag untuk tahu middleware sudah dicek
     setUser: (user: User | null) => void
     setProfile: (profile: Profile | null) => void
     setLoading: (loading: boolean) => void
     setError: (error: string | null) => void
     logout: () => void
     reset: () => void
+    // Middleware methods
+    setMiddlewareAuth: (isMiddleware: boolean) => void
+    setMiddlewareChecked: (checked: boolean) => void
     // Computed getters untuk mencegah re-computation
     isAuthenticated: () => boolean
     getUserRole: () => string | null
@@ -34,7 +40,9 @@ const initialState = {
     loading: true,
     error: null,
     lastUpdated: 0,
-    profileCache: {}
+    profileCache: {},
+    isMiddlewareAuth: false,
+    middlewareChecked: false
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -90,6 +98,15 @@ export const useAuthStore = create<AuthState>()(
                 ...initialState,
                 lastUpdated: Date.now()
             })
+        },
+
+        // Middleware methods
+        setMiddlewareAuth: (isMiddleware: boolean) => {
+            set({ isMiddlewareAuth: isMiddleware })
+        },
+
+        setMiddlewareChecked: (checked: boolean) => {
+            set({ middlewareChecked: checked })
         },
 
         // Caching methods dengan optimasi

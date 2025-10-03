@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from '@/components/ui/skeleton'
 import { JoinKelasModal } from '@/components/kelas/join-kelas-modal-widget'
+import { toastSuccess, toastError } from '@/lib/toast'
 import {
   BookOpen,
   Users,
@@ -120,14 +121,29 @@ export default function SiswaDashboardClient() {
   const { user } = useAuthStore()
   const supabase = createClient()
   
-  const { data: kelasList = [], isLoading, refetch } = useKelasSiswa()
+  const { data: rawKelasList = [], isLoading, refetch } = useKelasSiswa()
   const joinKelasMutation = useJoinKelas()
 
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+  // Filter hanya kelas aktif sebagai double-check (API sudah filter tapi ini untuk safety)
+  const kelasList = rawKelasList.filter((kelas: any) => {
+    // Debug log untuk setiap kelas
+    console.log('🔍 Kelas filter check:', {
+      id: kelas.id,
+      nama: kelas.nama_kelas,
+      is_active: kelas.is_active,
+      typeof_active: typeof kelas.is_active,
+      included: kelas.is_active === true // Hanya terima yang eksplisit true
+    });
+    
+    // STRICT: Hanya include kelas yang eksplisit is_active = true
+    return kelas.is_active === true;
+  })
+
+  console.log('📊 Dashboard: Filtered kelas count:', {
+    raw: rawKelasList.length,
+    filtered: kelasList.length,
+    isLoading
+  });
 
   const handleViewKelas = (kelasId: string) => {
     router.push(`/siswa/kelas/${kelasId}`)
@@ -141,11 +157,7 @@ export default function SiswaDashboardClient() {
       
       if (!user?.id || !session?.access_token) {
         console.warn('❌ Dashboard: No user session');
-        toast({
-          title: 'Error',
-          description: 'Session expired, silakan login ulang',
-          variant: 'destructive',
-        });
+        toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         return;
       }
@@ -160,10 +172,7 @@ export default function SiswaDashboardClient() {
 
       console.log('✅ Dashboard: Join kelas successful:', result);
       
-      toast({
-        title: 'Berhasil!',
-        description: 'Berhasil bergabung ke kelas!',
-      });
+      toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
       setShowJoinModal(false);
       
       // Refresh data
@@ -184,33 +193,40 @@ export default function SiswaDashboardClient() {
         router.push('/login');
       }
 
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toastError('Error', errorMessage);
     }
   };
+
+  // Debug: Log semua data yang diterima
+  console.log('🎓 Dashboard Render:', {
+    isLoading,
+    rawCount: rawKelasList.length,
+    filteredCount: kelasList.length,
+    rawData: rawKelasList,
+    filteredData: kelasList
+  });
 
   return (
     <>
       {/* Header Section */}
       <div className="space-y-6">
-        {/* Welcome Card with Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <School className="h-4 w-4" />
-                Total Kelas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kelasList.length}</div>
-              <p className="text-xs text-muted-foreground">Kelas yang diikuti</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Welcome Card with Stats - Only show when there are active classes */}
+        {!isLoading && kelasList.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <School className="h-4 w-4" />
+                  Total Kelas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kelasList.length}</div>
+                <p className="text-xs text-muted-foreground">Kelas yang diikuti</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Main Content */}
         {isLoading ? (
@@ -243,9 +259,9 @@ export default function SiswaDashboardClient() {
           <>
             {/* Kelas Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {kelasList.map((kelas) => (
+              {kelasList.map((kelas: any, index: number) => (
                 <KelasCard
-                  key={kelas.id}
+                  key={kelas.id || `kelas-${index}`}
                   kelas={kelas}
                   onViewKelas={handleViewKelas}
                 />

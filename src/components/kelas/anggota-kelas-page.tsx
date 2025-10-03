@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, UserMinus, Users, Calendar, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toastSuccess, toastError } from '@/lib/toast';
 import {
   Table,
   TableBody,
@@ -41,47 +42,39 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  
+
   // Use consistent auth pattern
   const { user } = useAuthStore();
   const supabase = createClient();
   const router = useRouter();
-  
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+
+
 
   const fetchMembers = async () => {
     try {
       setIsLoading(true);
-      
+
       console.log('🔄 AnggotaKelas: Fetching members for kelas:', kelasId);
       console.log('🔄 AnggotaKelas: Current user from auth store:', user?.id);
-      
+
       // Check session dari supabase client
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('🔄 AnggotaKelas: Session check:', { 
+      console.log('🔄 AnggotaKelas: Session check:', {
         hasSession: !!session,
         sessionUser: session?.user?.id,
-        sessionError 
+        sessionError
       });
-      
+
       if (!session?.access_token) {
         console.warn('❌ AnggotaKelas: No session for fetch members - redirecting to login');
-        toast({
-          title: 'Error',
-          description: 'Session expired, silakan login ulang',
-          variant: 'destructive',
-        });
+        toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         setIsLoading(false);
         return;
       }
 
       console.log('🔄 AnggotaKelas: Making API call to fetch members...');
-      
+
       const response = await fetch(`/api/kelas/${kelasId}/members`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -93,20 +86,12 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       if (!response.ok) {
         if (response.status === 404) {
           console.warn('❌ AnggotaKelas: Kelas not found or access denied');
-          toast({
-            title: 'Error',
-            description: 'Kelas tidak ditemukan atau Anda tidak memiliki akses',
-            variant: 'destructive',
-          });
+          toastError('Error', 'Kelas tidak ditemukan atau Anda tidak memiliki akses');
           router.back();
           return;
         } else if (response.status === 401) {
           console.warn('❌ AnggotaKelas: Unauthorized - redirecting to login');
-          toast({
-            title: 'Error',
-            description: 'Session expired, silakan login ulang',
-            variant: 'destructive',
-          });
+          toastError('Error', 'Session expired, silakan login ulang');
           router.push('/login');
           return;
         }
@@ -115,7 +100,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
 
       const result: GetMembersResponse = await response.json();
       console.log('✅ AnggotaKelas: Members fetched successfully:', result);
-      
+
       if (result.success) {
         setKelasData(result.data);
       } else {
@@ -123,11 +108,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       }
     } catch (error) {
       console.error('❌ AnggotaKelas: Error fetching members:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal memuat data anggota kelas',
-        variant: 'destructive',
-      });
+      toastError('Error', 'Gagal memuat data anggota kelas');
     } finally {
       setIsLoading(false);
     }
@@ -135,13 +116,13 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
 
   useEffect(() => {
     console.log('🔄 AnggotaKelas: Component mounted with:', { kelasId, userId: user?.id });
-    
+
     if (!user?.id) {
       console.warn('❌ AnggotaKelas: No user in auth store - redirecting to login');
       router.push('/login');
       return;
     }
-    
+
     if (kelasId) {
       fetchMembers();
     }
@@ -150,32 +131,28 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   const handleRemoveMember = async (siswaId: string, namaSiswa: string) => {
     try {
       setRemovingMemberId(siswaId);
-      
+
       console.log('🔄 AnggotaKelas: Removing member:', { siswaId, namaSiswa, kelasId });
       console.log('🔄 AnggotaKelas: Current user:', user?.id);
-      
+
       // Check session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('🔄 AnggotaKelas: Session for remove:', { 
+      console.log('🔄 AnggotaKelas: Session for remove:', {
         hasSession: !!session,
         sessionUser: session?.user?.id,
-        sessionError 
+        sessionError
       });
-      
+
       if (!session?.access_token) {
         console.warn('❌ AnggotaKelas: No session for remove member - redirecting to login');
-        toast({
-          title: 'Error',
-          description: 'Session expired, silakan login ulang',
-          variant: 'destructive',
-        });
+        toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         setRemovingMemberId(null);
         return;
       }
 
       console.log('🔄 AnggotaKelas: Making DELETE API call...');
-      
+
       const response = await fetch(`/api/kelas/${kelasId}/members`, {
         method: 'DELETE',
         headers: {
@@ -190,11 +167,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       if (!response.ok) {
         if (response.status === 401) {
           console.warn('❌ AnggotaKelas: Unauthorized for remove - redirecting to login');
-          toast({
-            title: 'Error',
-            description: 'Session expired, silakan login ulang',
-            variant: 'destructive',
-          });
+          toastError('Error', 'Session expired, silakan login ulang');
           router.push('/login');
           return;
         }
@@ -205,21 +178,14 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       console.log('✅ AnggotaKelas: Remove result:', result);
 
       if (result.success) {
-        toast({
-          title: 'Berhasil!',
-          description: result.message || `${namaSiswa} berhasil dikeluarkan dari kelas`,
-        });
+        toastSuccess('Berhasil!', result.message || `${namaSiswa} berhasil dikeluarkan dari kelas`);
         fetchMembers(); // Refresh data
       } else {
         throw new Error(result.error || 'Failed to remove member');
       }
     } catch (error) {
       console.error('❌ AnggotaKelas: Error removing member:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal mengeluarkan siswa dari kelas',
-        variant: 'destructive',
-      });
+      toastError('Error', 'Gagal mengeluarkan siswa dari kelas');
     } finally {
       setRemovingMemberId(null);
     }
@@ -260,22 +226,22 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={() => router.back()}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Kembali
         </Button>
-        
+
         <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Anggota Kelas
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
             {kelasData.kelas.nama_kelas}
-            </p>
+          </p>
         </div>
       </div>
 
@@ -288,9 +254,9 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
             </div>
             <div>
               <h3 className="text-lg font-semibold">Total Anggota</h3>
-                <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-300">
                 {kelasData.total_members} siswa bergabung dalam kelas ini
-                </p>
+              </p>
             </div>
           </div>
           {/* <div className="text-3xl font-bold text-blue-600">
@@ -312,7 +278,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
                 Belum Ada Siswa
               </h3>
               <p className="text-gray-500 dark:text-gray-300">
-                Belum ada siswa yang bergabung ke kelas ini. 
+                Belum ada siswa yang bergabung ke kelas ini.
                 Bagikan kode kelas kepada siswa untuk bergabung.
               </p>
             </div>
@@ -365,8 +331,8 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
                       <TableCell className="text-center">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-400"
                               disabled={removingMemberId === member.siswa_id}

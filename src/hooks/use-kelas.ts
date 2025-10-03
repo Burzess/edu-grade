@@ -17,27 +17,50 @@ export function useKelasGuru() {
             }
 
             try {
-                // Gunakan view yang sudah ada untuk guru
-                const { data, error } = await supabase
-                    .from('kelas_with_member_count')
-                    .select('*')
-                    .eq('created_by', user.id)
-                    .order('created_at', { ascending: false })
-
-                if (error) {
-                    console.error('Error fetching kelas:', error)
-                    throw error
+                // Get auth session untuk authorization header
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session?.access_token) {
+                    throw new Error('Session tidak valid')
                 }
 
-                return data as KelasWithMemberCount[]
+                // Gunakan API endpoint untuk konsistensi
+                const response = await fetch('/api/kelas', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
+                })
+
+                console.log('🌐 API Response status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    console.error('❌ API response error:', errorData)
+                    console.error('❌ Full error details:', JSON.stringify(errorData, null, 2))
+                    throw new Error(errorData.error || errorData.details || 'Failed to fetch kelas data')
+                }
+
+                const result = await response.json()
+                console.log('📊 API Response data:', {
+                    success: result.success,
+                    dataCount: result.data?.length,
+                    role: result.role
+                });
+
+                if (result.success) {
+                    return result.data as KelasWithMemberCount[]
+                } else {
+                    console.error('❌ API returned unsuccessful response:', result)
+                    throw new Error(result.error || result.details || 'Failed to fetch kelas data')
+                }
             } catch (error) {
                 console.error('useKelasGuru error:', error)
                 throw error
             }
         },
         enabled: !!user?.id && profile?.role === 'guru',
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        refetchOnWindowFocus: false,
+        staleTime: 2 * 60 * 1000, // Reduced to 2 minutes untuk lebih responsif
+        refetchOnWindowFocus: true, // Enable refetch on focus untuk sinkronisasi
+        refetchInterval: 5 * 60 * 1000, // Auto refetch every 5 minutes
     })
 }
 
@@ -122,7 +145,7 @@ export function useCreateKelas() {
     })
 }
 
-// Hook untuk mendapatkan daftar kelas siswa
+// Hook untuk mendapatkan daftar kelas siswa (hanya kelas aktif)
 export function useKelasSiswa() {
     const { user, profile } = useAuthStore()
 
@@ -134,50 +157,179 @@ export function useKelasSiswa() {
             }
 
             try {
-                const { data, error } = await supabase
-                    .from('kelas_members')
-                    .select(`
-                        kelas_id,
-                        joined_at,
-                        kelas:kelas_id (
-                            id,
-                            nama_kelas,
-                            deskripsi,
-                            kode_kelas,
-                            created_at,
-                            profiles:created_by (
-                                full_name
-                            )
-                        )
-                    `)
-                    .eq('siswa_id', user.id)
-                    .order('joined_at', { ascending: false })
-
-                if (error) {
-                    console.error('Error fetching kelas siswa:', error)
-                    throw error
+                // Get auth session untuk authorization header
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session?.access_token) {
+                    throw new Error('Session tidak valid')
                 }
 
-                // Transform data
-                return data?.map((item: any) => ({
-                    id: item.kelas?.id,
-                    nama_kelas: item.kelas?.nama_kelas,
-                    deskripsi: item.kelas?.deskripsi,
-                    kode_kelas: item.kelas?.kode_kelas,
-                    guru_name: Array.isArray(item.kelas?.profiles) 
-                        ? item.kelas?.profiles[0]?.full_name 
-                        : item.kelas?.profiles?.full_name,
-                    joined_at: item.joined_at,
-                    created_at: item.kelas?.created_at
-                })) || []
+                console.log('🎓 Fetching kelas for siswa:', user.id);
+
+                // Gunakan API endpoint yang sudah memfilter kelas aktif
+                const response = await fetch('/api/kelas', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
+                })
+
+                console.log('🌐 Siswa API Response status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    console.error('❌ Siswa API response error:', errorData)
+                    throw new Error(errorData.error || errorData.details || 'Failed to fetch kelas data')
+                }
+
+                const result = await response.json()
+                console.log('📊 Siswa API Response data:', {
+                    success: result.success,
+                    dataCount: result.data?.length,
+                    role: result.role,
+                    data: result.data // Debug: lihat data lengkap
+                });
+
+                if (result.success) {
+                    // API sudah memfilter hanya kelas aktif untuk siswa
+                    return result.data || []
+                } else {
+                    console.error('❌ Siswa API returned unsuccessful response:', result)
+                    throw new Error(result.error || result.details || 'Failed to fetch kelas data')
+                }
             } catch (error) {
                 console.error('useKelasSiswa error:', error)
                 throw error
             }
         },
         enabled: !!user?.id && profile?.role === 'siswa',
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        refetchOnWindowFocus: false,
+        staleTime: 2 * 60 * 1000, // Reduced to 2 minutes untuk lebih responsif
+        refetchOnWindowFocus: true, // Enable refetch on focus untuk sinkronisasi
+        refetchInterval: 5 * 60 * 1000, // Auto refetch every 5 minutes
+    })
+}
+
+// Hook untuk update nama kelas
+export function useUpdateKelasName() {
+    const queryClient = useQueryClient()
+    const { user } = useAuthStore()
+
+    return useMutation({
+        mutationFn: async ({ kelas_id, nama_kelas }: { kelas_id: string; nama_kelas: string }) => {
+            console.log('🔄 Hook: Starting update kelas name mutation:', { kelas_id, nama_kelas });
+            
+            if (!user?.id) {
+                throw new Error('User tidak terautentikasi')
+            }
+
+            // Get auth session untuk authorization header
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.access_token) {
+                throw new Error('Session tidak valid')
+            }
+
+            // Call API endpoint untuk update
+            const response = await fetch('/api/kelas', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ kelas_id, nama_kelas })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('❌ API response error:', errorData)
+                throw new Error(errorData.error || errorData.message || 'Failed to update kelas name')
+            }
+
+            const result = await response.json()
+            console.log('✅ Kelas name updated via hook:', result)
+            return result.data
+        },
+        onSuccess: (data) => {
+            console.log('✅ Hook: Update name successful, invalidating queries');
+            // Invalidate specific kelas query untuk refresh data
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'guru', user?.id] })
+            
+            // Optionally update specific item in cache untuk instant update
+            queryClient.setQueryData(['kelas', 'guru', user?.id], (oldData: KelasWithMemberCount[] | undefined) => {
+                if (!oldData) return oldData
+                return oldData.map(kelas => 
+                    kelas.id === data.id 
+                        ? { ...kelas, nama_kelas: data.nama_kelas, updated_at: data.updated_at }
+                        : kelas
+                )
+            })
+        },
+        onError: (error) => {
+            console.error('❌ Hook: Update name failed:', error);
+        }
+    })
+}
+
+// Hook untuk toggle status aktif kelas
+export function useToggleKelasStatus() {
+    const queryClient = useQueryClient()
+    const { user } = useAuthStore()
+
+    return useMutation({
+        mutationFn: async ({ kelas_id, is_active }: { kelas_id: string; is_active: boolean }) => {
+            console.log('🔄 Hook: Starting toggle kelas status mutation:', { kelas_id, is_active });
+            
+            if (!user?.id) {
+                throw new Error('User tidak terautentikasi')
+            }
+
+            // Get auth session untuk authorization header
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.access_token) {
+                throw new Error('Session tidak valid')
+            }
+
+            // Call API endpoint untuk update status
+            const response = await fetch('/api/kelas', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ kelas_id, is_active })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('❌ API response error:', errorData)
+                throw new Error(errorData.error || errorData.message || 'Failed to update kelas status')
+            }
+
+            const result = await response.json()
+            console.log('✅ Kelas status updated via hook:', result)
+            return result.data
+        },
+        onSuccess: (data) => {
+            console.log('✅ Hook: Toggle status successful, invalidating queries');
+            // Invalidate specific kelas query untuk refresh data
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'guru', user?.id] })
+            
+            // Update specific item in cache untuk instant update
+            queryClient.setQueryData(['kelas', 'guru', user?.id], (oldData: KelasWithMemberCount[] | undefined) => {
+                if (!oldData) return oldData
+                return oldData.map(kelas => 
+                    kelas.id === data.id 
+                        ? { ...kelas, is_active: data.is_active, updated_at: data.updated_at }
+                        : kelas
+                )
+            })
+
+            // CRITICAL: Invalidate ALL siswa kelas queries karena perubahan status kelas
+            // mempengaruhi visibility untuk siswa
+            console.log('🔄 Invalidating all siswa kelas queries due to status change');
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'siswa'] })
+            queryClient.refetchQueries({ queryKey: ['kelas', 'siswa'] })
+        },
+        onError: (error) => {
+            console.error('❌ Hook: Toggle status failed:', error);
+        }
     })
 }
 

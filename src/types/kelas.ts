@@ -9,6 +9,7 @@ export interface Kelas {
   deskripsi?: string | null;
   kode_kelas: string;
   created_by: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +53,12 @@ export interface CreateKelasRequest {
 
 export interface JoinKelasRequest {
   kode_kelas: string;
+}
+
+export interface UpdateKelasRequest {
+  kelas_id: string;
+  nama_kelas?: string;
+  is_active?: boolean;
 }
 
 export interface RemoveSiswaRequest {

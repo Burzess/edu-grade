@@ -1,132 +1,52 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Users, BookOpen, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { JoinKelasModal } from './join-kelas-modal';
-import { KelasForSiswa } from '@/types/kelas';
+import { useKelasSiswa, useJoinKelas } from '@/hooks/use-kelas';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { toastSuccess, toastError } from '@/lib/toast';
 
 export function SiswaKelasPage() {
-  const [kelasList, setKelasList] = useState<KelasForSiswa[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const router = useRouter();
   
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+  // Use hooks for better state management and real-time updates
+  const { data: kelasList = [], isLoading, refetch } = useKelasSiswa();
+  const joinKelasMutation = useJoinKelas();
+  
 
-  const fetchKelas = async () => {
-    try {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Jangan redirect di sini - biarkan auth layout handle ini
-      if (!session) {
-        console.warn('No session found, waiting for auth...');
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/kelas', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch kelas');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setKelasList(result.data || []);
-      } else {
-        throw new Error(result.error || 'Failed to fetch kelas');
-      }
-    } catch (error) {
-      console.error('Error fetching kelas:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal memuat data kelas',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchKelas();
-  }, []);
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔄 Joining kelas with code:', kodeKelas);
       
-      if (!session) {
-        console.warn('No session for join kelas');
-        return;
+      await joinKelasMutation.mutateAsync(kodeKelas);
+      
+      toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
+      setShowJoinModal(false);
+      
+      // No need to manual refetch - mutation will invalidate cache
+      
+    } catch (error: any) {
+      console.error('❌ Join failed:', error);
+      
+      let errorMessage = 'Gagal bergabung ke kelas';
+      const errorMsg = error?.message || '';
+      
+      if (errorMsg.includes('KELAS_NOT_FOUND') || errorMsg.includes('tidak ditemukan')) {
+        errorMessage = 'Kode kelas tidak ditemukan. Periksa kembali kode yang Anda masukkan.';
+      } else if (errorMsg.includes('ALREADY_JOINED') || errorMsg.includes('sudah terdaftar')) {
+        errorMessage = 'Anda sudah terdaftar di kelas ini.';
+      } else if (errorMsg.includes('session') || errorMsg.includes('authentication')) {
+        errorMessage = 'Session expired, silakan login ulang';
       }
 
-      const response = await fetch('/api/kelas/join', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ kode_kelas: kodeKelas }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast({
-          title: 'Berhasil!',
-          description: result.message,
-        });
-        setShowJoinModal(false);
-        fetchKelas(); // Refresh data
-      } else {
-        // Handle specific error messages
-        let errorMessage = result.message;
-        
-        switch (result.error) {
-          case 'KELAS_NOT_FOUND':
-            errorMessage = 'Kode kelas tidak ditemukan. Periksa kembali kode yang Anda masukkan.';
-            break;
-          case 'ALREADY_JOINED':
-            errorMessage = 'Anda sudah terdaftar di kelas ini.';
-            break;
-          default:
-            errorMessage = result.message || 'Gagal bergabung ke kelas';
-        }
-
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error joining kelas:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal bergabung ke kelas',
-        variant: 'destructive',
-      });
+      toastError('Error', errorMessage);
     }
   };
 
@@ -142,13 +62,27 @@ export function SiswaKelasPage() {
     router.push(`/siswa/kelas/${kelasId}`);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
+  // Skeleton component untuk loading state
+  const KelasSkeleton = () => (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+          <Skeleton className="h-6 w-20" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <Skeleton className="h-9 w-full" />
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -169,7 +103,13 @@ export function SiswaKelasPage() {
         </Button>
       </div>
 
-      {kelasList.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <KelasSkeleton key={`kelas-skeleton-${i}`} />
+          ))}
+        </div>
+      ) : kelasList.length === 0 ? (
         <div className="text-center py-12">
           <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <BookOpen className="h-12 w-12 text-gray-400" />
@@ -187,7 +127,7 @@ export function SiswaKelasPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {kelasList.map((kelas) => (
+          {kelasList.map((kelas: any) => (
             <Card key={kelas.id} className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">

@@ -12,6 +12,8 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import Link from "next/link"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { MiddlewareErrorHandler } from "@/components/auth/middleware-error-handler"
+import { SessionExpiredHandler } from "@/components/auth/session-expired-handler"
 
 const loginSchema = z.object({
     email: z.string().email("Email tidak valid"),
@@ -27,11 +29,37 @@ export default function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    // Check for error from callback
+    // Check for error from callback or middleware
     useEffect(() => {
         const errorParam = searchParams.get('error')
-        if (errorParam === 'auth_callback_error') {
-            setError('Terjadi kesalahan saat konfirmasi email. Silakan coba login ulang.')
+        const messageParam = searchParams.get('message')
+        
+        if (errorParam) {
+            switch (errorParam) {
+                case 'auth_callback_error':
+                    setError('Terjadi kesalahan saat konfirmasi email. Silakan coba login ulang.')
+                    break
+                case 'middleware_error':
+                    setError(messageParam || 'Terjadi kesalahan sistem. Silakan coba lagi.')
+                    break
+                case 'auth_timeout':
+                    setError(messageParam || 'Timeout saat verifikasi session. Silakan login kembali.')
+                    break
+                case 'network_error':
+                    setError(messageParam || 'Koneksi bermasalah. Periksa internet Anda.')
+                    break
+                case 'session_expired':
+                    setError('Session telah berakhir. Silakan login kembali.')
+                    break
+                case 'access_denied':  
+                    setError('Akses ditolak. Silakan login dengan akun yang sesuai.')
+                    break
+                case 'register_disabled':
+                    setError('Registrasi tidak tersedia saat ini. Silakan hubungi administrator.')
+                    break
+                default:
+                    setError(messageParam || 'Terjadi kesalahan. Silakan coba lagi.')
+            }
         }
     }, [searchParams])
 
@@ -62,24 +90,35 @@ export default function LoginForm() {
         }
     }
 
+    // Check if this is a session-related error that needs special handling
+    const errorParam = searchParams.get('error')
+    const isSessionError = ['session_expired', 'auth_timeout', 'auth_required'].includes(errorParam || '')
+    
+    if (isSessionError) {
+        return <SessionExpiredHandler />
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-background relative">
-            
-            <Card className="w-full max-w-md">
-                <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold text-center">
-                        Masuk ke Edu-Grade
-                    </CardTitle>
-                    <CardDescription className="text-center">
-                        Masukkan email dan password untuk mengakses akun Anda
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {error && (
-                        <Alert className="mb-4" variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
+            <div className="w-full max-w-md space-y-4">
+                {/* Middleware Error Handler */}
+                <MiddlewareErrorHandler />
+                
+                <Card>
+                    <CardHeader className="space-y-1">
+                        <CardTitle className="text-2xl font-bold text-center">
+                            Masuk ke Edu-Grade
+                        </CardTitle>
+                        <CardDescription className="text-center">
+                            Masukkan email dan password untuk mengakses akun Anda
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {error && (
+                            <Alert className="mb-4" variant="destructive">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
 
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -128,7 +167,7 @@ export default function LoginForm() {
                     <div className="mt-6 space-y-3">
                         <div className="text-center text-sm">
                             Belum punya akun?{" "}
-                            <Link href="/register" className="text-blue-500 dark:text-blue-800 hover:underline">
+                            <Link href="/register" className="text-blue-500 font-bold underline md:no-underline dark:text-blue-800 hover:underline">
                                 Daftar di sini
                             </Link>
                         </div>
@@ -155,6 +194,7 @@ export default function LoginForm() {
                     </div>
                 </CardContent>
             </Card>
+            </div>
         </div>
     )
 }

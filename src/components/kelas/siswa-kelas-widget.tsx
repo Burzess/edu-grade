@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useKelasSiswa, useJoinKelas } from '@/hooks/use-kelas';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
+import { toastSuccess, toastError } from '@/lib/toast';
 
 export function SiswaKelasWidget() {
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -22,11 +23,7 @@ export function SiswaKelasWidget() {
   const { data: kelasList = [], isLoading, refetch } = useKelasSiswa();
   const joinKelasMutation = useJoinKelas();
   
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
@@ -43,11 +40,7 @@ export function SiswaKelasWidget() {
       
       if (!user?.id || !session?.access_token) {
         console.warn('❌ Widget: No user session for join kelas - user:', user?.id, 'session:', !!session);
-        toast({
-          title: 'Error',
-          description: 'Session expired, silakan login ulang',
-          variant: 'destructive',
-        });
+        toastError('Error', 'Session expired, silakan login ulang');
         // Redirect to login
         router.push('/login');
         return;
@@ -71,10 +64,7 @@ export function SiswaKelasWidget() {
 
       console.log('✅ Widget: Join kelas successful via hook:', result);
       
-      toast({
-        title: 'Berhasil!',
-        description: 'Berhasil bergabung ke kelas!',
-      });
+      toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
       setShowJoinModal(false);
       
       // Refresh data
@@ -106,10 +96,7 @@ export function SiswaKelasWidget() {
         
         if (result.success) {
           console.log('✅ Widget: Join successful via API fallback:', result);
-          toast({
-            title: 'Berhasil!',
-            description: result.message,
-          });
+          toastSuccess('Berhasil!', result.message);
           setShowJoinModal(false);
           await refetch();
           return;
@@ -138,11 +125,7 @@ export function SiswaKelasWidget() {
           errorMessage = errorMsg || 'Gagal bergabung ke kelas';
         }
 
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-        });
+        toastError('Error', errorMessage);
       }
     }
   };
@@ -210,7 +193,7 @@ export function SiswaKelasWidget() {
           ) : (
             <>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {kelasList.slice(0, 3).map((kelas) => (
+                {kelasList.slice(0, 3).map((kelas: any) => (
                   <div 
                     key={kelas.id} 
                     className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer"

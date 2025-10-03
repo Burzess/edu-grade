@@ -43,7 +43,6 @@ next-env.d.ts
 .vercel
 
 /mcp
-*.sql
 
 /tests
 *.test.ts
@@ -54,3 +53,6 @@ next-env.d.ts
 /test-results
 
 *.md
+
+/backup
+.vscode

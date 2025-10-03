@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useUjian, useDeleteUjian, useStartUjian } from '@/hooks/use-ujian'
 import { useKelasGuru } from '@/hooks/use-kelas'
 import { GuruLayout } from '@/components/layout/guru-layout'
+import { AuthGuard } from '@/components/auth/auth-guards'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -455,8 +456,10 @@ function UjianPageContent() {
 
 export default function UjianPage() {
   return (
-    <GuruLayout>
-      <UjianPageContent />
-    </GuruLayout>
+    <AuthGuard requiredRole="guru">
+      <GuruLayout>
+        <UjianPageContent />
+      </GuruLayout>
+    </AuthGuard>
   )
 }

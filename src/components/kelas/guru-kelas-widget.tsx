@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toastSuccess, toastError } from '@/lib/toast';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -28,11 +29,7 @@ export function GuruKelasWidget() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const router = useRouter();
   
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+
 
   const fetchKelas = async () => {
     try {
@@ -92,10 +89,7 @@ export function GuruKelasWidget() {
       const result = await response.json();
 
       if (result.success) {
-        toast({
-          title: 'Berhasil!',
-          description: result.message,
-        });
+        toastSuccess('Berhasil!', result.message);
         setShowCreateModal(false);
         fetchKelas(); // Refresh data
       } else {
@@ -103,20 +97,13 @@ export function GuruKelasWidget() {
       }
     } catch (error) {
       console.error('Error creating kelas:', error);
-      toast({
-        title: 'Error',
-        description: 'Gagal membuat kelas',
-        variant: 'destructive',
-      });
+      toastError('Error', 'Gagal membuat kelas');
     }
   };
 
   const copyKodeKelas = (kodeKelas: string) => {
     navigator.clipboard.writeText(kodeKelas);
-    toast({
-      title: 'Berhasil!',
-      description: 'Kode kelas berhasil disalin ke clipboard',
-    });
+    toastSuccess('Berhasil!', 'Kode kelas berhasil disalin ke clipboard');
   };
 
   const handleViewMembers = (kelasId: string) => {

@@ -2,12 +2,14 @@
 
 import { SiswaKelasPage } from '@/components/kelas/siswa-kelas-page';
 import { SiswaLayout } from '@/components/layout/siswa-layout';
+import { AuthGuard } from '@/components/auth/auth-guards';
 
 export default function SiswaKelasPageRoute() {
-  // Sementara gunakan client-side saja untuk debug
   return (
-    <SiswaLayout>
-      <SiswaKelasPage />
-    </SiswaLayout>
+    <AuthGuard requiredRole="siswa">
+      <SiswaLayout>
+        <SiswaKelasPage />
+      </SiswaLayout>
+    </AuthGuard>
   );
 }

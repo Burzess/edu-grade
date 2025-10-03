@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSoalList, useDeleteSoal, useSoalTags } from '@/hooks/use-soal'
 import { GuruLayout } from '@/components/layout/guru-layout'
+import { AuthGuard } from '@/components/auth/auth-guards'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -309,8 +310,10 @@ function SoalListPageContent() {
 
 export default function SoalListPage() {
     return (
-        <GuruLayout>
-            <SoalListPageContent />
-        </GuruLayout>
+        <AuthGuard requiredRole="guru">
+            <GuruLayout>
+                <SoalListPageContent />
+            </GuruLayout>
+        </AuthGuard>
     )
 }

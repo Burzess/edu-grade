@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, Copy, MoreVertical, Calendar } from 'lucide-react';
+import { Plus, Users, Copy, MoreVertical, Calendar, Edit3, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toastSuccess, toastError } from '@/lib/toast';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -13,7 +14,9 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { CreateKelasModal } from './create-kelas-modal';
-import { useKelasGuru, useCreateKelas } from '@/hooks/use-kelas';
+import { EditKelasModal } from './edit-kelas-modal';
+import { KelasStatusToggle } from './kelas-status-toggle';
+import { useKelasGuru, useCreateKelas, useUpdateKelasName, useToggleKelasStatus } from '@/hooks/use-kelas';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
 import { KelasWithMemberCount } from '@/types/kelas';
@@ -21,21 +24,21 @@ import { useRouter } from 'next/navigation';
 
 export function KelolaKelasPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedKelas, setSelectedKelas] = useState<any>(null);
   const router = useRouter();
   
   // Initialize clients and auth
   const supabase = createClient();
   const { user } = useAuthStore();
   
-  // Use hooks seperti halaman hasil
+  // Use hooks dengan mutation untuk real-time updates
   const { data: kelasList = [], isLoading } = useKelasGuru();
   const createKelasMutation = useCreateKelas();
+  const updateKelasNameMutation = useUpdateKelasName();
+  const toggleStatusMutation = useToggleKelasStatus();
 
-  // Temporary toast implementation
-  const toast = ({ title, description, variant }: any) => {
-    console.log('Toast:', { title, description, variant });
-    alert(title + (description ? ': ' + description : ''));
-  };
+
 
   // Handle create kelas via API endpoint untuk bypass RLS issue
   const handleCreateKelas = async (data: { nama_kelas: string; deskripsi: string }) => {
@@ -70,14 +73,10 @@ export function KelolaKelasPage() {
       const result = await response.json();
       console.log('✅ Kelas created via API:', result);
       
-      toast({
-        title: 'Berhasil!',
-        description: result.message || 'Kelas berhasil dibuat',
-      });
+      toastSuccess('Berhasil!', result.message || 'Kelas berhasil dibuat');
       setShowCreateModal(false);
       
-      // Refresh data setelah create dengan reload halaman
-      window.location.reload();
+      // No need to reload - createKelasMutation will handle cache invalidation
       
     } catch (error) {
       console.error('❌ API create error:', error);
@@ -98,20 +97,13 @@ export function KelolaKelasPage() {
         }
       }
       
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toastError('Error', errorMessage);
     }
   };
 
   const copyKodeKelas = (kodeKelas: string) => {
     navigator.clipboard.writeText(kodeKelas);
-    toast({
-      title: 'Berhasil!',
-      description: 'Kode kelas berhasil disalin ke clipboard',
-    });
+    toastSuccess('Berhasil!', 'Kode kelas berhasil disalin ke clipboard');
   };
 
   const formatDate = (dateString: string) => {
@@ -124,6 +116,56 @@ export function KelolaKelasPage() {
 
   const handleViewMembers = (kelasId: string) => {
     router.push(`/guru/kelas/${kelasId}/anggota`);
+  };
+
+  const handleEditKelas = (kelas: any) => {
+    setSelectedKelas(kelas);
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async (data: { kelas_id: string; nama_kelas: string }) => {
+    try {
+      console.log('🔄 Updating kelas name via mutation hook:', data);
+      
+      await updateKelasNameMutation.mutateAsync(data);
+      
+      toastSuccess('Berhasil!', 'Nama kelas berhasil diperbarui');
+      
+      // No need to reload - react-query will handle cache invalidation
+      
+    } catch (error) {
+      console.error('❌ Edit error:', error);
+      throw error; // Re-throw untuk di-handle oleh modal
+    }
+  };
+
+  const handleToggleStatus = async (kelasId: string, newStatus: boolean) => {
+    try {
+      console.log('🔄 Toggling kelas status via mutation hook:', { kelasId, newStatus });
+      
+      await toggleStatusMutation.mutateAsync({ 
+        kelas_id: kelasId, 
+        is_active: newStatus 
+      });
+      
+      toastSuccess('Berhasil!', newStatus 
+        ? 'Kelas telah diaktifkan' 
+        : 'Kelas telah dinonaktifkan');
+      
+      // No need to reload - react-query will handle cache invalidation
+      
+    } catch (error) {
+      console.error('❌ Toggle status error:', error);
+      
+      let errorMessage = 'Gagal mengubah status kelas';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      toastError('Error', errorMessage);
+      
+      throw error; // Re-throw untuk di-handle oleh toggle component
+    }
   };
 
   // Skeleton component untuk loading state
@@ -194,16 +236,22 @@ export function KelolaKelasPage() {
           {kelasList.map((kelas) => (
             <Card key={kelas.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg font-semibold truncate">
-                  {kelas.nama_kelas}
-                </CardTitle>
-                {/* <DropdownMenu>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-lg font-semibold truncate">
+                    {kelas.nama_kelas}
+                  </CardTitle>
+                </div>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleEditKelas(kelas)}>
+                      <Edit3 className="mr-2 h-4 w-4" />
+                      Edit Nama
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleViewMembers(kelas.id)}>
                       <Users className="mr-2 h-4 w-4" />
                       Lihat Anggota
@@ -213,7 +261,7 @@ export function KelolaKelasPage() {
                       Salin Kode
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu> */}
+                </DropdownMenu>
               </CardHeader>
               
               <CardContent>
@@ -234,6 +282,24 @@ export function KelolaKelasPage() {
                     <Badge variant="secondary" className="text-xs">
                       {kelas.kode_kelas}
                     </Badge>
+                  </div>
+
+                  {/* Status Toggle */}
+                  <div className="flex items-center justify-between py-2 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Status Kelas
+                    </span>
+                    <KelasStatusToggle
+                      kelas={{
+                        id: kelas.id,
+                        nama_kelas: kelas.nama_kelas,
+                        is_active: kelas.is_active,
+                        jumlah_siswa: kelas.jumlah_siswa
+                      }}
+                      onToggle={handleToggleStatus}
+                      disabled={toggleStatusMutation.isPending}
+                      size="sm"
+                    />
                   </div>
                   
                   <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -272,6 +338,19 @@ export function KelolaKelasPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateKelas}
+      />
+
+      {/* Edit Kelas Modal */}
+      <EditKelasModal
+        isOpen={showEditModal}
+        onClose={() => {
+          if (updateKelasNameMutation.isPending) return; // Prevent close during mutation
+          setShowEditModal(false);
+          setSelectedKelas(null);
+        }}
+        onSubmit={handleEditSubmit}
+        kelas={selectedKelas}
+        isLoading={updateKelasNameMutation.isPending}
       />
     </div>
   );
