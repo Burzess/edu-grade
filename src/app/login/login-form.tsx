@@ -78,10 +78,15 @@ export default function LoginForm() {
 
             const result = await signIn(data.email, data.password)
 
-            // Give some time for auth state to update
-            setTimeout(() => {
-                router.push('/')
-            }, 100)
+            // Ambil role dari profile yang sudah di-fetch dari database (lebih aman)
+            // Profile diambil dari database, bukan dari user_metadata yang bisa dimanipulasi
+            const userRole = result?.profile?.role || 'siswa'
+            const dashboardPath = userRole === 'guru' ? '/guru/dashboard' : '/siswa/dashboard'
+            
+            console.log('Login successful, redirecting to:', dashboardPath, 'role:', userRole)
+            
+            // Langsung redirect ke dashboard yang sesuai tanpa delay
+            router.replace(dashboardPath)
 
         } catch (err: any) {
             setError(err.message || "Terjadi kesalahan saat login")

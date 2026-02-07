@@ -1,11 +1,19 @@
 import { updateSession } from '@/lib/supabase/middleware'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Middleware untuk Next.js dengan Supabase Auth - Best Practice 2026
+ * 
+ * PENTING:
+ * - Menggunakan getClaims() untuk validasi JWT yang aman
+ * - getClaims() memvalidasi signature JWT terhadap public keys
+ * - Jangan percaya getSession() di server-side karena bisa di-spoof
+ */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
     
-    // Update session dari Supabase
+    // Update session dari Supabase - refresh token jika perlu
     const response = await updateSession(request)
     
     // Public routes yang tidak perlu autentikasi
@@ -26,14 +34,42 @@ export async function middleware(request: NextRequest) {
     }
     
     try {
-        const supabase = await createClient()
-        const { data: { user }, error } = await supabase.auth.getUser()
+        // Buat Supabase client untuk middleware
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return request.cookies.getAll()
+                    },
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+                    },
+                },
+            }
+        )
         
-        // Jika tidak ada user atau error, redirect ke login
-        if (error || !user) {
+        // PENTING: Gunakan getClaims() untuk validasi JWT yang aman
+        // getClaims() memvalidasi signature JWT terhadap public keys project
+        // Lebih aman daripada getSession() yang bisa di-spoof
+        const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+        
+        // Jika tidak ada claims atau error, redirect ke login
+        if (claimsError || !claimsData?.claims) {
             const url = request.nextUrl.clone()
             url.pathname = '/login'
             url.searchParams.set('message', 'Silakan login terlebih dahulu')
+            return NextResponse.redirect(url)
+        }
+        
+        // Ambil user details untuk mendapatkan metadata
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !user) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/login'
+            url.searchParams.set('message', 'Sesi tidak valid')
             return NextResponse.redirect(url)
         }
         

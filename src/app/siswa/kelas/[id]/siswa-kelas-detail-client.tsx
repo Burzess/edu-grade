@@ -28,6 +28,23 @@ import { id } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 
+/**
+ * Helper untuk mendapatkan access token dengan validasi user terlebih dahulu.
+ * Pattern ini memastikan user benar-benar terautentikasi sebelum menggunakan token.
+ * 
+ * KEAMANAN: getSession() hanya membaca dari storage lokal dan bisa dipalsukan.
+ * Selalu validasi dengan getUser() terlebih dahulu yang memverifikasi dengan server.
+ */
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  // Validasi user dengan server terlebih dahulu (ini yang aman)
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  
+  // Setelah user tervalidasi, ambil token dari session
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 interface UjianCardProps {
   ujian: any
   type: 'active' | 'completed'
@@ -36,7 +53,6 @@ interface UjianCardProps {
 interface KelasDetail {
   id: string
   nama_kelas: string
-  deskripsi?: string
   kode_kelas: string
   guru_name: string
   joined_at: string
@@ -343,16 +359,17 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
   const fetchKelasDetail = async () => {
     try {
       setIsLoading(true)
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
+      
+      // Gunakan getValidAccessToken untuk validasi yang aman
+      const accessToken = await getValidAccessToken(supabase)
+      if (!accessToken) {
         router.push('/login')
         return
       }
 
       const response = await fetch(`/api/kelas/${kelasId}`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -380,16 +397,17 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
   const fetchUjianByKelas = async () => {
     try {
       setIsLoadingUjian(true)
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
+      
+      // Gunakan getValidAccessToken untuk validasi yang aman
+      const accessToken = await getValidAccessToken(supabase)
+      if (!accessToken) {
         return
       }
 
       // Fetch available ujian for this kelas
       const availableResponse = await fetch(`/api/ujian/available?kelasId=${kelasId}`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -403,7 +421,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
       // Fetch completed ujian for this kelas
       const completedResponse = await fetch(`/api/ujian/completed?kelasId=${kelasId}`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -484,11 +502,6 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
                 <School className="h-6 w-6" />
                 {kelasDetail.nama_kelas}
               </CardTitle>
-              {kelasDetail.deskripsi && (
-                <CardDescription className="text-base">
-                  {kelasDetail.deskripsi}
-                </CardDescription>
-              )}
             </div>
           </div>
 

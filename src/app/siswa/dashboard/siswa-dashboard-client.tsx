@@ -22,6 +22,14 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 
+// Helper untuk mendapatkan valid access token dengan validasi user
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 interface KelasCardProps {
   kelas: any
   onViewKelas: (kelasId: string) => void
@@ -45,11 +53,7 @@ function KelasCard({ kelas, onViewKelas }: KelasCardProps) {
             <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
               {kelas.nama_kelas}
             </CardTitle>
-            {kelas.deskripsi && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {kelas.deskripsi}
-              </p>
-            )}
+            
           </div>
           <Badge variant="outline" className="ml-2 flex-shrink-0 text-xs">
             {kelas.kode_kelas}
@@ -151,10 +155,11 @@ export default function SiswaDashboardClient() {
     try {
       console.log('🔄 Dashboard: Joining kelas with code:', kodeKelas);
       
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
       
-      if (!user?.id || !session?.access_token) {
-        console.warn('❌ Dashboard: No user session');
+      if (!user?.id || !accessToken) {
+        console.warn('❌ Dashboard: Session tidak valid');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         return;

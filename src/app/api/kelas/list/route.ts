@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         nama_kelas,
-        deskripsi,
         kode_kelas,
         created_at
       `)

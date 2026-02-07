@@ -27,10 +27,17 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+// Helper untuk mendapatkan valid access token
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 interface Kelas {
   id: string
   nama_kelas: string
-  deskripsi?: string
   kode_kelas: string
   member_count: number
   created_at: string
@@ -68,15 +75,16 @@ export function KelasSelector({
       setIsLoading(true)
       setError(null)
       
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('Tidak ada sesi login')
+      // Validasi user terlebih dahulu, lalu ambil token
+      const accessToken = await getValidAccessToken(supabase)
+      if (!accessToken) {
+        setError('Session tidak valid atau expired')
         return
       }
 
       const response = await fetch('/api/kelas/list', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       })
 
@@ -248,15 +256,6 @@ export function KelasSelector({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {selectedKelas.deskripsi && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Deskripsi</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedKelas.deskripsi}
-                    </p>
-                  </div>
-                )}
-                
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />

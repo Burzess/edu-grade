@@ -30,6 +30,14 @@ import { GetMembersResponse, KelasMemberDetail } from '@/types/kelas';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
 
+// Helper untuk mendapatkan valid access token dengan validasi user
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 interface AnggotaKelasPageProps {
   kelasId: string;
 }
@@ -57,16 +65,14 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       console.log('🔄 AnggotaKelas: Fetching members for kelas:', kelasId);
       console.log('🔄 AnggotaKelas: Current user from auth store:', user?.id);
 
-      // Check session dari supabase client
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('🔄 AnggotaKelas: Session check:', {
-        hasSession: !!session,
-        sessionUser: session?.user?.id,
-        sessionError
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
+      console.log('🔄 AnggotaKelas: Token validation:', {
+        hasToken: !!accessToken
       });
 
-      if (!session?.access_token) {
-        console.warn('❌ AnggotaKelas: No session for fetch members - redirecting to login');
+      if (!accessToken) {
+        console.warn('❌ AnggotaKelas: Session tidak valid - redirecting to login');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         setIsLoading(false);
@@ -77,7 +83,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
 
       const response = await fetch(`/api/kelas/${kelasId}/members`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
@@ -135,16 +141,14 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       console.log('🔄 AnggotaKelas: Removing member:', { siswaId, namaSiswa, kelasId });
       console.log('🔄 AnggotaKelas: Current user:', user?.id);
 
-      // Check session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('🔄 AnggotaKelas: Session for remove:', {
-        hasSession: !!session,
-        sessionUser: session?.user?.id,
-        sessionError
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
+      console.log('🔄 AnggotaKelas: Token for remove:', {
+        hasToken: !!accessToken
       });
 
-      if (!session?.access_token) {
-        console.warn('❌ AnggotaKelas: No session for remove member - redirecting to login');
+      if (!accessToken) {
+        console.warn('❌ AnggotaKelas: Session tidak valid - redirecting to login');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         setRemovingMemberId(null);
@@ -157,7 +161,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ siswa_id: siswaId }),
       });

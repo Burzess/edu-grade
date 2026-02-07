@@ -13,6 +13,3 @@ UPDATE kelas SET is_active = true WHERE is_active IS NULL;
 
 -- Add index untuk performa query berdasarkan status
 CREATE INDEX IF NOT EXISTS idx_kelas_is_active ON kelas(is_active);
-
--- Update view yang sudah ada jika diperlukan (optional)
--- Note: Pastikan untuk update view atau query yang menggunakan tabel kelas

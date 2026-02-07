@@ -1,9 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getAccessToken } from '@/lib/supabase/auth-helpers'
 import { useAuthStore } from '@/store/auth'
 import { KelasWithMemberCount, KelasFormData } from '@/types/kelas'
 
 const supabase = createClient()
+
+/**
+ * Helper untuk mendapatkan access token dengan validasi
+ * Menggunakan getUser() untuk memastikan token masih valid
+ */
+async function getValidAccessToken(): Promise<string> {
+    // Pertama validasi user masih authenticated
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) {
+        throw new Error('Session tidak valid atau expired')
+    }
+    
+    // Kemudian ambil token dari session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+        throw new Error('Access token tidak tersedia')
+    }
+    
+    return session.access_token
+}
 
 // Hook untuk mendapatkan daftar kelas guru
 export function useKelasGuru() {
@@ -17,16 +38,13 @@ export function useKelasGuru() {
             }
 
             try {
-                // Get auth session untuk authorization header
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session?.access_token) {
-                    throw new Error('Session tidak valid')
-                }
+                // Validasi dan ambil token dengan cara yang aman
+                const accessToken = await getValidAccessToken()
 
                 // Gunakan API endpoint untuk konsistensi
                 const response = await fetch('/api/kelas', {
                     headers: {
-                        'Authorization': `Bearer ${session.access_token}`,
+                        'Authorization': `Bearer ${accessToken}`,
                     },
                 })
 
@@ -99,7 +117,6 @@ export function useCreateKelas() {
 
             const insertData = {
                 nama_kelas: kelasData.nama_kelas.trim(),
-                deskripsi: kelasData.deskripsi?.trim() || null,
                 kode_kelas: kodeKelas,
                 created_by: user.id
             };
@@ -157,18 +174,15 @@ export function useKelasSiswa() {
             }
 
             try {
-                // Get auth session untuk authorization header
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session?.access_token) {
-                    throw new Error('Session tidak valid')
-                }
+                // Validasi dan ambil token dengan cara yang aman
+                const accessToken = await getValidAccessToken()
 
                 console.log('🎓 Fetching kelas for siswa:', user.id);
 
                 // Gunakan API endpoint yang sudah memfilter kelas aktif
                 const response = await fetch('/api/kelas', {
                     headers: {
-                        'Authorization': `Bearer ${session.access_token}`,
+                        'Authorization': `Bearer ${accessToken}`,
                     },
                 })
 
@@ -220,18 +234,15 @@ export function useUpdateKelasName() {
                 throw new Error('User tidak terautentikasi')
             }
 
-            // Get auth session untuk authorization header
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session?.access_token) {
-                throw new Error('Session tidak valid')
-            }
+            // Validasi dan ambil token dengan cara yang aman
+            const accessToken = await getValidAccessToken()
 
             // Call API endpoint untuk update
             const response = await fetch('/api/kelas', {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({ kelas_id, nama_kelas })
             })
@@ -280,18 +291,15 @@ export function useToggleKelasStatus() {
                 throw new Error('User tidak terautentikasi')
             }
 
-            // Get auth session untuk authorization header
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session?.access_token) {
-                throw new Error('Session tidak valid')
-            }
+            // Validasi dan ambil token dengan cara yang aman
+            const accessToken = await getValidAccessToken()
 
             // Call API endpoint untuk update status
             const response = await fetch('/api/kelas', {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({ kelas_id, is_active })
             })

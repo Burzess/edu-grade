@@ -21,10 +21,7 @@ interface CreateKelasModalProps {
 }
 
 export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModalProps) {
-  const [formData, setFormData] = useState<KelasFormData>({
-    nama_kelas: '',
-    deskripsi: '',
-  });
+  const [formData, setFormData] = useState<KelasFormData>({nama_kelas: ''});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<KelasFormData>>({});
 
@@ -37,10 +34,6 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
       newErrors.nama_kelas = 'Nama kelas minimal 3 karakter';
     } else if (formData.nama_kelas.trim().length > 255) {
       newErrors.nama_kelas = 'Nama kelas maksimal 255 karakter';
-    }
-
-    if (formData.deskripsi.length > 500) {
-      newErrors.deskripsi = 'Deskripsi maksimal 500 karakter';
     }
 
     setErrors(newErrors);
@@ -58,11 +51,10 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
     try {
       await onSubmit({
         nama_kelas: formData.nama_kelas.trim(),
-        deskripsi: formData.deskripsi.trim(),
       });
       
       // Reset form on success
-      setFormData({ nama_kelas: '', deskripsi: '' });
+      setFormData({ nama_kelas: '' });
       setErrors({});
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -73,7 +65,7 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({ nama_kelas: '', deskripsi: '' });
+      setFormData({ nama_kelas: '' });
       setErrors({});
       onClose();
     }
@@ -104,28 +96,7 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
               <p className="text-sm text-red-500">{errors.nama_kelas}</p>
             )}
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="deskripsi">
-              Deskripsi <span className="text-gray-500">(Opsional)</span>
-            </Label>
-            <Textarea
-              id="deskripsi"
-              placeholder="Contoh: Kelas untuk semester ganjil 2025/2026"
-              value={formData.deskripsi}
-              onChange={(e) => setFormData(prev => ({ ...prev, deskripsi: e.target.value }))}
-              className={errors.deskripsi ? 'border-red-500' : ''}
-              rows={3}
-              disabled={isSubmitting}
-            />
-            {errors.deskripsi && (
-              <p className="text-sm text-red-500">{errors.deskripsi}</p>
-            )}
-            <p className="text-xs text-gray-500">
-              {formData.deskripsi.length}/500 karakter
-            </p>
-          </div>
-
+          
           <DialogFooter>
             <Button
               type="button"

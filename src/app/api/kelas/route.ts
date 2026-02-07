@@ -98,7 +98,6 @@ export async function GET(request: NextRequest) {
           .select(`
             id,
             nama_kelas,
-            deskripsi,
             kode_kelas,
             created_by,
             is_active,
@@ -154,7 +153,6 @@ export async function GET(request: NextRequest) {
           kelas:kelas_id (
             id,
             nama_kelas,
-            deskripsi,
             kode_kelas,
             is_active,
             created_at,
@@ -188,7 +186,6 @@ export async function GET(request: NextRequest) {
         const transformedItem = {
           id: kelasInfo?.id,
           nama_kelas: kelasInfo?.nama_kelas,
-          deskripsi: kelasInfo?.deskripsi,
           kode_kelas: kelasInfo?.kode_kelas,
           is_active: kelasInfo?.is_active, // Include is_active field
           guru_name: guruInfo?.full_name,
@@ -349,7 +346,6 @@ export async function PATCH(request: NextRequest) {
       .select(`
         id,
         nama_kelas,
-        deskripsi,
         kode_kelas,
         is_active,
         created_at,
@@ -451,9 +447,9 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { nama_kelas, deskripsi } = body;
+    const { nama_kelas } = body;
     
-    console.log('📋 Request data:', { nama_kelas, deskripsi });
+    console.log('📋 Request data:', { nama_kelas });
 
     // Validate required fields
     if (!nama_kelas || nama_kelas.trim() === '') {
@@ -486,7 +482,6 @@ export async function POST(request: NextRequest) {
       .from('kelas')
       .insert({
         nama_kelas: nama_kelas.trim(),
-        deskripsi: deskripsi?.trim() || null,
         kode_kelas: kodeKelas, // Manual generate
         created_by: user.id,
         is_active: true // Default aktif

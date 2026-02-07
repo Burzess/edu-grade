@@ -6,7 +6,6 @@
 export interface Kelas {
   id: string;
   nama_kelas: string;
-  deskripsi?: string | null;
   kode_kelas: string;
   created_by: string;
   is_active: boolean;
@@ -22,7 +21,6 @@ export interface KelasWithMemberCount extends Kelas {
 export interface KelasForSiswa {
   id: string;
   nama_kelas: string;
-  deskripsi?: string | null;
   kode_kelas: string;
   guru_name?: string;
   joined_at: string;
@@ -48,7 +46,6 @@ export interface KelasMemberDetail {
 // Request/Response Types
 export interface CreateKelasRequest {
   nama_kelas: string;
-  deskripsi?: string;
 }
 
 export interface JoinKelasRequest {
@@ -119,7 +116,6 @@ export interface RemoveSiswaDbResponse {
 // Form Types untuk UI Components
 export interface KelasFormData {
   nama_kelas: string;
-  deskripsi: string;
 }
 
 export interface JoinKelasFormData {

@@ -22,6 +22,14 @@ import { useAuthStore } from '@/store/auth';
 import { KelasWithMemberCount } from '@/types/kelas';
 import { useRouter } from 'next/navigation';
 
+// Helper untuk mendapatkan valid access token dengan validasi user
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 export function KelolaKelasPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -41,14 +49,14 @@ export function KelolaKelasPage() {
 
 
   // Handle create kelas via API endpoint untuk bypass RLS issue
-  const handleCreateKelas = async (data: { nama_kelas: string; deskripsi: string }) => {
+  const handleCreateKelas = async (data: { nama_kelas: string; }) => {
     try {
       console.log('🔄 Creating kelas via API endpoint:', data);
       
-      // Get auth session untuk authorization header
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('Not authenticated');
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
+      if (!accessToken) {
+        throw new Error('Session tidak valid atau expired');
       }
       
       // Call API endpoint yang akan handle RLS bypass
@@ -56,11 +64,10 @@ export function KelolaKelasPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          nama_kelas: data.nama_kelas.trim(),
-          deskripsi: data.deskripsi?.trim() || null
+          nama_kelas: data.nama_kelas.trim()
         })
       });
       
@@ -266,12 +273,6 @@ export function KelolaKelasPage() {
               
               <CardContent>
                 <div className="space-y-3">
-                  {kelas.deskripsi && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {kelas.deskripsi}
-                    </p>
-                  )}
-                  
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-blue-500" />

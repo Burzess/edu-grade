@@ -27,6 +27,22 @@ export const useDashboardStats = () => {
 
       console.log('Fetching dashboard stats for user:', user.id)
 
+      // Gunakan RPC function baru dengan nama bahasa Indonesia
+      const { data: stats, error: rpcError } = await supabase.rpc('ambil_statistik_ujian_guru')
+      console.log('RPC stats:', stats, 'RPC Error:', rpcError);
+      
+      // Debug untuk cek info user login
+      const { data: debugUserInfo, error: debugUserError } = await supabase.rpc('cek_info_user_login')
+      console.log('Debug user info:', debugUserInfo, 'Debug Error:', debugUserError);
+
+      // Test count langsung
+      const { count: debugUjian, error: debugError } = await supabase
+        .from('ujian')
+        .select('*', { count: 'exact' })
+        .eq('created_by', user.id)
+
+      console.log('Debug ujian count:', debugUjian, 'Count Error:', debugError);
+      
       // Query untuk mendapatkan statistik ujian
       const { data: ujianStats, error: ujianError } = await supabase
         .from('ujian')
@@ -92,10 +108,11 @@ export const useDashboardStats = () => {
         console.log('Using backup from jawaban table:', backupNilaiStats)
       }
 
-      // Hitung statistik
-      const totalUjian = ujianStats?.length || 0
-      const activeUjian = ujianStats?.filter((u: any) => u.status === 'active').length || 0
-      const completedUjian = ujianStats?.filter((u: any) => u.status === 'completed').length || 0
+      // Hitung statistik - prioritaskan dari RPC function jika ada
+      const totalUjian = stats?.[0]?.total_ujian || ujianStats?.length || 0
+      const activeUjian = stats?.[0]?.ujian_aktif || ujianStats?.filter((u: any) => u.status === 'active').length || 0
+      const completedUjian = stats?.[0]?.ujian_selesai || ujianStats?.filter((u: any) => u.status === 'completed').length || 0
+      const draftUjian = stats?.[0]?.ujian_draft || ujianStats?.filter((u: any) => u.status === 'draft').length || 0
       
       // Unique siswa count dari ujian_siswa (fallback ke 0 jika tidak ada data)
       const uniqueSiswa = ujianSiswaStats?.length ? new Set(ujianSiswaStats.map((us: any) => us.siswa_id)).size : 0
@@ -114,11 +131,14 @@ export const useDashboardStats = () => {
         totalUjian,
         activeUjian,
         completedUjian,
+        draftUjian,
         totalSiswa: uniqueSiswa,
         siswaAktif,
         averageScore,
         ujianData: ujianStats,
-        ujianSiswaData: ujianSiswaStats
+        ujianSiswaData: ujianSiswaStats,
+        rpcStats: stats,
+        debugInfo: debugUserInfo
       }
 
       console.log('Final dashboard stats:', result)

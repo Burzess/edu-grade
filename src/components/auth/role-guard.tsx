@@ -16,6 +16,14 @@ interface RoleGuardProps {
     fallbackPath?: string
 }
 
+// Komponen loading minimal untuk redirect cepat (tanpa progress bar)
+const QuickRedirectLoader = memo(() => (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+))
+QuickRedirectLoader.displayName = 'QuickRedirectLoader'
+
 // Komponen loading yang konsisten dengan timeout handling
 const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => {
     const [progress, setProgress] = useState(0)
@@ -99,7 +107,6 @@ const AccessDeniedScreen = memo(({ currentRole, requiredRoles }: {
                     </div>
                     <div className="flex items-center space-x-2 text-xs text-gray-500">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Mengalihkan ke dashboard yang sesuai...</span>
                     </div>
                 </div>
             </CardContent>
@@ -151,12 +158,12 @@ export const AuthRedirectGuard = memo(({ children }: { children: ReactNode }) =>
 
     // Loading state saat mengecek auth status
     if (loading) {
-        return <LoadingScreen message="Mengecek status login..." />
+        return <QuickRedirectLoader />
     }
 
-    // Jika user sudah login, jangan render children (akan redirect)
+    // Jika user sudah login, tampilkan loader minimal saat redirect
     if (isAuthenticated && userRole) {
-        return <LoadingScreen message="Mengalihkan ke dashboard..." />
+        return <QuickRedirectLoader />
     }
 
     // Jika belum login, render children (halaman login/register)
@@ -205,22 +212,17 @@ export const RoleGuard = memo(({ children, allowedRoles, fallbackPath }: RoleGua
 
     // Loading state
     if (loading) {
-        return <LoadingScreen message="Memverifikasi akses..." />
+        return <QuickRedirectLoader />
     }
 
     // User belum login
     if (!isAuthenticated) {
-        return <LoadingScreen message="Mengalihkan ke halaman login..." />
+        return <QuickRedirectLoader /> // Redirect ke login
     }
 
-    // Role tidak diizinkan
+    // Role tidak diizinkan - tampilkan loader karena akan segera redirect
     if (!hasAccess) {
-        return (
-            <AccessDeniedScreen 
-                currentRole={userRole || 'unknown'} 
-                requiredRoles={allowedRoles}
-            />
-        )
+        return <QuickRedirectLoader />
     }
 
     // Semua pengecekan berhasil, render children

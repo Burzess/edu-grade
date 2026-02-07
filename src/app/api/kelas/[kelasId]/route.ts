@@ -61,7 +61,6 @@ export async function GET(
             .select(`
                 id,
                 nama_kelas,
-                deskripsi,
                 kode_kelas,
                 created_by
             `)
@@ -93,7 +92,6 @@ export async function GET(
         const kelasDetail = {
             id: kelasData.id,
             nama_kelas: kelasData.nama_kelas,
-            deskripsi: kelasData.deskripsi,
             kode_kelas: kelasData.kode_kelas,
             guru_name: guruName,
             joined_at: membershipData.joined_at

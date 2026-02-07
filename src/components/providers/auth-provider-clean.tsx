@@ -23,11 +23,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Get initial session
         const getInitialSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+            // Best practice: Gunakan getUser() untuk validasi token
+            // getUser() memvalidasi dengan Supabase server, lebih reliable
+            const { data: { user }, error } = await supabase.auth.getUser()
 
-            if (session?.user) {
-                setUser(session.user)
-                await getProfile(session.user)
+            if (user && !error) {
+                setUser(user)
+                await getProfile(user)
             }
             setLoading(false)
         }

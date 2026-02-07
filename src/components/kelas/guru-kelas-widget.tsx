@@ -16,33 +16,40 @@ import {
 import { CreateKelasModal } from './create-kelas-modal';
 import { KelasWithMemberCount } from '@/types/kelas';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Helper untuk mendapatkan valid access token dengan validasi user
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
 
 export function GuruKelasWidget() {
   const [kelasList, setKelasList] = useState<KelasWithMemberCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
   
 
 
   const fetchKelas = async () => {
     try {
       setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) {
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
+      
+      if (!accessToken) {
+        console.warn('Session tidak valid untuk fetch kelas');
         return;
       }
 
       const response = await fetch('/api/kelas', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
@@ -68,12 +75,15 @@ export function GuruKelasWidget() {
     fetchKelas();
   }, []);
 
-  const handleCreateKelas = async (data: { nama_kelas: string; deskripsi: string }) => {
+  const handleCreateKelas = async (data: { nama_kelas: string }) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
       
-      if (!session) {
-        console.warn('No session for create kelas widget');
+      if (!accessToken) {
+        console.warn('Session tidak valid untuk create kelas');
+        toastError('Error', 'Session expired, silakan login ulang');
+        router.push('/login');
         return;
       }
 
@@ -81,7 +91,7 @@ export function GuruKelasWidget() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(data),
       });

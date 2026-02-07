@@ -1,16 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Update Session Handler - Supabase SSR Best Practice 2026
+ * Supabase Proxy Handler - Best Practice 2026
  * 
- * Fungsi ini di-export untuk backward compatibility.
- * Untuk implementasi terbaru, gunakan proxy.ts dengan getClaims().
+ * File ini menangani refresh session di middleware/proxy.
+ * Menggunakan getClaims() untuk validasi JWT yang aman.
  * 
  * PENTING:
- * - getClaims() memvalidasi JWT signature (lebih aman)
- * - getUser() mengirim request ke server auth (lebih lambat tapi lebih akurat)
- * - getSession() TIDAK aman di server-side (jangan gunakan untuk proteksi)
+ * - Selalu gunakan getClaims() untuk validasi server-side
+ * - Jangan trust getSession() karena tidak memvalidasi JWT signature
+ * - getClaims() memvalidasi JWT signature terhadap public keys project
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -44,10 +44,27 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getClaims(). Kesalahan kecil bisa menyebabkan
   // user logout secara random.
 
-  // PENTING: Menggunakan getClaims() untuk validasi JWT yang aman
-  // getClaims() memvalidasi JWT signature terhadap public keys project
-  // Lebih cepat dari getUser() karena tidak perlu request ke server
-  await supabase.auth.getClaims()
+  // PENTING: Jika Anda menghapus getClaims() dan menggunakan SSR
+  // dengan Supabase client, user bisa logout secara random.
+  const { data, error } = await supabase.auth.getClaims()
+
+  // Jika tidak ada claims dan bukan route public, redirect ke login
+  if (
+    error || !data?.claims
+  ) {
+    // Route public yang tidak perlu autentikasi
+    const publicPaths = ['/login', '/register', '/auth', '/api/auth']
+    const isPublicPath = publicPaths.some(path => 
+      request.nextUrl.pathname.startsWith(path)
+    )
+    
+    if (!isPublicPath && !request.nextUrl.pathname.startsWith('/_next')) {
+      // No user, redirect ke halaman login
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
 
   // PENTING: Anda *harus* return supabaseResponse object as-is.
   // Jika Anda membuat response object baru dengan NextResponse.next(), pastikan:
@@ -56,6 +73,8 @@ export async function updateSession(request: NextRequest) {
   // 2. Copy cookies:
   //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
   // 3. Ubah myNewResponse sesuai kebutuhan, tapi jangan ubah cookies!
+  // Jika tidak dilakukan, browser dan server bisa out of sync
+  // dan session user bisa terminate prematur!
 
   return supabaseResponse
 }

@@ -142,12 +142,6 @@ export function SiswaKelasPage() {
               
               <CardContent>
                 <div className="space-y-3">
-                  {kelas.deskripsi && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {kelas.deskripsi}
-                    </p>
-                  )}
-                  
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <Users className="h-4 w-4" />
                     <span>Guru: {kelas.guru_name || 'Tidak diketahui'}</span>

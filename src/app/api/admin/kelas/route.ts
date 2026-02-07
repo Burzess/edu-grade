@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       .from('kelas')
       .insert({
         nama_kelas: nama_kelas,
-        deskripsi: deskripsi,
+        // deskripsi: deskripsi,
         kode_kelas: kodeKelas,
         created_by: finalGuruId
       })

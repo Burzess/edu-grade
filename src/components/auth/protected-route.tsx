@@ -1,8 +1,6 @@
 'use client';
-import { useAuth } from '@/components/providers/auth-provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
 import { useAuthStore } from '@/store/auth';
 
 interface ProtectedRouteProps {
@@ -102,25 +100,18 @@ export default function ProtectedRoute({
   // Show loading hanya jika belum mounted atau masih loading auth
   if (!mounted || loading || !authChecked) {
     return (
-      <LoadingSpinner 
-        message="Memverifikasi akses..." 
-        timeout={loadingTimeout}
-        showRetry={true}
-        onRetry={() => {
-          setAuthChecked(false);
-          window.location.reload();
-        }}
-      />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
-  // Show loading jika tidak ada user/profile (akan redirect)
+  // Tampilkan spinner minimal saat akan redirect
   if (!user || !profile) {
     return (
-      <LoadingSpinner 
-        message="Mengalihkan..." 
-        timeout={3000}
-      />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
@@ -130,10 +121,9 @@ export default function ProtectedRoute({
     
     if (!requiredRoles.includes(userRole)) {
       return (
-        <LoadingSpinner 
-          message="Mengalihkan ke dashboard..." 
-          timeout={3000}
-        />
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
       );
     }
   }

@@ -10,7 +10,7 @@ import { AuthErrorBoundary } from '@/components/auth/auth-error-boundary'
 
 interface AuthContextType {
     signUp: (email: string, password: string, fullName: string, role: 'siswa' | 'guru') => Promise<{ user: any; session: any }>
-    signIn: (email: string, password: string) => Promise<any>
+    signIn: (email: string, password: string) => Promise<{ user: any; session: any; profile: { role: 'guru' | 'siswa' } | null }>
     signOut: () => Promise<void>
 }
 
@@ -68,11 +68,13 @@ export function AuthProvider({
 
         // Get initial session hanya jika tidak ada initialUser
         const getInitialSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+            // Best practice: Gunakan getUser() untuk validasi token
+            // getUser() memvalidasi dengan Supabase server, lebih reliable
+            const { data: { user }, error } = await supabase.auth.getUser()
 
-            if (session?.user) {
-                setUser(session.user)
-                await getProfile(session.user)
+            if (user && !error) {
+                setUser(user)
+                await getProfile(user)
             }
             setLoading(false)
         }
@@ -291,7 +293,7 @@ export function AuthProvider({
         return data
     }
 
-    const signIn = async (email: string, password: string) => {
+    const signIn = async (email: string, password: string): Promise<{ user: any; session: any; profile: { role: 'guru' | 'siswa' } | null }> => {
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -302,13 +304,40 @@ export function AuthProvider({
 
         if (error) throw error
 
+        let userProfile: { role: 'guru' | 'siswa' } | null = null
+
         // Ensure user and profile are set immediately
         if (data.user) {
             setUser(data.user)
-            await getProfile(data.user)
+            
+            // Ambil profile dari database untuk mendapatkan role yang valid
+            try {
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('id, email, full_name, role, created_at')
+                    .eq('id', data.user.id)
+                    .single()
+                
+                if (profileData && !profileError) {
+                    userProfile = { role: profileData.role as 'guru' | 'siswa' }
+                    setProfile(profileData)
+                    setCachedProfile(data.user.id, profileData)
+                } else {
+                    // Fallback ke metadata jika profile tidak ada
+                    const metadata = data.user.user_metadata || {}
+                    userProfile = { role: (metadata.role as 'guru' | 'siswa') || 'siswa' }
+                    await getProfile(data.user)
+                }
+            } catch (profileErr) {
+                console.error('Error fetching profile during signIn:', profileErr)
+                // Fallback ke getProfile async
+                await getProfile(data.user)
+                const metadata = data.user.user_metadata || {}
+                userProfile = { role: (metadata.role as 'guru' | 'siswa') || 'siswa' }
+            }
         }
         
-        return data
+        return { ...data, profile: userProfile }
     }
 
     const signOut = async () => {

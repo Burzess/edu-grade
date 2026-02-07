@@ -13,6 +13,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
 import { toastSuccess, toastError } from '@/lib/toast';
 
+// Helper untuk mendapatkan valid access token dengan validasi user
+async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 export function SiswaKelasWidget() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const router = useRouter();
@@ -30,18 +38,15 @@ export function SiswaKelasWidget() {
       console.log('🔄 Widget: Joining kelas with code:', kodeKelas);
       console.log('🔄 Widget: Current user from auth store:', user?.id);
       
-      // Check session dari supabase juga
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('🔄 Widget: Current session check:', { 
-        hasSession: !!session,
-        sessionUser: session?.user?.id,
-        sessionError 
+      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
+      const accessToken = await getValidAccessToken(supabase);
+      console.log('🔄 Widget: Token validation:', { 
+        hasToken: !!accessToken
       });
       
-      if (!user?.id || !session?.access_token) {
-        console.warn('❌ Widget: No user session for join kelas - user:', user?.id, 'session:', !!session);
+      if (!user?.id || !accessToken) {
+        console.warn('❌ Widget: Session tidak valid - redirecting to login');
         toastError('Error', 'Session expired, silakan login ulang');
-        // Redirect to login
         router.push('/login');
         return;
       }
@@ -75,10 +80,11 @@ export function SiswaKelasWidget() {
       
       // Fallback ke API endpoint jika hook gagal
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Validasi ulang dan ambil token dengan aman
+        const accessToken = await getValidAccessToken(supabase);
         
-        if (!session?.access_token) {
-          throw new Error('No session available for API call');
+        if (!accessToken) {
+          throw new Error('Session tidak valid untuk API call');
         }
         
         console.log('🔄 Widget: Trying API endpoint fallback...');
@@ -87,7 +93,7 @@ export function SiswaKelasWidget() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ kode_kelas: kodeKelas }),
         });

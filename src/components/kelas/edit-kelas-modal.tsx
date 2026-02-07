@@ -22,7 +22,6 @@ interface EditKelasModalProps {
   kelas: {
     id: string;
     nama_kelas: string;
-    deskripsi?: string;
   } | null;
   isLoading?: boolean;
 }
@@ -143,24 +142,6 @@ export function EditKelasModal({
                 <span>{namaKelas.length}/100</span>
               </div>
             </div>
-
-            {/* Display existing description for reference (read-only) */}
-            {kelas?.deskripsi && (
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">
-                  Deskripsi Saat Ini
-                </Label>
-                <Textarea
-                  value={kelas.deskripsi}
-                  disabled
-                  rows={2}
-                  className="resize-none bg-muted/50 text-muted-foreground"
-                />
-                <p className="text-xs text-muted-foreground">
-                  *Untuk mengubah deskripsi, gunakan fitur edit detail kelas
-                </p>
-              </div>
-            )}
 
             {error && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
