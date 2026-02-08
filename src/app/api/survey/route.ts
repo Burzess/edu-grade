@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { dummySurvey } from '@/lib/dummy-survey-data';
 
 export async function GET(req: NextRequest) {
   try {
-    // USING DUMMY DATA FOR PREVIEW
-    const searchParams = req.nextUrl.searchParams;
-    const includeQuestions = searchParams.get('includeQuestions') === 'true';
-
-    if (includeQuestions) {
-      return NextResponse.json(dummySurvey);
-    }
-
-    return NextResponse.json([dummySurvey]);
-
-    /* ORIGINAL CODE - Uncomment when ready to use real database
     const supabase = await createClient();
     
     // Get query parameters
@@ -67,7 +55,6 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json(surveys);
     }
-    */
   } catch (error: any) {
     console.error('Error fetching surveys:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

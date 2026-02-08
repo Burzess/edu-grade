@@ -3,7 +3,6 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useHasilUjianDetail, useUpdateScore } from '@/hooks/use-hasil-ujian'
-import { addDebugToWindow } from '@/lib/debug-score-update'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

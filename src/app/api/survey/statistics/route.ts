@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { dummyStatistics } from '@/lib/dummy-survey-data';
 
 export async function GET(req: NextRequest) {
   try {
-    // USING DUMMY DATA FOR PREVIEW
-    return NextResponse.json(dummyStatistics);
-
-    /* ORIGINAL CODE - Uncomment when ready to use real database
     const supabase = await createClient();
     
-    // Check if user is admin
+    // Check if user is admin or guru
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -134,7 +129,6 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json(result);
-    */
   } catch (error: any) {
     console.error('Error fetching survey statistics:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
