@@ -330,7 +330,6 @@ export default function HasilUjianDetail() {
   // Add debug function to window in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      addDebugToWindow()
       console.log('🔧 Debug mode enabled. Use window.debugScoreUpdate(jawabanId) to troubleshoot')
     }
   }, [])

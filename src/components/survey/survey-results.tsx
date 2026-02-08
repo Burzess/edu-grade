@@ -129,7 +129,7 @@ export default function SurveyResults({ statistics }: SurveyResultsProps) {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {chartData.map((entry, index) => (
+                {chartData.map((entry: { name: string; value: number; percentage: string }, index: number) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
