@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * API endpoint sederhana untuk mendapatkan auth data dari middleware headers
  * Ini memungkinkan client-side components mengakses data user tanpa query database

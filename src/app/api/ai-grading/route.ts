@@ -4,6 +4,8 @@ import { gradeEssayAnswer } from '@/lib/ai-grading'
 import { gradeEssayAnswerOptimized, optimizedBatchGradeAnswers, type PromptConfig } from '@/lib/ai-grading-optimized'
 import { autoGradeQuestion, needsAIGrading, type AutoGradingResponse } from '@/lib/auto-grading'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const { jawabanId, useOptimized = true, forceAI = false } = await request.json()
