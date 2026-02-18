@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Users,
   Play,
+  RotateCcw,
 } from 'lucide-react'
 import { formatDistanceToNow, format, isAfter, isBefore } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -94,7 +95,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
         return {
           status: 'upcoming',
           message: `Dimulai ${formatDistanceToNow(startTime, { addSuffix: true, locale: id })}`,
-          color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+          color: 'bg-brand-100 dark:bg-brand-900/30 text-brand-800 dark:text-brand-300'
         }
       } else if (isAfter(now, endTime)) {
         return {
@@ -176,10 +177,19 @@ function UjianCard({ ujian, type }: UjianCardProps) {
 
           <div className="pt-2">
             {ujian.status === 'active' && timeStatus?.status === 'active' ? (
-              <Button asChild className="w-full">
-                <Link href={`/siswa/ujian/${ujian.id || ujian.exam_id}`}>
-                  <Play className="h-4 w-4 mr-2" />
-                  Mulai Ujian
+              <Button asChild className={`w-full ${ujian.is_remidi ? 'bg-orange-600 hover:bg-orange-700' : ''}`}>
+                <Link href={`/siswa/ujian/${ujian.id || ujian.exam_id}${ujian.is_remidi ? '?remidi=true' : ''}`}>
+                  {ujian.is_remidi ? (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Mulai Remidi (Percobaan {ujian.current_attempt}/{ujian.max_attempts})
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Mulai Ujian
+                    </>
+                  )}
                 </Link>
               </Button>
             ) : ujian.status === 'draft' ? (
@@ -263,9 +273,16 @@ function UjianCard({ ujian, type }: UjianCardProps) {
                 {ujian.description || 'Tidak ada deskripsi'}
               </CardDescription>
             </div>
-            <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" variant="secondary">
-              Selesai
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <Badge className="bg-brand-100 dark:bg-brand-900/30 text-brand-800 dark:text-brand-300" variant="secondary">
+                Selesai
+              </Badge>
+              {ujian.attempt_count > 1 && (
+                <Badge variant="outline" className="text-xs">
+                  {ujian.attempt_count} percobaan
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
 
@@ -273,10 +290,25 @@ function UjianCard({ ujian, type }: UjianCardProps) {
           {ujian.averageScore !== null && (
             <div className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-yellow-600" />
-              <span className="font-medium">Nilai:</span>
+              <span className="font-medium">{ujian.attempt_count > 1 ? 'Nilai Terbaik:' : 'Nilai:'}</span>
               <Badge variant="outline" className="font-bold">
                 {ujian.averageScore}/100
               </Badge>
+            </div>
+          )}
+
+          {/* Show per-attempt scores if multiple attempts */}
+          {ujian.attempt_scores && ujian.attempt_scores.length > 1 && (
+            <div className="space-y-1 text-xs border rounded-md p-2 bg-muted/30">
+              <div className="font-medium text-muted-foreground mb-1">Riwayat Percobaan:</div>
+              {ujian.attempt_scores.map((attempt: any) => (
+                <div key={attempt.attempt} className="flex items-center justify-between">
+                  <span>Percobaan {attempt.attempt}</span>
+                  <Badge variant={attempt.score === ujian.averageScore ? 'default' : 'outline'} className="text-xs">
+                    {attempt.score !== null ? `${attempt.score}/100` : 'Belum dinilai'}
+                  </Badge>
+                </div>
+              ))}
             </div>
           )}
 
@@ -300,13 +332,22 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <Button variant="outline" asChild className="w-full">
               <Link href={`/siswa/hasil/${ujian.id}`}>
                 <FileText className="h-4 w-4 mr-2" />
                 Lihat Detail
               </Link>
             </Button>
+            
+            {ujian.can_remidi && (
+              <Button asChild className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+                <Link href={`/siswa/ujian/${ujian.id}?remidi=true`}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Remidi (Percobaan {(ujian.attempt_count || 1) + 1}/{ujian.max_attempts})
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

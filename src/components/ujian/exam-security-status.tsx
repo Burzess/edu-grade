@@ -139,7 +139,7 @@ export function ExamSecurityStatus({ showDetails = false, className }: ExamSecur
                     
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         <div className="text-center p-2 border rounded">
-                            <div className="text-lg font-semibold text-blue-600">
+                            <div className="text-lg font-semibold text-brand-500">
                                 {securityReport.tabSwitches}
                             </div>
                             <div className="text-xs text-muted-foreground">

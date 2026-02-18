@@ -45,7 +45,7 @@ export function MiddlewareErrorHandler() {
         return {
           title: 'Session Berakhir',
           description: 'Session login telah habis masa berlakunya',
-          color: 'bg-blue-100 text-blue-800',
+          color: 'bg-brand-100 text-brand-800',
           icon: Info,
           severity: 'low'
         }

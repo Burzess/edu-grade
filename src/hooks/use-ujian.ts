@@ -156,19 +156,25 @@ export function useCreateUjian() {
       description,
       duration_minutes,
       selected_soal,
-      kelas_id
+      kelas_id,
+      allow_remidi,
+      max_attempts
     }: {
       name: string
       description?: string
       duration_minutes: number
       selected_soal: string[]
       kelas_id?: string | null
+      allow_remidi?: boolean
+      max_attempts?: number
     }) => {
       console.log('📘 Creating new ujian...', {
         name,
         duration: duration_minutes,
         soalCount: selected_soal?.length || 0,
-        userId: user?.id
+        userId: user?.id,
+        allow_remidi,
+        max_attempts
       })
 
       if (!user?.id) {
@@ -189,6 +195,8 @@ export function useCreateUjian() {
           duration_minutes,
           created_by: user.id,
           kelas_id: kelas_id || null,
+          allow_remidi: allow_remidi || false,
+          max_attempts: allow_remidi ? (max_attempts || 2) : 1,
         })
         .select()
         .single()
@@ -236,7 +244,9 @@ export function useUpdateUjian() {
       description,
       duration_minutes,
       selected_soal,
-      kelas_id
+      kelas_id,
+      allow_remidi,
+      max_attempts
     }: {
       id: string
       name: string
@@ -244,6 +254,8 @@ export function useUpdateUjian() {
       duration_minutes: number
       selected_soal: string[]
       kelas_id?: string | null
+      allow_remidi?: boolean
+      max_attempts?: number
     }) => {
 
       if (!user?.id) {
@@ -261,6 +273,8 @@ export function useUpdateUjian() {
         description,
         duration_minutes,
         kelas_id,
+        allow_remidi: allow_remidi || false,
+        max_attempts: allow_remidi ? (max_attempts || 2) : 1,
       }
 
       const { data: ujian, error: ujianError } = await supabase
@@ -715,7 +729,7 @@ export function useStartUjianSiswa() {
   const registrationCache = useRef(new Set<string>())
 
   return useMutation({
-    mutationFn: async (ujianId: string) => {
+    mutationFn: async ({ ujianId, isRemidi = false }: { ujianId: string; isRemidi?: boolean }) => {
       if (!user?.id) {
         throw new Error('User not authenticated')
       }
@@ -733,7 +747,7 @@ export function useStartUjianSiswa() {
       try {
         const now = new Date().toISOString()
 
-        // PERBAIKAN: Optimasi query - coba ambil data dari cache React Query dulu
+        // Fetch ujian data (termasuk allow_remidi dan max_attempts)
         const cachedUjianData = queryClient.getQueryData(['ujian', 'siswa', ujianId])
         let ujian
 
@@ -741,11 +755,10 @@ export function useStartUjianSiswa() {
           ujian = cachedUjianData as any
           console.log('📂 Using cached ujian data for registration check')
         } else {
-          // Fallback ke database jika tidak ada cache
           console.log('🔍 Fetching ujian data from database for registration')
           const { data: ujianData, error: ujianError } = await supabase
             .from('ujian')
-            .select('id, name, status, end_time')
+            .select('id, name, status, end_time, allow_remidi, max_attempts')
             .eq('id', ujianId)
             .eq('status', 'active')
             .single()
@@ -761,17 +774,37 @@ export function useStartUjianSiswa() {
           throw new Error('Ujian sudah berakhir')
         }
 
-        // Check apakah siswa sudah pernah mengerjakan ujian ini
-        const { data: existingUjianSiswa } = await supabase
+        // Check semua attempt siswa untuk ujian ini
+        const { data: existingAttempts } = await supabase
           .from('ujian_siswa')
-          .select('id, status')
+          .select('id, status, attempt_number')
           .eq('ujian_id', ujianId)
           .eq('siswa_id', user.id)
-          .maybeSingle() // FIXED: Use maybeSingle() instead of single() to handle no data
+          .order('attempt_number', { ascending: false })
 
-        if (existingUjianSiswa) {
+        const hasInProgress = existingAttempts?.some(a => a.status === 'in_progress')
+        const completedAttempts = existingAttempts?.filter(a => a.status === 'completed') || []
+        const maxAttemptNumber = existingAttempts?.length ? Math.max(...existingAttempts.map(a => a.attempt_number || 1)) : 0
+
+        if (hasInProgress) {
+          throw new Error('Anda masih memiliki ujian yang sedang berlangsung')
+        }
+
+        if (existingAttempts && existingAttempts.length > 0 && !isRemidi) {
           throw new Error('Anda sudah terdaftar untuk ujian ini')
         }
+
+        if (isRemidi) {
+          // Validasi remidi
+          if (!ujian.allow_remidi) {
+            throw new Error('Ujian ini tidak mengizinkan remidi')
+          }
+          if (completedAttempts.length >= (ujian.max_attempts || 1)) {
+            throw new Error(`Anda sudah mencapai batas maksimal ${ujian.max_attempts} percobaan`)
+          }
+        }
+
+        const nextAttemptNumber = maxAttemptNumber + 1
 
         // Insert record ujian_siswa dengan status in_progress
         const { data: ujianSiswa, error } = await supabase
@@ -781,6 +814,7 @@ export function useStartUjianSiswa() {
             siswa_id: user.id,
             status: 'in_progress',
             started_at: now,
+            attempt_number: nextAttemptNumber,
           })
           .select()
           .single()
@@ -789,7 +823,7 @@ export function useStartUjianSiswa() {
           throw error
         }
 
-        console.log('✅ Siswa started ujian:', { ujianId, siswaId: user.id })
+        console.log('✅ Siswa started ujian:', { ujianId, siswaId: user.id, attempt: nextAttemptNumber, isRemidi })
         return ujianSiswa
       } catch (error) {
         // Remove from cache on error untuk allow retry
@@ -800,12 +834,8 @@ export function useStartUjianSiswa() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['available-ujian-siswa'] })
       queryClient.invalidateQueries({ queryKey: ['ujian-siswa'] })
-      // FIXED: More specific invalidation to prevent infinite loops
-      // Hanya invalidate ujian list untuk guru, tidak untuk siswa yang sedang mengerjakan
-      queryClient.invalidateQueries({ 
-        queryKey: ['ujian'], 
+      queryClient.invalidateQueries({ queryKey: ['ujian'], 
         predicate: (query) => {
-          // Jangan invalidate query ujian siswa yang sedang aktif
           return !query.queryKey.includes('siswa')
         }
       })

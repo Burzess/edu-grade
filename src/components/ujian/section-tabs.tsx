@@ -45,38 +45,33 @@ export const SectionTabs = memo(({
     }
 
     return (
-        <div className="bg-card border-b border-border">
-            <div className="container mx-auto px-3 sm:px-4 xl:px-8">
-                <div className="flex gap-2 sm:gap-4 xl:gap-12 overflow-x-auto scrollbar-hide">
+        <div className="bg-card/80 border-b border-border/60">
+            <div className="container mx-auto px-3 sm:px-4 xl:px-6">
+                <div className="flex gap-1 sm:gap-2 overflow-x-auto scrollbar-hide py-1.5">
                     {questionSections.multipleChoice.length > 0 && (
                         <button
                             onClick={() => handleSectionSwitch('multiple_choice')}
                             className={`
-                                flex-shrink-0 py-3 xl:py-4 px-3 xl:px-4 border-b-3 xl:border-b-4 transition-all duration-300 hover:scale-105
+                                flex-shrink-0 py-2 px-3 sm:px-4 rounded-lg transition-all duration-200
                                 ${currentSectionType === 'multiple_choice' 
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50 shadow-sm dark:bg-blue-950/30 dark:text-blue-400' 
-                                    : 'border-transparent text-muted-foreground hover:text-blue-600 hover:border-blue-300 hover:bg-blue-25 dark:hover:bg-blue-950/20'
+                                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-sm border border-blue-200 dark:border-blue-800' 
+                                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                                 }
                             `}
                         >
-                            <div className="flex flex-col sm:flex-row items-center gap-1 xl:gap-3">
-                                <div className="flex items-center gap-2 xl:gap-3">
-                                    <span className="text-sm xl:text-lg font-medium">📝</span>
-                                    <span className="text-sm xl:text-lg font-semibold">PILIHAN GANDA</span>
-                                    <Badge 
-                                        variant={currentSectionType === 'multiple_choice' ? 'default' : 'secondary'}
-                                        className="text-xs xl:text-sm px-2 py-1 xl:px-3 xl:py-1"
-                                    >
-                                        {sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total}
-                                    </Badge>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">Pilihan Ganda</span>
+                                <Badge 
+                                    variant={currentSectionType === 'multiple_choice' ? 'default' : 'secondary'}
+                                    className="text-[10px] px-1.5 py-0 h-4"
+                                >
+                                    {sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total}
+                                </Badge>
                                 </div>
-                                {currentSectionType !== 'multiple_choice' && (
-                                    <span className="text-xs text-muted-foreground hidden sm:inline xl:text-sm">↗ Klik untuk beralih</span>
-                                )}
-                            </div>
-                            <div className="w-20 xl:w-32 bg-muted rounded-full h-1 xl:h-2 mt-2">
+                            {/* Progress bar inline */}
+                            <div className="w-16 bg-muted rounded-full h-1 mt-1.5">
                                 <div 
-                                    className="bg-blue-600 h-1 xl:h-2 rounded-full transition-all duration-500" 
+                                    className="bg-blue-500 h-1 rounded-full transition-all duration-500" 
                                     style={{ width: `${sectionProgress.multipleChoice.percentage}%` }}
                                 />
                             </div>
@@ -87,31 +82,25 @@ export const SectionTabs = memo(({
                         <button
                             onClick={() => handleSectionSwitch('essay')}
                             className={`
-                                flex-shrink-0 py-3 xl:py-4 px-3 xl:px-4 border-b-3 xl:border-b-4 transition-all duration-300 hover:scale-105
+                                flex-shrink-0 py-2 px-3 sm:px-4 rounded-lg transition-all duration-200
                                 ${currentSectionType === 'essay' 
-                                    ? 'border-green-600 text-green-600 bg-green-50 shadow-sm dark:bg-green-950/30 dark:text-green-400' 
-                                    : 'border-transparent text-muted-foreground hover:text-green-600 hover:border-green-300 hover:bg-green-25 dark:hover:bg-green-950/20'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-800' 
+                                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                                 }
                             `}
                         >
-                            <div className="flex flex-col sm:flex-row items-center gap-1 xl:gap-3">
-                                <div className="flex items-center gap-2 xl:gap-3">
-                                    <span className="text-sm xl:text-lg font-medium">✍️</span>
-                                    <span className="text-sm xl:text-lg font-semibold">ESSAY</span>
-                                    <Badge 
-                                        variant={currentSectionType === 'essay' ? 'default' : 'secondary'}
-                                        className="text-xs xl:text-sm px-2 py-1 xl:px-3 xl:py-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                                    >
-                                        {sectionProgress.essay.answered}/{sectionProgress.essay.total}
-                                    </Badge>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">Essay</span>
+                                <Badge 
+                                    variant={currentSectionType === 'essay' ? 'default' : 'secondary'}
+                                    className="text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400"
+                                >
+                                    {sectionProgress.essay.answered}/{sectionProgress.essay.total}
+                                </Badge>
                                 </div>
-                                {currentSectionType !== 'essay' && (
-                                    <span className="text-xs text-muted-foreground hidden sm:inline xl:text-sm">↗ Klik untuk beralih</span>
-                                )}
-                            </div>
-                            <div className="w-20 xl:w-32 bg-muted rounded-full h-1 xl:h-2 mt-2">
+                            <div className="w-16 bg-muted rounded-full h-1 mt-1.5">
                                 <div 
-                                    className="bg-green-600 h-1 xl:h-2 rounded-full transition-all duration-500" 
+                                    className="bg-emerald-500 h-1 rounded-full transition-all duration-500" 
                                     style={{ width: `${sectionProgress.essay.percentage}%` }}
                                 />
                             </div>

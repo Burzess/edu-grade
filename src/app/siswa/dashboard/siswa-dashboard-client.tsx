@@ -214,7 +214,7 @@ export default function SiswaDashboardClient() {
       {/* Header Section */}
       <div className="space-y-6">
         {/* Welcome Card with Stats - Only show when there are active classes */}
-        {!isLoading && kelasList.length > 0 && (
+        {/*!isLoading && kelasList.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card>
               <CardHeader className="pb-2">
@@ -229,7 +229,7 @@ export default function SiswaDashboardClient() {
               </CardContent>
             </Card>
           </div>
-        )}
+        )*/}
 
         {/* Main Content */}
         {isLoading ? (
@@ -260,6 +260,25 @@ export default function SiswaDashboardClient() {
           </div>
         ) : (
           <>
+          {/* Quick Action Card */}
+            <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Plus className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Bergabung Kelas Baru
+                </h3>
+                <p className="text-muted-foreground text-center mb-4 max-w-md">
+                  Masukkan kode kelas untuk bergabung dan mulai ujian.
+                </p>
+                <Button onClick={() => setShowJoinModal(true)} className="px-6">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Masukkan Kode Kelas
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Kelas Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {kelasList.map((kelas: any, index: number) => (
@@ -270,25 +289,6 @@ export default function SiswaDashboardClient() {
                 />
               ))}
             </div>
-
-            {/* Quick Action Card */}
-            <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
-              <CardContent className="flex flex-col items-center justify-center py-8">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <Plus className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Bergabung Kelas Baru
-                </h3>
-                <p className="text-muted-foreground text-center mb-4 max-w-md">
-                  Punya kode kelas dari guru? Masukkan kode kelas untuk bergabung dan mulai belajar.
-                </p>
-                <Button onClick={() => setShowJoinModal(true)} className="px-6">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Masukkan Kode Kelas
-                </Button>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>

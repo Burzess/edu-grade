@@ -352,7 +352,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
     }, [])
 
     // Otomatis mendaftarkan siswa ke ujian_siswa ketika mengakses halaman ujian
-    const registerToUjian = useCallback((ujian: any) => {
+    const registerToUjian = useCallback((ujian: any, isRemidi = false) => {
         if (!ujian || !ujianId) return
         
         // Guard untuk mencegah registration berulang
@@ -362,9 +362,9 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
         }
         
         if (ujian.status === 'active') {
-            startUjianSiswaMutation.mutate(ujianId, {
+            startUjianSiswaMutation.mutate({ ujianId, isRemidi }, {
                 onSuccess: () => {
-                    console.log('✅ Siswa berhasil terdaftar untuk ujian:', ujianId)
+                    console.log('✅ Siswa berhasil terdaftar untuk ujian:', ujianId, isRemidi ? '(remidi)' : '')
                 },
                 onError: (error: any) => {
                     if (error.message.includes('sudah terdaftar')) {
@@ -379,11 +379,27 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
     }, [ujianId, startUjianSiswaMutation])
 
     // Setup timer ujian dengan optimasi untuk mengurangi re-render
-    const setupTimer = useCallback((ujian: any) => {
-        if (!ujian?.start_time || !ujian?.duration_minutes) return
+    // studentStartedAt: waktu siswa mulai ujian (dari ujian_siswa.started_at)
+    const setupTimer = useCallback((ujian: any, studentStartedAt?: string) => {
+        if (!ujian?.duration_minutes) return
 
-        const startTime = new Date(ujian.start_time)
-        const endTime = new Date(startTime.getTime() + ujian.duration_minutes * 60 * 1000)
+        // Gunakan started_at siswa jika tersedia, fallback ke ujian.start_time
+        const baseTime = studentStartedAt 
+            ? new Date(studentStartedAt) 
+            : ujian.start_time 
+                ? new Date(ujian.start_time) 
+                : new Date()
+        
+        let endTime = new Date(baseTime.getTime() + ujian.duration_minutes * 60 * 1000)
+        
+        // Cap dengan ujian.end_time jika ada (tidak boleh melebihi waktu akhir ujian)
+        if (ujian.end_time) {
+            const examEndTime = new Date(ujian.end_time)
+            if (examEndTime < endTime) {
+                endTime = examEndTime
+            }
+        }
+        
         let hasAutoSubmitted = false
         let lastNotifiedMinute = -1
         let lastNotifiedSecond = -1

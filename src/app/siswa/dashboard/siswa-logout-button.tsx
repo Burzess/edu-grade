@@ -46,7 +46,7 @@ export default function SiswaLogoutButton() {
           showCloseButton={false}
         >
           <div className="flex flex-col items-center justify-center py-8 px-4">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
+            <Loader2 className="h-12 w-12 animate-spin text-brand-500 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Sedang Keluar...
             </h3>

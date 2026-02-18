@@ -3,7 +3,7 @@
 import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Send } from 'lucide-react'
+import { Clock, Send, CheckCircle, BookOpen } from 'lucide-react'
 
 interface UjianHeaderProps {
     ujian: any
@@ -24,76 +24,88 @@ export const UjianHeader = memo(({
     isSubmitting,
     formatTime
 }: UjianHeaderProps) => {
+    const progressPercent = (answeredCount / Math.max(totalQuestions, 1)) * 100
+    const isTimeWarning = timeLeft !== null && timeLeft < 300
+    const isTimeCritical = timeLeft !== null && timeLeft < 60
+
     return (
-        <div className="bg-card shadow-sm border-b sticky top-0 z-10">
-            <div className="container mx-auto px-3 sm:px-4 xl:px-8 py-2 sm:py-3 xl:py-4">
-                <div className="flex items-center justify-between gap-2 xl:gap-6">
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-base sm:text-lg xl:text-2xl font-semibold truncate">{ujian.name}</h1>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-xs sm:text-sm xl:text-base text-muted-foreground truncate">
-                                Guru: {ujian.profiles?.full_name}
-                            </p>
-                            {ujian.kelas_id && (
-                                <Badge 
-                                    variant="secondary" 
-                                    className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
-                                >
-                                    Ujian Kelas
-                                </Badge>
-                            )}
+        <div className="bg-card/95 backdrop-blur-sm">
+            <div className="container mx-auto px-3 sm:px-4 xl:px-6 py-2.5 sm:py-3">
+                <div className="flex items-center justify-between gap-3">
+                    {/* Left: Exam Info */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="hidden sm:flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+                            <BookOpen className="h-4.5 w-4.5" />
+                        </div>
+                        <div className="min-w-0">
+                            <h1 className="text-sm sm:text-base xl:text-lg font-semibold truncate leading-tight">{ujian.name}</h1>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {ujian.profiles?.full_name}
+                                </p>
+                                {ujian.kelas_id && (
+                                    <Badge 
+                                        variant="secondary" 
+                                        className="text-[10px] px-1.5 py-0 h-4 bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300"
+                                    >
+                                        Kelas
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 xl:gap-6 flex-shrink-0">
-                        {/* Progress - Enhanced for desktop */}
-                        <div className="hidden sm:block text-xs sm:text-sm xl:text-base text-center">
-                            <div className="font-medium xl:font-semibold">{answeredCount}/{totalQuestions}</div>
-                            <div className="text-muted-foreground">dijawab</div>
+                    {/* Right: Progress, Timer, Submit */}
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        {/* Progress Badge */}
+                        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/80 border border-border/50">
+                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                            <span className="text-xs font-medium text-foreground">{answeredCount}/{totalQuestions}</span>
                         </div>
 
-                        {/* Enhanced Timer */}
+                        {/* Timer */}
                         {timeLeft !== null && (
                             <div className={`
-                                flex items-center gap-1 xl:gap-2 px-3 py-2 xl:px-4 xl:py-3 rounded-md xl:rounded-lg text-xs sm:text-sm xl:text-base font-bold
-                                ${timeLeft < 300 ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-primary/10 text-primary border border-primary/20'}
-                                shadow-sm xl:shadow-md
+                                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all duration-300
+                                ${isTimeCritical 
+                                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' 
+                                    : isTimeWarning 
+                                        ? 'bg-destructive/15 text-destructive border border-destructive/30' 
+                                        : 'bg-primary/10 text-primary border border-primary/20'
+                                }
                             `}>
-                                <Clock className="h-3 w-3 sm:h-4 sm:w-4 xl:h-5 xl:w-5" />
-                                <span className="font-mono text-xs sm:text-sm xl:text-base">
+                                <Clock className={`h-3.5 w-3.5 ${isTimeCritical ? 'animate-spin' : ''}`} />
+                                <span className="font-mono tabular-nums">
                                     {formatTime(timeLeft)}
                                 </span>
                             </div>
                         )}
 
+                        {/* Submit Button */}
                         <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
                             onClick={onSubmit}
                             disabled={isSubmitting}
-                            className="text-xs px-3 py-2 xl:px-4 xl:py-3 h-8 sm:h-9 xl:h-10 xl:text-sm border-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950"
+                            className="text-xs h-8 px-3 sm:px-4 bg-green-600 hover:bg-green-700 text-white shadow-sm"
                         >
-                            <Send className="h-3 w-3 sm:h-4 sm:w-4 xl:h-4 xl:w-4 mr-1 xl:mr-2" />
+                            <Send className="h-3.5 w-3.5 sm:mr-1.5" />
                             <span className="hidden sm:inline">Kumpulkan</span>
-                            <span className="sm:hidden">Submit</span>
                         </Button>
                     </div>
                 </div>
-                
-                {/* Progress bar for small screens */}
-                <div className="sm:hidden mt-2 flex items-center gap-2 text-xs">
-                    <span>{answeredCount}/{totalQuestions} dijawab</span>
-                    <div className="flex-1 bg-muted rounded-full h-1">
+
+                {/* Progress bar */}
+                <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
                         <div 
-                            className="bg-primary h-1 rounded-full transition-all duration-300"
-                            style={{ width: `${(answeredCount / Math.max(totalQuestions, 1)) * 100}%` }}
+                            className="bg-green-500 h-full rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${progressPercent}%` }}
                         />
                     </div>
-                </div>
-                
-                {/* Enhanced keyboard shortcuts info for desktop */}
-                <div className="hidden xl:block absolute top-3 right-8 text-xs text-muted-foreground text-right bg-muted px-3 py-1 rounded-md border">
-                    <div>⌨️ Shortcut: ← → Navigasi | 1 PG | 2 Essay</div>
+                    <span className="text-[10px] text-muted-foreground font-medium sm:hidden">
+                        {answeredCount}/{totalQuestions}
+                    </span>
                 </div>
             </div>
         </div>

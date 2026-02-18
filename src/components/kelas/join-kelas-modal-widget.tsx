@@ -125,10 +125,10 @@ export function JoinKelasModal({ isOpen, onClose, onSubmit }: JoinKelasModalProp
             </p>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+          <div className="bg-brand-50 dark:bg-brand-900/20 p-3 rounded-md">
             <div className="flex items-start space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
-              <div className="text-xs text-blue-800 dark:text-blue-200">
+              <div className="w-2 h-2 bg-brand-500 rounded-full mt-1.5 flex-shrink-0"></div>
+              <div className="text-xs text-brand-800 dark:text-brand-200">
                 <p className="font-medium mb-1">Cara mendapatkan kode kelas:</p>
                 <ul className="space-y-0.5">
                   <li>• Tanyakan kepada guru Anda</li>

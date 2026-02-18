@@ -25,44 +25,47 @@ export const QuestionNavigator = memo(({
 }: QuestionNavigatorProps) => {
     return (
         <>
-            {/* Mobile Toggle Button - Hidden on desktop and when sidebar is open */}
+            {/* Mobile Toggle Button */}
             <Button
                 variant="outline"
                 size="sm"
                 onClick={onToggle}
-                className={`fixed top-48 sm:top-45 right-2 sm:right-4 z-[60] xl:hidden shadow-lg p-2 transition-opacity duration-300 ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                className={`fixed bottom-4 right-3 z-[60] xl:hidden shadow-md p-2.5 h-10 w-10 rounded-full transition-opacity duration-300 ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
                 <Grid3X3 className="h-4 w-4" />
             </Button>
 
-            {/* Enhanced Navigator Panel for desktop */}
+            {/* Navigator Panel */}
             <div className={`
                 fixed top-0 right-0 h-full bg-card border-l border-border shadow-xl z-[55] transition-transform duration-300
-                w-72 sm:w-80 xl:w-full
+                w-64 sm:w-72 xl:w-full
                 ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-                xl:translate-x-0 xl:relative xl:shadow-none xl:z-10 xl:bg-muted/50 xl:border-border
+                xl:translate-x-0 xl:relative xl:shadow-none xl:z-10 xl:bg-transparent xl:border-l-0
             `}>
-                <div className="p-3 sm:p-4 xl:p-6 border-b border-border xl:bg-card">
+                <div className="p-3 sm:p-4 border-b border-border/60 bg-card">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-foreground text-sm sm:text-base xl:text-lg">
-                            {sectionType === 'multiple_choice' ? '📝 PILIHAN GANDA' : '✍️ ESSAY'}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${sectionType === 'multiple_choice' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                            <h3 className="font-medium text-sm text-foreground">
+                                {sectionType === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
+                            </h3>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={onToggle}
-                            className="xl:hidden p-1"
+                            className="xl:hidden p-1 h-7 w-7"
                         >
                             ✕
                         </Button>
                     </div>
-                    <div className="text-xs xl:text-sm text-muted-foreground mt-1">
-                        {questions.length} soal tersedia
+                    <div className="text-xs text-muted-foreground mt-1">
+                        {questions.length} soal
                     </div>
                 </div>
 
-                <div className="p-3 sm:p-4 xl:p-6 h-full overflow-y-auto pb-20 xl:pb-6">
-                    <div className="grid grid-cols-4 sm:grid-cols-5 xl:grid-cols-6 gap-2 xl:gap-3">
+                <div className="p-3 sm:p-4 h-full overflow-y-auto pb-20">
+                    <div className="grid grid-cols-5 gap-1.5">
                         {questions.map((question, index) => {
                             const isAnswered = answers[question.soal?.id]?.trim()
                             const isCurrent = index === currentIndex
@@ -72,47 +75,44 @@ export const QuestionNavigator = memo(({
                                     key={index}
                                     onClick={() => {
                                         onQuestionSelect(index)
-                                        onToggle() // Close on mobile
+                                        onToggle()
                                     }}
                                     className={`
-                                        w-10 h-10 sm:w-12 sm:h-12 xl:w-14 xl:h-14 rounded-md xl:rounded-lg border-2 text-sm xl:text-base font-semibold transition-all duration-200 relative hover:scale-105
+                                        w-full aspect-square rounded-lg border text-xs font-semibold transition-all duration-150 relative
                                         ${isCurrent 
-                                            ? 'border-primary bg-primary text-primary-foreground shadow-lg scale-105 ring-2 ring-primary/30 ring-offset-2' 
+                                            ? 'border-primary bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20' 
                                             : isAnswered
-                                                ? 'border-green-500 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/30 hover:shadow-md'
-                                                : 'border-border bg-card text-muted-foreground hover:border-border/60 hover:bg-accent hover:shadow-sm'
+                                                ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100'
+                                                : 'border-border bg-card text-muted-foreground hover:bg-muted/60'
                                         }
                                     `}
                                 >
                                     {index + 1}
                                     {isAnswered && !isCurrent && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 xl:w-4 xl:h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-card" />
                                     )}
                                 </button>
                             )
                         })}
                     </div>
                     
-                    {/* Enhanced Legend for desktop */}
-                    <div className="mt-4 xl:mt-6 pt-4 xl:pt-6 border-t border-border">
-                        <div className="text-xs xl:text-sm text-muted-foreground space-y-2 xl:space-y-3">
-                            <div className="flex items-center gap-2 xl:gap-3">
-                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-primary rounded xl:rounded-md border-2 border-primary ring-2 ring-primary/30 ring-offset-1"></div>
-                                <span className="xl:font-medium">Soal saat ini</span>
+                    {/* Legend */}
+                    <div className="mt-4 pt-3 border-t border-border/50">
+                        <div className="text-xs text-muted-foreground space-y-1.5">
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-primary rounded border-2 border-primary"></div>
+                                <span>Saat ini</span>
                             </div>
-                            <div className="flex items-center gap-2 xl:gap-3">
-                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-green-100 dark:bg-green-900/20 rounded xl:rounded-md border-2 border-green-500 relative">
-                                    <div className="absolute -top-0.5 -right-0.5 w-2 h-2 xl:w-3 xl:h-3 bg-green-500 rounded-full border border-card"></div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-green-50 dark:bg-green-900/20 rounded border border-green-300 dark:border-green-700 relative">
+                                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                                 </div>
-                                <span className="xl:font-medium">Sudah dijawab</span>
+                                <span>Sudah dijawab</span>
                             </div>
-                            <div className="flex items-center gap-2 xl:gap-3">
-                                <div className="w-4 h-4 xl:w-5 xl:h-5 bg-card rounded xl:rounded-md border-2 border-border"></div>
-                                <span className="xl:font-medium">Kosong (skor 0)</span>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-card rounded border border-border"></div>
+                                <span>Belum dijawab</span>
                             </div>
-                        </div>
-                        <div className="mt-3 xl:mt-4 p-2 xl:p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded xl:rounded-lg text-xs xl:text-sm text-yellow-700 dark:text-yellow-200">
-                            💡 <span className="xl:font-medium">Soal yang tidak dijawab akan otomatis mendapat skor 0</span>
                         </div>
                     </div>
                 </div>
@@ -121,7 +121,7 @@ export const QuestionNavigator = memo(({
             {/* Mobile Overlay */}
             {isOpen && (
                 <div 
-                    className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+                    className="fixed inset-0 bg-black/40 z-[50] xl:hidden"
                     onClick={onToggle}
                 />
             )}

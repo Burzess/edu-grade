@@ -1,13 +1,16 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useJawabanByUjian, useUjianForSiswa } from '@/hooks/use-jawaban'
+import { createClient } from '@/lib/supabase/client'
+import { useAuthStore } from '@/store/auth'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import Link from 'next/link'
 import { 
   ArrowLeft,
   Trophy,
@@ -19,7 +22,8 @@ import {
   Calendar,
   MessageSquare,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  RotateCcw
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -102,12 +106,12 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
             </div>
           </div>
           
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="font-medium text-sm text-blue-600 dark:text-blue-300 mb-2">Jawaban Anda:</div>
+          <div className="p-3 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+            <div className="font-medium text-sm text-brand-500 dark:text-brand-300 mb-2">Jawaban Anda:</div>
             <ExpandableText 
               text={jawaban.answer_text || 'Tidak ada jawaban'} 
               maxLength={200}
-              className="text-blue-800 dark:text-blue-200"
+              className="text-brand-800 dark:text-brand-200"
             />
           </div>
 
@@ -125,76 +129,77 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
   }
   
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-3">
+    <Card className="mb-3">
+      <CardHeader className="px-3 sm:px-6 py-2.5 sm:pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Soal {index + 1}</CardTitle>
-          <div className="flex items-center gap-2">
+          <CardTitle className="text-sm sm:text-lg">Soal {index + 1}</CardTitle>
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {hasScore && (
               <Badge 
                 variant={jawaban.score >= 70 ? "default" : "secondary"}
-                className={jawaban.score >= 70 
+                className={`text-[11px] sm:text-xs ${jawaban.score >= 70 
                   ? "bg-green-600 hover:bg-green-700 text-white" 
                   : "bg-red-600 hover:bg-red-700 text-white"
-                }
+                }`}
               >
                 {jawaban.score}/100
               </Badge>
             )}
             {hasScore ? (
               jawaban.score >= 70 ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-600" />
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
               )
             ) : (
-              <Clock className="h-5 w-5 text-orange-500" />
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
             )}
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 space-y-2.5 sm:space-y-4">
         {/* Question */}
-        <div className="p-3 bg-muted/50 rounded-lg">
-          <div className="font-medium text-sm text-muted-foreground mb-2">Pertanyaan:</div>
+        <div className="p-2.5 sm:p-3 bg-muted/50 rounded-lg">
+          <div className="font-medium text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">Pertanyaan:</div>
           <ExpandableText 
             text={jawaban.soal?.question_text || 'Soal tidak tersedia'} 
-            maxLength={300}
-            className="text-foreground"
+            maxLength={150}
+            className="text-xs sm:text-sm text-foreground"
           />
         </div>
 
         {/* Answer */}
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div className="font-medium text-sm text-blue-600 dark:text-blue-300 mb-2">Jawaban Anda:</div>
+        <div className="p-2.5 sm:p-3 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+          <div className="font-medium text-xs sm:text-sm text-brand-500 dark:text-brand-300 mb-1 sm:mb-2">Jawaban Anda:</div>
           {jawaban.soal?.question_type === 'multiple_choice' ? (
-            <div className="text-blue-800 dark:text-blue-200">
+            <div className="text-brand-800 dark:text-brand-200">
               <div className="font-medium">
                 {(() => {
-                  // Simplified approach - get answer text
-                  let answerText = jawaban.answer_text;
+                  const ans = jawaban.answer_text || '';
+                  let answerText = '';
                   
                   if (jawaban.soal.options && Array.isArray(jawaban.soal.options)) {
                     for (const opt of jawaban.soal.options) {
-                      if (opt.id === jawaban.answer_text) {
-                        answerText = opt.text;
+                      const optId = (opt.id || opt.label || '').toString().toLowerCase();
+                      if (optId === ans.toLowerCase()) {
+                        answerText = opt.text || '';
                         break;
                       }
                     }
                   }
                   
-                  return `${jawaban.answer_text}. ${answerText}`;
+                  return answerText ? `${ans.toUpperCase()}. ${answerText}` : ans.toUpperCase();
                 })()}
               </div>
               {/* Status jawaban */}
               {jawaban.soal.correct_answer && (
                 <div className={`text-xs mt-2 px-2 py-1 rounded inline-block ${
-                  jawaban.answer_text === jawaban.soal.correct_answer 
+                  (jawaban.answer_text || '').toLowerCase() === (jawaban.soal.correct_answer || '').toLowerCase()
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
                     : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                 }`}>
-                  {jawaban.answer_text === jawaban.soal.correct_answer ? '✓ Benar' : '✗ Salah'}
+                  {(jawaban.answer_text || '').toLowerCase() === (jawaban.soal.correct_answer || '').toLowerCase() ? '✓ Benar' : '✗ Salah'}
                 </div>
               )}
             </div>
@@ -202,7 +207,7 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
             <ExpandableText 
               text={jawaban.answer_text || 'Tidak ada jawaban'} 
               maxLength={200}
-              className="text-blue-800 dark:text-blue-200"
+              className="text-brand-800 dark:text-brand-200"
             />
           )}
         </div>
@@ -211,24 +216,25 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
         {jawaban.soal && 
          jawaban.soal.question_type === 'multiple_choice' && 
          jawaban.soal.correct_answer && 
-         jawaban.answer_text !== jawaban.soal.correct_answer && (
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-            <div className="font-medium text-sm text-green-600 dark:text-green-300 mb-2">Jawaban yang Benar:</div>
-            <div className="text-green-800 dark:text-green-200 font-medium">
+         (jawaban.answer_text || '').toLowerCase() !== (jawaban.soal.correct_answer || '').toLowerCase() && (
+          <div className="p-2.5 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="font-medium text-xs sm:text-sm text-green-600 dark:text-green-300 mb-1 sm:mb-2">Jawaban yang Benar:</div>
+            <div className="text-xs sm:text-sm text-green-800 dark:text-green-200 font-medium">
               {(() => {
-                // Simplified approach - get correct answer text
-                let correctText = 'Teks tidak tersedia';
+                const ca = jawaban.soal.correct_answer || '';
+                let correctText = '';
                 
                 if (jawaban.soal.options && Array.isArray(jawaban.soal.options)) {
                   for (const opt of jawaban.soal.options) {
-                    if (opt.id === jawaban.soal.correct_answer) {
-                      correctText = opt.text;
+                    const optId = (opt.id || opt.label || '').toString().toLowerCase();
+                    if (optId === ca.toLowerCase()) {
+                      correctText = opt.text || '';
                       break;
                     }
                   }
                 }
                 
-                return `${jawaban.soal.correct_answer}. ${correctText}`;
+                return correctText ? `${ca.toUpperCase()}. ${correctText}` : ca.toUpperCase();
               })()}
             </div>
           </div>
@@ -236,21 +242,21 @@ function ResultCard({ jawaban, index }: { jawaban: any, index: number }) {
 
         {/* AI Feedback */}
         {hasFeedback && (
-          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-            <div className="font-medium text-sm text-purple-600 dark:text-purple-300 mb-2 flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
+          <div className="p-2.5 sm:p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div className="font-medium text-xs sm:text-sm text-purple-600 dark:text-purple-300 mb-1 sm:mb-2 flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5" />
               Feedback:
             </div>
             <ExpandableText 
               text={jawaban.ai_feedback} 
-              maxLength={250}
-              className="text-purple-800 dark:text-purple-200"
+              maxLength={150}
+              className="text-xs sm:text-sm text-purple-800 dark:text-purple-200"
             />
           </div>
         )}
 
         {/* Status */}
-        <div className="text-xs text-muted-foreground">
+        <div className="text-[11px] sm:text-xs text-muted-foreground">
           {hasScore ? (
             <span>
               {jawaban.soal?.question_type === 'multiple_choice' 
@@ -276,9 +282,45 @@ function HasilUjianPageContent() {
   const params = useParams()
   const router = useRouter()
   const ujianId = params.id as string
+  const { user } = useAuthStore()
 
   const { data: ujian, isLoading: ujianLoading } = useUjianForSiswa(ujianId)
   const { data: jawaban = [], isLoading: jawabanLoading } = useJawabanByUjian(ujianId)
+
+  // State for remidi info
+  const [remidiInfo, setRemidiInfo] = useState<{
+    attemptCount: number
+    canRemidi: boolean
+    maxAttempts: number
+  } | null>(null)
+
+  // Fetch remidi info
+  useEffect(() => {
+    if (!ujian || !user?.id) return
+    if (!ujian.allow_remidi) {
+      setRemidiInfo({ attemptCount: 1, canRemidi: false, maxAttempts: 1 })
+      return
+    }
+
+    const fetchRemidiInfo = async () => {
+      const supabase = createClient()
+      const { data: attempts } = await supabase
+        .from('ujian_siswa')
+        .select('attempt_number, status')
+        .eq('ujian_id', ujianId)
+        .eq('siswa_id', user.id)
+        .eq('status', 'completed')
+
+      const completedCount = attempts?.length || 0
+      setRemidiInfo({
+        attemptCount: completedCount,
+        canRemidi: completedCount < (ujian.max_attempts || 1),
+        maxAttempts: ujian.max_attempts || 1,
+      })
+    }
+
+    fetchRemidiInfo()
+  }, [ujian, ujianId, user?.id])
 
   const isLoading = ujianLoading || jawabanLoading
 
@@ -355,6 +397,29 @@ function HasilUjianPageContent() {
     )
   }
 
+  // Cek apakah ujian masih aktif (end_time belum lewat) — hasil belum bisa diakses
+  if (ujian.end_time && new Date() < new Date(ujian.end_time) && ujian.status === 'active') {
+    const endTimeFormatted = format(new Date(ujian.end_time), 'dd MMM yyyy, HH:mm', { locale: id })
+    return (
+      <div className="container mx-auto py-6">
+        <div className="text-center py-12">
+          <Clock className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Hasil Belum Tersedia</h3>
+          <p className="text-muted-foreground mb-1">
+            Hasil ujian baru dapat dilihat setelah waktu ujian berakhir.
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Waktu ujian berakhir: <span className="font-medium">{endTimeFormatted}</span>
+          </p>
+          <Button onClick={() => router.push('/siswa/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Kembali ke Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   // Calculate statistics
   const totalQuestions = jawaban.length
   const scoredAnswers = jawaban.filter(j => j.score !== null)
@@ -365,90 +430,90 @@ function HasilUjianPageContent() {
   const answeredQuestions = jawaban.filter(j => j.answer_text && j.answer_text.trim() !== '').length
 
   return (
-    <div className="container mx-auto px-4 md:px-8 py-6 space-y-8">
-      {/* Back buttons */}
-      <div className="flex items-center gap-2">
+    <div className="container mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-8">
+      {/* Back button */}
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {ujian?.kelas_id ? (
           <>
-            <Button variant="default" onClick={() => router.push(`/siswa/kelas/${ujian.kelas_id}`)}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Kembali ke Kelas
+            <Button variant="default" size="sm" onClick={() => router.push(`/siswa/kelas/${ujian.kelas_id}`)}>
+              <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+              <span className="text-xs sm:text-sm">Kembali</span>
             </Button>
-            <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/siswa/dashboard')} className="text-xs sm:text-sm">
               Dashboard
             </Button>
           </>
         ) : (
-          <Button variant="ghost" onClick={() => router.push('/siswa/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali ke Dashboard
+          <Button variant="ghost" size="sm" onClick={() => router.push('/siswa/dashboard')}>
+            <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+            <span className="text-xs sm:text-sm">Dashboard</span>
           </Button>
         )}
       </div>
 
       {/* Header */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{ujian.name}</CardTitle>
-              <CardDescription className="text-base mt-1">
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-6">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-2xl truncate">{ujian.name}</CardTitle>
+              <CardDescription className="text-xs sm:text-base mt-0.5 sm:mt-1 line-clamp-2">
                 {ujian.description || 'Tidak ada deskripsi'}
               </CardDescription>
             </div>
             <Badge 
               variant="secondary" 
-              className={
+              className={`shrink-0 text-[11px] sm:text-sm ${
                 averageScore !== null && averageScore >= 70 
                   ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800" 
                   : averageScore !== null 
                   ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800"
                   : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
-              }
+              }`}
             >
               {averageScore !== null ? `${averageScore}/100` : 'Belum Dinilai'}
             </Badge>
           </div>
         </CardHeader>
         
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalQuestions}</div>
-              <div className="text-sm text-blue-600 dark:text-blue-400">Total Soal</div>
+        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+            <div className="text-center p-2.5 sm:p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+              <FileText className="h-5 w-5 sm:h-8 sm:w-8 text-brand-500 dark:text-brand-400 mx-auto mb-1 sm:mb-2" />
+              <div className="text-lg sm:text-2xl font-bold text-brand-500 dark:text-brand-400">{totalQuestions}</div>
+              <div className="text-[11px] sm:text-sm text-brand-500 dark:text-brand-400">Total Soal</div>
             </div>
             
-            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{answeredQuestions}</div>
-              <div className="text-sm text-green-600 dark:text-green-400">Dijawab</div>
+            <div className="text-center p-2.5 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <CheckCircle className="h-5 w-5 sm:h-8 sm:w-8 text-green-600 dark:text-green-400 mx-auto mb-1 sm:mb-2" />
+              <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{answeredQuestions}</div>
+              <div className="text-[11px] sm:text-sm text-green-600 dark:text-green-400">Dijawab</div>
             </div>
             
-            <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <Trophy className="h-8 w-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="text-center p-2.5 sm:p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <Trophy className="h-5 w-5 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400 mx-auto mb-1 sm:mb-2" />
+              <div className="text-lg sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {averageScore !== null ? averageScore : '-'}
               </div>
-              <div className="text-sm text-purple-600 dark:text-purple-400">Rata-rata Nilai</div>
+              <div className="text-[11px] sm:text-sm text-purple-600 dark:text-purple-400">Rata-rata</div>
             </div>
             
-            <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-              <Clock className="h-8 w-8 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{correctAnswers}</div>
-              <div className="text-sm text-orange-600 dark:text-orange-400">Benar (≥70)</div>
+            <div className="text-center p-2.5 sm:p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+              <CheckCircle className="h-5 w-5 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400 mx-auto mb-1 sm:mb-2" />
+              <div className="text-lg sm:text-2xl font-bold text-orange-600 dark:text-orange-400">{correctAnswers}</div>
+              <div className="text-[11px] sm:text-sm text-orange-600 dark:text-orange-400">Benar (≥70)</div>
             </div>
           </div>
 
           {/* Exam info */}
-          <div className="mt-6 pt-4 border-t space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+          <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span>Guru: {ujian.profiles?.full_name}</span>
             </div>
             {jawaban[0]?.created_at && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span>Dikerjakan: {format(new Date(jawaban[0].created_at), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
               </div>
             )}
@@ -457,8 +522,8 @@ function HasilUjianPageContent() {
       </Card>
 
       {/* Results */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Detail Jawaban</h2>
+      <div className="space-y-3 sm:space-y-4">
+        <h2 className="text-base sm:text-xl font-semibold">Detail Jawaban</h2>
         
         {jawaban
           .sort((a, b) => {
@@ -489,28 +554,50 @@ function HasilUjianPageContent() {
       {/* Summary */}
       {averageScore !== null && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Ringkasan Hasil
+          <CardHeader className="px-3 sm:px-6 py-3 sm:py-6">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <Trophy className="h-4 w-4 sm:h-5 sm:w-5" />
+              Ringkasan
+              {remidiInfo && remidiInfo.attemptCount > 1 && (
+                <Badge variant="outline" className="ml-1.5 text-[10px] sm:text-xs">
+                  {remidiInfo.attemptCount}/{remidiInfo.maxAttempts}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-4">
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="text-center py-2 sm:py-4">
               {averageScore >= 70 ? (
                 <div className="text-green-600">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-2" />
-                  <div className="text-lg font-semibold">Selamat! Anda Lulus</div>
-                  <div className="text-sm">Nilai Anda: {averageScore}/100</div>
+                  <CheckCircle className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-1.5 sm:mb-2" />
+                  <div className="text-sm sm:text-lg font-semibold">Selamat! Anda Lulus</div>
+                  <div className="text-xs sm:text-sm">Nilai: {averageScore}/100</div>
                 </div>
               ) : (
                 <div className="text-red-600">
-                  <XCircle className="h-12 w-12 mx-auto mb-2" />
-                  <div className="text-lg font-semibold">Perlu Perbaikan</div>
-                  <div className="text-sm">Nilai Anda: {averageScore}/100</div>
+                  <XCircle className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-1.5 sm:mb-2" />
+                  <div className="text-sm sm:text-lg font-semibold">Perlu Perbaikan</div>
+                  <div className="text-xs sm:text-sm">Nilai: {averageScore}/100</div>
                 </div>
               )}
             </div>
+
+            {/* Remidi button */}
+            {remidiInfo?.canRemidi && (
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+                <div className="text-center space-y-1.5 sm:space-y-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Sisa {remidiInfo.maxAttempts - remidiInfo.attemptCount} kesempatan remidi. Nilai terbaik diambil.
+                  </p>
+                  <Button asChild size="sm" className="bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm">
+                    <Link href={`/siswa/ujian/${ujianId}?remidi=true`}>
+                      <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+                      Remidi ({remidiInfo.attemptCount + 1}/{remidiInfo.maxAttempts})
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

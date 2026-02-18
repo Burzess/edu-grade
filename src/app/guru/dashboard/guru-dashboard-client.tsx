@@ -27,7 +27,7 @@ function ActivityItem({ activity }: { activity: any }) {
       case 'ujian_aktif':
         return { icon: CheckCircle, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950/30' }
       case 'ujian_dibuat':
-        return { icon: BookOpen, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-950/30' }
+        return { icon: BookOpen, color: 'text-brand-500 dark:text-brand-400', bgColor: 'bg-brand-50 dark:bg-brand-950/30' }
       case 'siswa_mulai_ujian':
         return { icon: Activity, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-950/30' }
       case 'siswa_selesai_ujian':
@@ -35,7 +35,7 @@ function ActivityItem({ activity }: { activity: any }) {
       case 'siswa_mengerjakan':
         return { icon: Clock, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/30' }
       case 'jawaban_masuk':
-        return { icon: FileText, color: 'text-indigo-600 dark:text-indigo-400', bgColor: 'bg-indigo-50 dark:bg-indigo-950/30' }
+        return { icon: FileText, color: 'text-brand-500 dark:text-brand-400', bgColor: 'bg-brand-50 dark:bg-brand-950/30' }
       default:
         return { icon: AlertCircle, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-950/30' }
     }
@@ -120,7 +120,7 @@ export default function GuruDashboardClient() {
             <CardTitle className="text-sm font-medium">Total Ujian</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-brand-500">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
               ) : statsError ? (
@@ -192,7 +192,7 @@ export default function GuruDashboardClient() {
             <CardTitle className="text-sm font-medium">Rata-rata Nilai</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-indigo-600">
+            <div className="text-2xl font-bold text-gold-400">
               {isStatsLoading ? (
                 <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
               ) : statsError ? (

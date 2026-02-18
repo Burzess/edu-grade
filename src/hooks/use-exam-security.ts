@@ -17,7 +17,7 @@ interface UseExamSecurityOptions {
 }
 
 interface SecurityEvent {
-    type: 'tab_switch' | 'window_blur' | 'before_unload' | 'text_selection' | 'right_click' | 'key_combination' | 'split_screen' | 'viewport_change' | 'orientation_suspicious' | 'screenshot_attempt'
+    type: 'tab_switch' | 'before_unload' | 'text_selection' | 'right_click' | 'key_combination' | 'split_screen' | 'viewport_change' | 'orientation_suspicious' | 'screenshot_attempt'
     timestamp: Date
     details?: any
 }
@@ -40,17 +40,32 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
     const [tabSwitchCount, setTabSwitchCount] = useState(0)
     const [isSplitScreenMode, setIsSplitScreenMode] = useState(false)
     const [totalViolationCount, setTotalViolationCount] = useState(0)
+    const totalViolationRef = useRef(0) // Ref to avoid stale closure
+    const lastRecordTime = useRef(0) // Debounce duplicate events
     const [initialViewport, setInitialViewport] = useState<{width: number, height: number} | null>(null)
     const lastVisibilityChange = useRef<Date>(new Date())
     const focusWarningShown = useRef(false)
     const lastOrientation = useRef<number | null>(null)
     const suspiciousResizeCount = useRef(0)
 
+    // Keep ref in sync with state
+    useEffect(() => {
+        totalViolationRef.current = totalViolationCount
+    }, [totalViolationCount])
+
     // Function untuk mencatat event keamanan
     const recordSecurityEvent = useCallback((type: SecurityEvent['type'], details?: any) => {
+        // Debounce: ignore duplicate events within 500ms
+        const now = Date.now()
+        if (now - lastRecordTime.current < 500 && type !== 'tab_switch') {
+            console.log(`⏭️ Security event debounced: ${type}`)
+            return
+        }
+        lastRecordTime.current = now
+
         // Increment total violation count for significant violations
         const significantViolations = ['screenshot_attempt', 'tab_switch', 'right_click', 'key_combination']
-        let newTotalCount = totalViolationCount
+        let newTotalCount = totalViolationRef.current
         
         if (significantViolations.includes(type)) {
             // Only count 'returned' action for tab_switch, not 'left'
@@ -58,6 +73,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                 // Don't increment for 'left' action
             } else {
                 newTotalCount += 1
+                totalViolationRef.current = newTotalCount
                 setTotalViolationCount(newTotalCount)
             }
         }
@@ -78,16 +94,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         })
         
         setSecurityEvents(prev => [...prev, event])
-        
-        console.log(`📞 Calling onSecurityViolation with:`, { 
-            type, 
-            details: event.details,
-            totalViolations: newTotalCount 
-        })
         onSecurityViolation?.(type, event.details)
-        
-        // Log ke console untuk debugging
-        console.warn(`🚨 Security Event: ${type}`, event)
     }, [onSecurityViolation])
 
     // Screenshot attempt handler
@@ -332,23 +339,11 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
             }
         }
 
-        const handleWindowBlur = () => {
-            recordSecurityEvent('window_blur', { timestamp: new Date() })
-        }
-
-        const handleWindowFocus = () => {
-            setIsWindowFocused(true)
-        }
-
-        // Add event listeners
+        // Only use visibilitychange — blur/focus are redundant and cause double counting
         document.addEventListener('visibilitychange', handleVisibilityChange)
-        window.addEventListener('blur', handleWindowBlur)
-        window.addEventListener('focus', handleWindowFocus)
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange)
-            window.removeEventListener('blur', handleWindowBlur)
-            window.removeEventListener('focus', handleWindowFocus)
         }
     }, [isExamActive, enableFocusDetection, recordSecurityEvent, tabSwitchCount, isSubmitted])
 

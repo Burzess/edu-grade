@@ -91,6 +91,18 @@ export function useOptimizedJawabanByUjian(ujianId: string) {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
+      // Find the current/latest attempt
+      const { data: currentAttempt } = await supabase
+        .from('ujian_siswa')
+        .select('attempt_number, status')
+        .eq('ujian_id', ujianId)
+        .eq('siswa_id', user.id)
+        .order('attempt_number', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const attemptNumber = currentAttempt?.attempt_number || 1
+
       const { data: allJawaban, error } = await supabase
         .from('jawaban_siswa')
         .select(`
@@ -100,6 +112,7 @@ export function useOptimizedJawabanByUjian(ujianId: string) {
           created_at,
           score,
           ai_feedback,
+          attempt_number,
           soal:soal_id (
             id,
             question_text,
@@ -110,12 +123,13 @@ export function useOptimizedJawabanByUjian(ujianId: string) {
         `)
         .eq('ujian_id', ujianId)
         .eq('siswa_id', user.id)
+        .eq('attempt_number', attemptNumber)
         .order('created_at', { ascending: false })
 
       if (error) throw error
       if (!allJawaban) return []
 
-      // Get latest attempt per soal_id
+      // Get latest answer per soal_id (within the same attempt)
       const latestAnswersMap = new Map()
       allJawaban.forEach((jawaban: any) => {
         const soalId = jawaban.soal_id

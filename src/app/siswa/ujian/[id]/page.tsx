@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import '@/styles/anti-screenshot.css'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useUjianForSiswa } from '@/hooks/use-jawaban'
 import { useOptimizedJawabanByUjian } from '@/hooks/use-optimized-jawaban'
 import { useUjianLogic } from '@/hooks/use-ujian-logic'
-import { useAuthStore } from '@/store/auth' // PERBAIKAN: Tambah import useAuthStore
+import { useAuthStore } from '@/store/auth'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
 import { ExamSecurityProvider, useExamSecurityContext } from '@/components/providers/exam-security-provider'
@@ -41,12 +42,20 @@ import {
 function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
     const params = useParams()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const ujianId = params.id as string
+    const isRemidi = searchParams.get('remidi') === 'true'
 
     const [showSubmitDialog, setShowSubmitDialog] = useState(false)
 
-    // State untuk dialog larangan
+    // State untuk dialog larangan — akan di-skip jika siswa sudah mulai (refresh page)
     const [showRulesDialog, setShowRulesDialog] = useState(true)
+    
+    // State untuk menandakan ujian sudah dimulai (setelah konfirmasi rules)
+    const [examStarted, setExamStarted] = useState(false)
+    
+    // State untuk student's started_at dari ujian_siswa
+    const [studentStartedAt, setStudentStartedAt] = useState<string | null>(null)
     
     // State untuk toggle section tabs
     const [showSectionTabs, setShowSectionTabs] = useState(true)
@@ -70,7 +79,9 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
     const { user } = useAuthStore()
     const [isRegistered, setIsRegistered] = useState(() => {
         // Check localStorage untuk registration status
+        // For remidi, use a different key to allow re-registration
         if (typeof window !== 'undefined' && user?.id) {
+            if (isRemidi) return false // Always allow registration for remidi
             const registrationKey = `ujian_registered_${ujianId}_${user.id}`
             return localStorage.getItem(registrationKey) === 'true'
         }
@@ -185,22 +196,51 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
         if (!ujian || !ujianId || ujianLoading || isRegistered || !user?.id) return
         
         // Hanya register sekali saja
-        registerToUjian(ujian)
+        registerToUjian(ujian, isRemidi)
         
         // Mark sebagai sudah register di state dan localStorage
         setIsRegistered(true)
         const registrationKey = `ujian_registered_${ujianId}_${user.id}`
         localStorage.setItem(registrationKey, 'true')
-    }, [ujian?.id, ujianId, ujianLoading, registerToUjian, isRegistered, user?.id]) // Dependency lebih spesifik
+    }, [ujian?.id, ujianId, ujianLoading, registerToUjian, isRegistered, user?.id, isRemidi]) // Dependency lebih spesifik
 
-    // Setup timer ujian - stabilisasi untuk mencegah setup berulang
+    // Fetch ujian_siswa record untuk mendapatkan started_at & auto-resume on page refresh
     useEffect(() => {
-        if (!ujian?.start_time || !ujian?.duration_minutes) return
+        if (!ujianId || !user?.id || ujianLoading) return
+
+        const fetchUjianSiswa = async () => {
+            const supabase = createClient()
+            const { data } = await supabase
+                .from('ujian_siswa')
+                .select('id, status, started_at, attempt_number')
+                .eq('ujian_id', ujianId)
+                .eq('siswa_id', user.id)
+                .eq('status', 'in_progress')
+                .order('attempt_number', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+            if (data?.started_at) {
+                setStudentStartedAt(data.started_at)
+                
+                // Auto-resume: jika sudah in_progress, skip rules dialog dan mulai timer
+                setShowRulesDialog(false)
+                setExamStarted(true)
+                console.log('🔄 Resuming exam, started_at:', data.started_at)
+            }
+        }
+
+        fetchUjianSiswa()
+    }, [ujianId, user?.id, ujianLoading])
+
+    // Setup timer ujian - hanya dimulai setelah siswa konfirmasi rules popup
+    useEffect(() => {
+        if (!examStarted) return // Timer tidak dimulai sampai siswa klik "Mulai Ujian"
+        if (!ujian?.duration_minutes) return
         
-        // Hanya setup timer jika belum ada
-        const cleanupTimer = setupTimer(ujian)
+        const cleanupTimer = setupTimer(ujian, studentStartedAt || undefined)
         return cleanupTimer
-    }, [ujian?.start_time, ujian?.duration_minutes, setupTimer]) // Dependency lebih spesifik
+    }, [examStarted, ujian?.duration_minutes, ujian?.end_time, setupTimer, studentStartedAt])
 
     // Handle answer changes with current question context
     const handleCurrentAnswerChange = useCallback((answer: string) => {
@@ -312,11 +352,9 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                     <p className="text-muted-foreground mb-4">
                         Ujian yang Anda cari tidak tersedia atau sudah berakhir.
                     </p>
-                    <Button asChild>
-                        <span onClick={() => router.push('/siswa/dashboard')}>
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Kembali ke Dashboard
-                        </span>
+                    <Button onClick={() => router.push('/siswa/dashboard')}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Kembali ke Dashboard
                     </Button>
                 </div>
             </div>
@@ -333,11 +371,9 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                     <p className="text-muted-foreground mb-4">
                         Waktu ujian telah habis pada {format(new Date(ujian.end_time), 'dd MMM yyyy, HH:mm', { locale: id })}
                     </p>
-                    <Button asChild>
-                        <span onClick={() => router.push('/siswa/dashboard')}>
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Kembali ke Dashboard
-                        </span>
+                    <Button onClick={() => router.push('/siswa/dashboard')}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Kembali ke Dashboard
                     </Button>
                 </div>
             </div>
@@ -349,30 +385,51 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                 {/* Dialog larangan sebelum mulai ujian */}
                 <ExamRulesDialog
                     open={showRulesDialog}
-                    onConfirm={() => setShowRulesDialog(false)}
+                    onConfirm={async () => {
+                        setShowRulesDialog(false)
+                        
+                        // Update started_at di ujian_siswa ke waktu saat ini (saat siswa benar-benar mulai)
+                        const now = new Date().toISOString()
+                        setStudentStartedAt(now)
+                        
+                        if (user?.id) {
+                            try {
+                                const supabase = createClient()
+                                await supabase
+                                    .from('ujian_siswa')
+                                    .update({ started_at: now })
+                                    .eq('ujian_id', ujianId)
+                                    .eq('siswa_id', user.id)
+                                    .eq('status', 'in_progress')
+                                console.log('✅ Updated ujian_siswa.started_at to:', now)
+                            } catch (err) {
+                                console.error('Failed to update started_at:', err)
+                            }
+                        }
+                        
+                        setExamStarted(true) // Timer mulai berjalan setelah konfirmasi
+                    }}
+                    ujian={ujian}
+                    totalQuestions={organizedQuestions.length}
+                    isRemidi={isRemidi}
                 />
-            {/* Enhanced Header with timer and security status */}
-            <div className={`border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 ${showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}`}>
-                <div className="container mx-auto px-4">
-                    <div className="flex items-center justify-between py-3">
-                        <div className="flex-1">
-                            <UjianHeader
-                                ujian={ujian}
-                                answeredCount={answeredCount}
-                                totalQuestions={organizedQuestions.length}
-                                timeLeft={timeLeft}
-                                onSubmit={handleShowSubmitDialog}
-                                isSubmitting={batchSubmit.isPending}
-                                formatTime={formatTime}
-                            />
-                        </div>
-                    </div>
-                </div>
+
+            {/* Header with timer */}
+            <div className={`border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 ${showRulesDialog ? 'pointer-events-none opacity-50 select-none blur-[2px]' : ''}`}>
+                <UjianHeader
+                    ujian={ujian}
+                    answeredCount={answeredCount}
+                    totalQuestions={organizedQuestions.length}
+                    timeLeft={timeLeft}
+                    onSubmit={handleShowSubmitDialog}
+                    isSubmitting={batchSubmit.isPending}
+                    formatTime={formatTime}
+                />
             </div>
 
-            {/* Enhanced Section Progress Tabs */}
+            {/* Section Progress Tabs */}
             {showSectionTabs && (
-                <div className={showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}>
+                <div className={showRulesDialog ? 'pointer-events-none opacity-50 select-none blur-[2px]' : ''}>
                     <SectionTabs
                         questionSections={questionSections}
                         currentSectionType={currentSectionType}
@@ -382,11 +439,11 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                 </div>
             )}
 
-            {/* Main content with optimized desktop layout */}
+            {/* Main content */}
             <div className="flex flex-col xl:flex-row gap-0">
-                {/* Main Question Area - Better desktop spacing */}
-                 <div className={`flex-1 p-3 sm:p-4 lg:p-6 xl:p-8 xl:pr-6 min-h-screen exam-content ${showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}`}>
-                    <div className="max-w-4xl mx-auto xl:mx-0">
+                {/* Question Area */}
+                 <div className={`flex-1 p-3 sm:p-4 lg:p-6 min-h-screen exam-content ${showRulesDialog ? 'pointer-events-none opacity-50 select-none blur-[2px]' : ''}`}>
+                    <div className="max-w-3xl mx-auto">
                         {organizedQuestions.length > 0 && currentQuestion?.soal ? (
                             <QuestionCard
                                 soal={currentQuestion.soal}
@@ -424,7 +481,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                                         window.dispatchEvent(new Event('focus'))
                                         document.dispatchEvent(new Event('visibilitychange'))
                                     }}
-                                    className="text-xs bg-blue-500 text-white px-2 py-1 rounded mr-2"
+                                    className="text-xs bg-brand-500 text-white px-2 py-1 rounded mr-2"
                                 >
                                     Test Tab Return
                                 </button>
@@ -444,7 +501,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
 
                 {/* Desktop Question Navigator Sidebar */}
                 {organizedQuestions.length > 0 && (
-                    <div className={`xl:w-80 xl:flex-shrink-0 xl:border-l xl:bg-muted/50 ${showRulesDialog ? 'pointer-events-none opacity-50 select-none' : ''}`}>
+                    <div className={`xl:w-72 xl:flex-shrink-0 xl:border-l xl:bg-muted/30 ${showRulesDialog ? 'pointer-events-none opacity-50 select-none blur-[2px]' : ''}`}>
                         <div className="xl:sticky xl:top-20 xl:max-h-[calc(100vh-5rem)] xl:overflow-hidden">
                             {/* Toggle Section Tabs Button - Di header sidebar */}
                             {/* <div className="p-3 border-b border-border/50">
@@ -569,7 +626,6 @@ function UjianSiswaWithSecurity() {
         
         if (violationType === 'tab_switch' && details?.action === 'returned') {
             console.log('🚨 Showing tab switch modal for returned action')
-            // Broadcast event untuk modal
             window.dispatchEvent(new CustomEvent('showSecurityModal', {
                 detail: {
                     violationType: 'tab_switch',
@@ -598,14 +654,8 @@ function UjianSiswaWithSecurity() {
                     autoSubmitWarning: totalCount >= 2
                 }
             }))
-        }
-
-        // Handle screenshot violations specifically
-        if (violationType === 'screenshot_attempt') {
+        } else if (violationType === 'screenshot_attempt') {
             const method = details?.method || 'unknown'
-            const totalCount = details?.totalViolationCount || 1
-            
-            // Show modal for every violation attempt
             window.dispatchEvent(new CustomEvent('showSecurityModal', {
                 detail: {
                     violationType: 'screenshot',
@@ -614,23 +664,23 @@ function UjianSiswaWithSecurity() {
                     autoSubmitWarning: totalCount >= 2
                 }
             }))
+        }
+
+        // Auto-submit setelah 3 total pelanggaran (semua jenis)
+        if (totalCount >= 3) {
+            // Jangan trigger auto-submit untuk 'left' action (belum kembali)
+            if (violationType === 'tab_switch' && details?.action === 'left') return
+
+            console.warn(`3 total violations reached (${totalCount}), auto-submitting exam`)
             
-            // Auto-submit after 3 attempts (jika diperlukan bisa dihandle di sini)
-            if (totalCount >= 3) {
-                console.warn(`3 total violations reached (${totalCount}), auto-submitting exam`)
-                
-                // Show countdown toast
-                toast.error(`Auto-Submit dalam 3 detik... (Total Pelanggaran: ${totalCount})`, {
-                    description: 'Ujian akan otomatis dikumpulkan dan dialihkan ke dashboard.',
-                    duration: 3000,
-                })
-                
-                // Modal akan menampilkan peringatan auto-submit
-                setTimeout(() => {
-                    // Trigger auto-submit logic
-                    window.dispatchEvent(new CustomEvent('autoSubmitExam'))
-                }, 3000)
-            }
+            toast.error(`Auto-Submit dalam 3 detik... (Total Pelanggaran: ${totalCount})`, {
+                description: 'Ujian akan otomatis dikumpulkan karena terlalu banyak pelanggaran.',
+                duration: 3000,
+            })
+            
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('autoSubmitExam'))
+            }, 3000)
         }
     }, [ujianId, user?.id])
 

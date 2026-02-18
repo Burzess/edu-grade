@@ -90,16 +90,31 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
 }
 
 // Function to calculate ujian final score
-async function calculateUjianScore(ujianId: string, siswaId: string) {
+async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumber?: number) {
     try {
-        console.log('📊 Calculating final ujian score:', { ujianId, siswaId })
+        console.log('📊 Calculating final ujian score:', { ujianId, siswaId, attemptNumber })
 
-        // Get all jawaban for this ujian and siswa
+        // Determine attempt number if not provided
+        let actualAttempt = attemptNumber
+        if (!actualAttempt) {
+            const { data: currentAttempt } = await supabase
+                .from('ujian_siswa')
+                .select('attempt_number')
+                .eq('ujian_id', ujianId)
+                .eq('siswa_id', siswaId)
+                .order('attempt_number', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+            actualAttempt = currentAttempt?.attempt_number || 1
+        }
+
+        // Get all jawaban for this ujian, siswa, and attempt
         const { data: allJawaban, error: jawabanError } = await supabase
             .from('jawaban_siswa')
             .select('score, soal_id')
             .eq('ujian_id', ujianId)
             .eq('siswa_id', siswaId)
+            .eq('attempt_number', actualAttempt)
 
         if (jawabanError || !allJawaban) {
             console.error('❌ Error fetching jawaban for score calculation:', jawabanError)
@@ -258,7 +273,7 @@ type JawabanSiswa = Database['public']['Tables']['jawaban_siswa']['Row']
 type JawabanSiswaInsert = Database['public']['Tables']['jawaban_siswa']['Insert']
 type JawabanSiswaUpdate = Database['public']['Tables']['jawaban_siswa']['Update']
 
-// Hook untuk mendapatkan jawaban siswa untuk ujian tertentu (attempt terakhir saja)
+// Hook untuk mendapatkan jawaban siswa untuk ujian tertentu (attempt terakhir/aktif)
 export function useJawabanByUjian(ujianId: string) {
     const { user } = useAuthStore()
 
@@ -270,7 +285,19 @@ export function useJawabanByUjian(ujianId: string) {
                 throw new Error('User not authenticated')
             }
 
-            // Ambil semua jawaban untuk ujian ini, diurutkan berdasarkan created_at
+            // Cari attempt yang sedang aktif (in_progress) atau attempt terakhir (completed)
+            const { data: currentAttempt } = await supabase
+                .from('ujian_siswa')
+                .select('attempt_number, status')
+                .eq('ujian_id', ujianId)
+                .eq('siswa_id', user.id)
+                .order('attempt_number', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+            const attemptNumber = currentAttempt?.attempt_number || 1
+
+            // Ambil jawaban untuk attempt ini
             const { data: allJawaban, error } = await supabase
                 .from('jawaban_siswa')
                 .select(`
@@ -287,6 +314,7 @@ export function useJawabanByUjian(ujianId: string) {
                 `)
                 .eq('ujian_id', ujianId)
                 .eq('siswa_id', user.id)
+                .eq('attempt_number', attemptNumber)
                 .order('created_at', { ascending: false })
 
             if (error) {
@@ -665,6 +693,7 @@ export function useBatchSubmitJawaban() {
             ujian_id: string
             soal_id: string
             answer_text: string
+            attempt_number?: number
         }>) => {
             console.log('📤 Batch submitting jawaban:', jawabans.length, 'answers')
 
@@ -672,10 +701,29 @@ export function useBatchSubmitJawaban() {
                 throw new Error('User not authenticated')
             }
 
+            // Determine attempt_number: get from jawaban data or find current in_progress attempt
+            let attemptNumber = jawabans[0]?.attempt_number
+            if (!attemptNumber && jawabans[0]?.ujian_id) {
+                const { data: currentAttempt } = await supabase
+                    .from('ujian_siswa')
+                    .select('attempt_number')
+                    .eq('ujian_id', jawabans[0].ujian_id)
+                    .eq('siswa_id', user.id)
+                    .eq('status', 'in_progress')
+                    .order('attempt_number', { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
+                
+                attemptNumber = currentAttempt?.attempt_number || 1
+            }
+
             // Prepare data for batch insert/update
             const jawabanData = jawabans.map(jawaban => ({
-                ...jawaban,
+                ujian_id: jawaban.ujian_id,
+                soal_id: jawaban.soal_id,
+                answer_text: jawaban.answer_text,
                 siswa_id: user.id,
+                attempt_number: attemptNumber || 1,
                 updated_at: new Date().toISOString()
             }))
 
@@ -730,10 +778,11 @@ export function useBatchSubmitJawaban() {
             if (data && data.length > 0) {
                 const ujianId = data[0].ujian_id
                 const siswaId = data[0].siswa_id
+                const attemptNumber = data[0].attempt_number
 
                 // Add delay to ensure all individual grading is complete
                 setTimeout(() => {
-                    calculateUjianScore(ujianId, siswaId)
+                    calculateUjianScore(ujianId, siswaId, attemptNumber)
                 }, 2000)
             }
         },

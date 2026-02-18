@@ -47,167 +47,168 @@ export const QuestionCard = memo(({
     sectionIndex,
     sectionTotal
 }: QuestionCardProps) => {
+    const progressPercent = ((sectionIndex + 1) / sectionTotal) * 100
+
     return (
-        <Card className="w-full shadow-sm border-0 xl:border xl:shadow-md">
-            <CardHeader className="pb-3 sm:pb-4 xl:pb-6 px-4 sm:px-6 xl:px-8">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                    <div className="flex-1">
-                        <CardTitle className="text-lg sm:text-xl xl:text-2xl flex items-center gap-2 xl:gap-3">
-                            {sectionType === 'multiple_choice' ? '📝' : '✍️'}
-                            <span>{sectionType === 'multiple_choice' ? 'PILIHAN GANDA' : 'ESSAY'}</span>
-                        </CardTitle>
-                        <CardDescription className="text-sm sm:text-base xl:text-lg mt-1">
-                            Soal {sectionIndex + 1} dari {sectionTotal} ({sectionType === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'})
-                        </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2 sm:text-right">
-                        <div className="text-xs sm:text-sm xl:text-base text-muted-foreground">
-                            Progress: {index + 1}/{total}
+        <Card className="w-full shadow-sm border border-border/60 rounded-xl overflow-hidden">
+            {/* Card Header - Compact */}
+            <CardHeader className="pb-2 pt-4 px-4 sm:px-6">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                        <div className={`
+                            flex items-center justify-center h-8 w-8 rounded-lg text-sm font-bold
+                            ${sectionType === 'multiple_choice' 
+                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
+                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                            }
+                        `}>
+                            {sectionIndex + 1}
                         </div>
-                        <Progress value={((index + 1) / total) * 100} className="w-20 sm:w-24 xl:w-32" />
+                        <div>
+                            <CardTitle className="text-sm sm:text-base font-semibold leading-tight">
+                                {sectionType === 'multiple_choice' ? 'Pilihan Ganda' : 'Essay'}
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-0.5">
+                                Soal {sectionIndex + 1} dari {sectionTotal}
+                            </CardDescription>
+                        </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                        {answer.trim() ? (
+                            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                                <CheckCircle className="h-3 w-3" />
+                                Terjawab
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                                <AlertCircle className="h-3 w-3" />
+                                Belum dijawab
+                            </span>
+                        )}
+                    </div>
+                </div>
+                {/* Mini progress bar */}
+                <div className="mt-3">
+                    <Progress value={progressPercent} className="h-1" />
                 </div>
             </CardHeader>
 
-            <CardContent className="space-y-4 sm:space-y-6 xl:space-y-8 px-4 sm:px-6 xl:px-8">
-                {/* Question - Improved desktop styling */}
-                <div className="p-4 sm:p-6 xl:p-8 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg xl:rounded-2xl border border-primary/20">
-                    <div className="font-semibold mb-3 xl:mb-4 text-primary text-sm sm:text-base xl:text-lg">
-                        Pertanyaan:
-                    </div>
-                    <div className="text-foreground whitespace-pre-wrap text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose exam-question-text">
+            <CardContent className="space-y-5 px-4 sm:px-6 pb-5 pt-3">
+                {/* Question */}
+                <div className="p-4 sm:p-5 bg-muted/50 rounded-xl border border-border/40">
+                    <div className="text-foreground whitespace-pre-wrap text-sm sm:text-base leading-relaxed exam-question-text">
                         {soal.question_text}
                     </div>
                 </div>
 
-                {/* Answer Input - Enhanced for desktop */}
-                <div className="space-y-3 sm:space-y-4 xl:space-y-6">
-                    <label className="text-sm sm:text-base xl:text-lg font-semibold text-foreground">
-                        Jawaban Anda: <span className="text-xs xl:text-sm text-muted-foreground font-normal">(Opsional - boleh dikosongkan)</span>
+                {/* Answer Input */}
+                <div className="space-y-3">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        Jawaban Anda
+                        <span className="text-xs text-muted-foreground font-normal">(boleh dikosongkan)</span>
                     </label>
                     {soal.question_type === 'essay' ? (
-                        <div className="space-y-2">
-                            <Textarea
-                                placeholder="Tulis jawaban Anda di sini dengan lengkap dan jelas... (Boleh dikosongkan jika tidak yakin)"
-                                value={answer}
-                                onChange={(e) => onAnswerChange(e.target.value)}
-                                rows={6}
-                                className="min-h-[150px] sm:min-h-[200px] xl:min-h-[250px] text-sm sm:text-base xl:text-lg leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 border-2 exam-answer-input"
-                            />
-                        </div>
+                        <Textarea
+                            placeholder="Tulis jawaban Anda di sini dengan lengkap dan jelas..."
+                            value={answer}
+                            onChange={(e) => onAnswerChange(e.target.value)}
+                            rows={6}
+                            className="min-h-[150px] sm:min-h-[200px] text-sm sm:text-base leading-relaxed resize-none focus:ring-2 focus:ring-primary/30 border-border exam-answer-input"
+                        />
                     ) : (
-                        // Multiple choice options - Enhanced for desktop
-                        <div className="space-y-2 sm:space-y-3 xl:space-y-4">
+                        <div className="space-y-2">
                             {soal.options?.map((option: any, optIndex: number) => {
-                                // Use label as the identifier since that's what the data structure has
                                 const optionId = option.id || option.label || `option-${optIndex}`
                                 const isSelected = answer && optionId && String(answer).trim() === String(optionId).trim()
+                                const optionLetter = option.label || String.fromCharCode(65 + optIndex)
                                 
                                 return (
                                     <label 
                                         key={optionId} 
                                         className={`
-                                            flex items-start space-x-3 xl:space-x-4 p-3 sm:p-4 xl:p-5 rounded-lg xl:rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+                                            flex items-start gap-3 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group
                                             ${isSelected
-                                                ? 'border-primary bg-primary/5 shadow-md' 
-                                                : 'border-border bg-card hover:border-border/60 hover:shadow-sm'
+                                                ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20' 
+                                                : 'border-border/60 bg-card hover:border-primary/30 hover:bg-muted/30'
                                             }
                                         `}
                                     >
+                                        <div className={`
+                                            flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold flex-shrink-0 mt-0.5 transition-colors
+                                            ${isSelected 
+                                                ? 'bg-primary text-primary-foreground' 
+                                                : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+                                            }
+                                        `}>
+                                            {optionLetter}
+                                        </div>
+
                                         <input
                                             type="radio"
                                             name={`question-${soal.id}`}
                                             value={String(optionId)}
                                             checked={isSelected}
                                             onChange={(e) => onAnswerChange(e.target.value)}
-                                            className="mt-0.5 sm:mt-1 w-4 h-4 xl:w-5 xl:h-5 text-primary border-border focus:ring-primary flex-shrink-0"
+                                            className="sr-only"
                                         />
 
-                                        <div className="flex-1 min-w-0">
-                                            <span className={`
-                                                font-semibold mr-2 xl:mr-3 text-sm sm:text-base xl:text-lg
-                                                ${isSelected ? 'text-primary' : 'text-muted-foreground'}
-                                            `}>
-                                                {option.label || String.fromCharCode(65 + optIndex)}.
-                                            </span>
-                                            <span className={`
-                                                text-sm sm:text-base xl:text-lg leading-relaxed xl:leading-loose break-words
-                                                ${isSelected ? 'text-primary' : 'text-foreground'}
-                                            `}>
-                                                {option.text}
-                                            </span>
-                                        </div>
+                                        <span className={`
+                                            text-sm sm:text-base leading-relaxed break-words flex-1
+                                            ${isSelected ? 'text-foreground font-medium' : 'text-foreground/80'}
+                                        `}>
+                                            {option.text}
+                                        </span>
                                     </label>
                                 )
                             })}
                             
-                            {/* Clear selection option - Enhanced */}
                             {answer && (
                                 <button
                                     onClick={() => onAnswerChange('')}
-                                    className="w-full p-2 mt-2 text-sm text-muted-foreground border border-border rounded-lg hover:bg-muted transition-colors"
+                                    className="w-full p-2 mt-1 text-xs text-muted-foreground border border-dashed border-border rounded-lg hover:bg-muted/50 transition-colors"
                                 >
-                                    🗑️ Hapus Pilihan (Kosongkan Jawaban)
+                                    Hapus Pilihan
                                 </button>
                             )}
                         </div>
                     )}
                 </div>
 
-                {/* Navigation - Enhanced desktop layout */}
-                <div className="flex items-center justify-between pt-6 xl:pt-8 border-t border-gray-200">
+                {/* Navigation */}
+                <div className="flex items-center justify-between pt-4 border-t border-border/50">
                     <Button
                         variant="outline"
                         onClick={onPrev}
                         disabled={isFirst || isSaving}
-                        className="flex items-center gap-2 xl:gap-3 px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base"
+                        className="flex items-center gap-2 px-4 py-2 text-sm h-9"
                     >
-                        <ArrowLeft className="h-4 w-4 xl:h-5 xl:w-5" />
+                        <ArrowLeft className="h-4 w-4" />
                         <span className="hidden sm:inline">Sebelumnya</span>
-                        <span className="sm:hidden">Prev</span>
                     </Button>
 
-                    <div className="flex flex-col items-center gap-1 xl:gap-2 text-center px-2">
-                        {/* Answer status */}
-                        {answer.trim() ? (
-                            <div className="flex items-center gap-2 xl:gap-3 text-green-600 dark:text-green-400">
-                                <CheckCircle className="h-4 w-4 xl:h-5 xl:w-5" />
-                                <span className="text-xs sm:text-sm xl:text-base font-medium">Dijawab</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 xl:gap-3 text-muted-foreground">
-                                <AlertCircle className="h-4 w-4 xl:h-5 xl:w-5" />
-                                <span className="text-xs sm:text-sm xl:text-base font-medium">Kosong (skor 0)</span>
-                            </div>
-                        )}
-                        <div className="text-xs xl:text-sm text-muted-foreground">
-                            {sectionIndex + 1}/{sectionTotal}
-                        </div>
+                    <div className="text-xs text-muted-foreground text-center">
+                        {sectionIndex + 1} / {sectionTotal}
                     </div>
 
                     {isLast ? (
                         <Button 
                             onClick={onSubmit} 
                             disabled={isSaving}
-                            className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 flex items-center gap-2 xl:gap-3 px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base text-white"
+                            className="bg-green-600 hover:bg-green-700 flex items-center gap-2 px-4 py-2 text-sm h-9 text-white"
                         >
-                            <Send className="h-4 w-4 xl:h-5 xl:w-5" />
+                            <Send className="h-4 w-4" />
                             <span className="hidden sm:inline">
-                                {isSaving ? 'Menyimpan...' : 'Selesai'}
-                            </span>
-                            <span className="sm:hidden">
-                                {isSaving ? 'Save...' : 'Done'}
+                                {isSaving ? 'Menyimpan...' : 'Kumpulkan'}
                             </span>
                         </Button>
                     ) : (
                         <Button 
                             onClick={onNext} 
                             disabled={isSaving}
-                            className="flex items-center gap-2 xl:gap-3 px-4 py-2 xl:px-6 xl:py-3 text-sm xl:text-base"
+                            className="flex items-center gap-2 px-4 py-2 text-sm h-9"
                         >
                             <span className="hidden sm:inline">Selanjutnya</span>
-                            <span className="sm:hidden">Next</span>
-                            <ArrowRight className="h-4 w-4 xl:h-5 xl:w-5" />
+                            <ArrowRight className="h-4 w-4" />
                         </Button>
                     )}
                 </div>

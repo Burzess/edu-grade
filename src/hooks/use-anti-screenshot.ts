@@ -35,15 +35,24 @@ export function useAntiScreenshot(options: UseAntiScreenshotOptions = {}) {
     const [screenshotAttempts, setScreenshotAttempts] = useState<ScreenshotAttempt[]>([])
     const [isProtectionActive, setIsProtectionActive] = useState(false)
     const lastKeyPressTime = useRef<number>(0)
+    const lastRecordedTime = useRef<number>(0) // Debounce: prevent duplicate records
     const consecutiveScreenshotAttempts = useRef<number>(0)
     const totalViolationAttempts = useRef<number>(0) // Track all security violations
 
-    // Function untuk mencatat percobaan screenshot
+    // Function untuk mencatat percobaan screenshot (with debounce)
     const recordScreenshotAttempt = useCallback((
         method: ScreenshotAttempt['method'], 
         details?: any, 
         blocked: boolean = true
     ) => {
+        // Debounce: skip if recorded within last 1 second to prevent duplicates
+        const now = Date.now()
+        if (now - lastRecordedTime.current < 1000) {
+            console.log(`⏭️ Screenshot attempt debounced (${method}), too soon after last record`)
+            return null
+        }
+        lastRecordedTime.current = now
+
         const attempt: ScreenshotAttempt = {
             method,
             timestamp: new Date(),
@@ -126,115 +135,44 @@ export function useAntiScreenshot(options: UseAntiScreenshotOptions = {}) {
                 
                 return false
             }
-
-            // Deteksi rapid key combination yang mencurigakan
-            if (timeSinceLastKey < 100 && (event.ctrlKey || event.altKey || event.metaKey)) {
-                recordScreenshotAttempt('keyboard_shortcut', {
-                    key: event.key,
-                    suspiciousRapidCombination: true,
-                    timeSinceLastKey
-                })
-            }
         }
 
-        const handleKeyUp = (event: KeyboardEvent) => {
-            // Tangkap key up untuk Print Screen juga
-            if (event.key === 'PrintScreen' || event.keyCode === 44) {
-                event.preventDefault()
-                recordScreenshotAttempt('printscreen', {
-                    keyUp: true,
-                    timestamp: new Date()
-                })
-                return false
-            }
-        }
-
+        // Only register on document (not window) to prevent double-firing
         document.addEventListener('keydown', handleKeyDown, { capture: true, passive: false })
-        document.addEventListener('keyup', handleKeyUp, { capture: true, passive: false })
-        window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false })
-        window.addEventListener('keyup', handleKeyUp, { capture: true, passive: false })
 
         return () => {
             document.removeEventListener('keydown', handleKeyDown, { capture: true })
-            document.removeEventListener('keyup', handleKeyUp, { capture: true })
-            window.removeEventListener('keydown', handleKeyDown, { capture: true })
-            window.removeEventListener('keyup', handleKeyUp, { capture: true })
         }
     }, [isActive, enableKeyboardBlocking, recordScreenshotAttempt])
 
     // 2. Browser API Screenshot Prevention
+    // Note: Only log, do NOT count as violation to prevent false positives
+    // from internal React/Canvas operations
     useEffect(() => {
         if (!isActive || !enableAPIBlocking) return
 
-        // Intercept clipboard API yang bisa digunakan untuk screenshot
-        const originalWriteText = navigator.clipboard?.writeText
-        const originalWrite = navigator.clipboard?.write
-
-        if (navigator.clipboard && originalWriteText) {
-            navigator.clipboard.writeText = async function(text: string) {
-                recordScreenshotAttempt('browser_api', {
-                    api: 'clipboard.writeText',
-                    textLength: text.length,
-                    blocked: false // Tidak bisa diblokir sepenuhnya, hanya dicatat
-                })
-                return originalWriteText.call(this, text)
-            }
-        }
-
-        if (navigator.clipboard && originalWrite) {
-            navigator.clipboard.write = async function(data: ClipboardItems) {
-                recordScreenshotAttempt('browser_api', {
-                    api: 'clipboard.write',
-                    itemsCount: data.length,
-                    blocked: false // Tidak bisa diblokir sepenuhnya, hanya dicatat
-                })
-                return originalWrite.call(this, data)
-            }
-        }
-
-        // Monitor HTML5 Canvas API (bisa digunakan untuk screenshot)
-        const originalToDataURL = HTMLCanvasElement.prototype.toDataURL
-        HTMLCanvasElement.prototype.toDataURL = function(...args) {
+        // Block print to prevent PDF screenshots
+        const handleBeforePrint = () => {
             recordScreenshotAttempt('browser_api', {
-                api: 'canvas.toDataURL',
-                arguments: args,
-                canvasSize: { width: this.width, height: this.height }
+                api: 'window.print',
+                blocked: true
             })
-            // Biarkan tetap jalan tapi catat aktivitynya
-            return originalToDataURL.apply(this, args)
         }
 
-        // Monitor getImageData API
-        const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData
-        CanvasRenderingContext2D.prototype.getImageData = function(...args) {
-            recordScreenshotAttempt('browser_api', {
-                api: 'context.getImageData',
-                arguments: args
-            })
-            return originalGetImageData.apply(this, args)
-        }
+        window.addEventListener('beforeprint', handleBeforePrint)
 
         return () => {
-            // Restore original functions
-            if (navigator.clipboard && originalWriteText) {
-                navigator.clipboard.writeText = originalWriteText
-            }
-            if (navigator.clipboard && originalWrite) {
-                navigator.clipboard.write = originalWrite
-            }
-            HTMLCanvasElement.prototype.toDataURL = originalToDataURL
-            CanvasRenderingContext2D.prototype.getImageData = originalGetImageData
+            window.removeEventListener('beforeprint', handleBeforePrint)
         }
     }, [isActive, enableAPIBlocking, recordScreenshotAttempt])
 
-    // 3. Mobile Touch Gesture Prevention
+    // 3. Mobile Touch Gesture Prevention (only 3+ finger gestures)
     useEffect(() => {
         if (!isActive || !enableTouchBlocking) return
 
-        // Deteksi gesture screenshot di mobile
+        // Only detect 3+ finger gesture which is an actual screenshot gesture
         const handleTouchStart = (event: TouchEvent) => {
             if (event.touches.length >= 3) {
-                // 3+ finger gesture bisa jadi screenshot
                 recordScreenshotAttempt('touch_gesture', {
                     touchCount: event.touches.length,
                     gestureType: 'multi_finger_touch'
@@ -242,44 +180,10 @@ export function useAntiScreenshot(options: UseAntiScreenshotOptions = {}) {
             }
         }
 
-        // Deteksi kombinasi tombol fisik + touch (Android screenshot biasa)
-        const handleTouchEnd = (event: TouchEvent) => {
-            const now = Date.now()
-            
-            // Jika ada touch bersamaan dengan key press dalam waktu dekat
-            if (now - lastKeyPressTime.current < 500) {
-                recordScreenshotAttempt('touch_gesture', {
-                    suspiciousTimingWithKeyPress: true,
-                    timeSinceKeyPress: now - lastKeyPressTime.current
-                })
-            }
-        }
-
-        // Deteksi gesture swipe cepat dari edge (beberapa launcher Android)
-        const handleTouchMove = (event: TouchEvent) => {
-            if (event.touches.length === 1) {
-                const touch = event.touches[0]
-                const isFromEdge = touch.clientX < 50 || touch.clientX > window.innerWidth - 50 ||
-                                 touch.clientY < 50 || touch.clientY > window.innerHeight - 50
-                
-                if (isFromEdge) {
-                    recordScreenshotAttempt('touch_gesture', {
-                        gestureType: 'edge_swipe',
-                        startPosition: { x: touch.clientX, y: touch.clientY },
-                        blocked: false // Sulit diblokir tanpa mengganggu navigasi normal
-                    })
-                }
-            }
-        }
-
         document.addEventListener('touchstart', handleTouchStart, { passive: false })
-        document.addEventListener('touchend', handleTouchEnd, { passive: true })
-        document.addEventListener('touchmove', handleTouchMove, { passive: true })
 
         return () => {
             document.removeEventListener('touchstart', handleTouchStart)
-            document.removeEventListener('touchend', handleTouchEnd)
-            document.removeEventListener('touchmove', handleTouchMove)
         }
     }, [isActive, enableTouchBlocking, recordScreenshotAttempt])
 
@@ -377,18 +281,15 @@ export function useAntiScreenshot(options: UseAntiScreenshotOptions = {}) {
         }
     }, [isActive, enableVisibilityProtection])
 
-    // 5. Monitor untuk window blur (bisa indikasi screenshot app external)
+    // 5. Monitor untuk window blur (visual protection only - no violation recorded)
     useEffect(() => {
         if (!isActive) return
 
         const handleWindowBlur = () => {
+            // Only apply visual blur protection, do NOT record as screenshot attempt
+            // Tab switches are already tracked by use-exam-security's visibilitychange handler
             document.querySelectorAll('.exam-content').forEach(el => {
                 el.classList.add('window-blurred')
-            })
-            
-            recordScreenshotAttempt('browser_api', {
-                event: 'window_blur',
-                suspiciousActivity: 'possible_external_screenshot_app'
             })
         }
 

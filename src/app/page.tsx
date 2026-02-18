@@ -8,7 +8,7 @@ import Link from "next/link"
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 relative">      
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-950 dark:to-brand-900 relative">      
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-4">
@@ -40,7 +40,7 @@ function LandingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl text-green-600 dark:text-green-400">👨‍🎓 Untuk Siswa</CardTitle>
+              <CardTitle className="text-2xl text-gold-400 dark:text-gold-500">👨‍🎓 Untuk Siswa</CardTitle>
               <CardDescription>
                 Kerjakan ujian dan dapatkan feedback instan
               </CardDescription>

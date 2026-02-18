@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
         end_time,
         created_by,
         created_at,
-        kelas_id
+        kelas_id,
+        allow_remidi,
+        max_attempts
       `)
 
     // Filter by kelas_id if provided
@@ -62,13 +64,28 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Get completed ujian for this siswa to filter out
+    // Get ujian_siswa records for this siswa to check attempt status
+    const { data: ujianSiswaRecords } = await supabase
+      .from('ujian_siswa')
+      .select('ujian_id, status, attempt_number')
+      .eq('siswa_id', user.id)
+
+    // Group by ujian_id to get attempt counts
+    const ujianAttemptMap = new Map<string, { completedCount: number; hasInProgress: boolean }>()
+    ujianSiswaRecords?.forEach(record => {
+      const existing = ujianAttemptMap.get(record.ujian_id) || { completedCount: 0, hasInProgress: false }
+      if (record.status === 'completed') existing.completedCount++
+      if (record.status === 'in_progress') existing.hasInProgress = true
+      ujianAttemptMap.set(record.ujian_id, existing)
+    })
+
+    // Also get jawaban for backward compatibility
     const { data: completedUjian } = await supabase
       .from('jawaban_siswa')
       .select('ujian_id')
       .eq('siswa_id', user.id)
 
-    const completedUjianIds = completedUjian?.map(j => j.ujian_id) || []
+    const ujianWithJawaban = new Set(completedUjian?.map(j => j.ujian_id) || [])
 
     // Get guru names for ujian
     const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
@@ -83,23 +100,44 @@ export async function GET(request: NextRequest) {
       guruData = profiles || []
     }
 
-    // Filter out completed ujian and add additional info
+    // Filter ujian: show available (not completed) + remidi-eligible
     const availableUjian = (ujianData || [])
-      .filter(ujian => !completedUjianIds.includes(ujian.id))
+      .filter(ujian => {
+        const attemptInfo = ujianAttemptMap.get(ujian.id)
+        const hasJawaban = ujianWithJawaban.has(ujian.id)
+        
+        // If student has an in_progress attempt, don't show as "available" (they're already in)
+        if (attemptInfo?.hasInProgress) return false
+        
+        // If no attempts and no jawaban, it's available
+        if (!attemptInfo && !hasJawaban) return true
+        
+        // If exam allows remidi and student hasn't exhausted attempts
+        if (ujian.allow_remidi && attemptInfo) {
+          return attemptInfo.completedCount < (ujian.max_attempts || 1)
+        }
+        
+        // Otherwise filter out completed exams
+        return !hasJawaban && !attemptInfo
+      })
       .map(ujian => {
         const guru = guruData.find(g => g.id === ujian.created_by)
-        // Calculate duration from start and end time
+        const attemptInfo = ujianAttemptMap.get(ujian.id)
         const durationMinutes = ujian.start_time && ujian.end_time 
           ? Math.round((new Date(ujian.end_time).getTime() - new Date(ujian.start_time).getTime()) / (1000 * 60))
-          : 60 // default 60 minutes
-        
+          : 60
+
         return {
           ...ujian,
-          exam_id: ujian.id, // for compatibility
-          guru_id: ujian.created_by, // for compatibility
+          exam_id: ujian.id,
+          guru_id: ujian.created_by,
           guru_name: guru?.full_name || 'Tidak diketahui',
           duration_minutes: durationMinutes,
-          total_questions: 0 // You can add a query to count questions if needed
+          total_questions: 0,
+          // Remidi info
+          is_remidi: (attemptInfo?.completedCount || 0) > 0,
+          current_attempt: (attemptInfo?.completedCount || 0) + 1,
+          completed_attempts: attemptInfo?.completedCount || 0,
         }
       })
 

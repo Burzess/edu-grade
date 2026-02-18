@@ -127,7 +127,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
           {/* Question */}
           <div>
             <Label className="text-sm font-medium">Soal:</Label>
-            <div className="mt-1 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <div className="mt-1 p-3 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 rounded-md">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="text-xs">
                   {getQuestionTypeLabel(jawaban.soal?.question_type)}
@@ -168,7 +168,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
               <Label>Status</Label>
               <div className="mt-2">
                 {jawaban.score !== null ? (
-                  <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">Sudah Dinilai</Badge>
+                  <Badge className="bg-brand-100 dark:bg-brand-900/30 text-brand-800 dark:text-brand-300">Sudah Dinilai</Badge>
                 ) : (
                   <Badge variant="outline">Belum Dinilai</Badge>
                 )}

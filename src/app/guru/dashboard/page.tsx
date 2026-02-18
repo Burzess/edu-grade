@@ -19,11 +19,11 @@ export default function GuruDashboard() {
       <GuruLayout>
         <div className="p-6 space-y-6">
           {/* Welcome Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
+          <div className="bg-gradient-to-r from-brand-500 to-brand-700 rounded-lg p-6 text-white">
             <h1 className="text-2xl font-bold mb-2">
               Selamat datang, {displayName}!
             </h1>
-            <p className="text-blue-100">
+            <p className="text-brand-100">
               Kelola ujian dan pantau perkembangan siswa Anda dengan mudah
             </p>
           </div>

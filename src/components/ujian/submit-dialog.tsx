@@ -11,6 +11,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { AlertTriangle, CheckCircle, FileText, Info } from 'lucide-react'
 
 interface SubmitDialogProps {
     isOpen: boolean
@@ -29,7 +30,7 @@ interface SubmitDialogProps {
     totalAnswered: number
     totalQuestions: number
     isSubmitting: boolean
-    ujian?: any // NEW: Added ujian parameter for redirect info
+    ujian?: any
 }
 
 export const SubmitDialog = memo(({
@@ -46,53 +47,54 @@ export const SubmitDialog = memo(({
 
     return (
         <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
-            <AlertDialogContent>
+            <AlertDialogContent className="max-w-sm sm:max-w-md">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Kumpulkan Ujian</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogTitle className="text-base">Kumpulkan Ujian</AlertDialogTitle>
+                    <AlertDialogDescription className="text-sm">
                         Apakah Anda yakin ingin mengumpulkan ujian?
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 
-                {/* Progress dan informasi dikumpulkan ke dalam body content terpisah */}
-                <div className="space-y-3">
-                    <div className="bg-primary/10 p-3 rounded-lg text-sm">
-                        <div className="font-medium mb-2">📊 Progress Anda:</div>
-                        <div className="space-y-1">
-                            <div>📝 Pilihan Ganda: {sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total} soal</div>
-                            <div>✍️ Essay: {sectionProgress.essay.answered}/{sectionProgress.essay.total} soal</div>
-                            <div className="font-medium">Total: {totalAnswered}/{totalQuestions} soal dijawab</div>
+                <div className="space-y-2.5 text-sm">
+                    {/* Progress */}
+                    <div className="border border-border rounded-md p-3 space-y-1">
+                        <div className="font-medium text-foreground flex items-center gap-1.5 mb-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                            Progress Jawaban
+                        </div>
+                        <div className="text-muted-foreground flex justify-between">
+                            <span>Pilihan Ganda</span>
+                            <span className="font-medium text-foreground">{sectionProgress.multipleChoice.answered}/{sectionProgress.multipleChoice.total}</span>
+                        </div>
+                        <div className="text-muted-foreground flex justify-between">
+                            <span>Essay</span>
+                            <span className="font-medium text-foreground">{sectionProgress.essay.answered}/{sectionProgress.essay.total}</span>
+                        </div>
+                        <div className="border-t border-border pt-1 mt-1 flex justify-between font-medium text-foreground">
+                            <span>Total</span>
+                            <span>{totalAnswered}/{totalQuestions} soal</span>
                         </div>
                     </div>
                     
                     {unansweredCount > 0 && (
-                        <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-lg text-sm">
-                            <div className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">⚠️ Perhatian:</div>
-                            <div className="text-yellow-700 dark:text-yellow-300">
-                                {unansweredCount} soal yang tidak dijawab akan otomatis mendapat skor 0.
-                            </div>
-                        </div>
+                        <p className="text-amber-600 dark:text-amber-400 text-xs flex items-start gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                            <span>{unansweredCount} soal belum dijawab akan mendapat skor 0.</span>
+                        </p>
                     )}
                     
-                    <div className="text-destructive text-sm">
-                        ⚠️ Setelah dikumpulkan, Anda tidak bisa mengubah jawaban lagi.
-                    </div>
-                    
-                    {ujian?.kelas_id && (
-                        <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg text-sm">
-                            <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">ℹ️ Setelah submit:</div>
-                            <div className="text-blue-700 dark:text-blue-300">
-                                Anda akan diarahkan kembali ke halaman kelas untuk melihat hasil ujian.
-                            </div>
-                        </div>
-                    )}
+                    <p className="text-destructive text-xs flex items-start gap-1.5">
+                        <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <span>Setelah dikumpulkan, jawaban tidak bisa diubah lagi.</span>
+                    </p>
                 </div>
                 
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogCancel className="text-sm">Batal</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={onConfirm}
                         disabled={isSubmitting}
+                        className="text-sm"
                     >
                         {isSubmitting ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
                     </AlertDialogAction>

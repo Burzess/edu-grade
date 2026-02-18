@@ -16,7 +16,7 @@ export function AvailableUjianList() {
 
   const handleStartUjian = async (ujianId: string) => {
     try {
-      await startUjianMutation.mutateAsync(ujianId)
+      await startUjianMutation.mutateAsync({ ujianId })
       toastSuccess('Berhasil!', 'Ujian berhasil dimulai!')
     } catch (error: any) {
       toastError('Error', error.message)

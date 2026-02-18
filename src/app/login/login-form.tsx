@@ -172,7 +172,7 @@ export default function LoginForm() {
                     <div className="mt-6 space-y-3">
                         <div className="text-center text-sm">
                             Belum punya akun?{" "}
-                            <Link href="/register" className="text-blue-500 font-bold underline md:no-underline dark:text-blue-800 hover:underline">
+                            <Link href="/register" className="text-brand-500 font-bold underline md:no-underline dark:text-brand-400 hover:underline">
                                 Daftar di sini
                             </Link>
                         </div>

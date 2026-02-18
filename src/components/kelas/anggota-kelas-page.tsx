@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, UserMinus, Users, Calendar, Mail } from 'lucide-react';
+import { ArrowLeft, UserMinus, Users, Calendar, Mail, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toastSuccess, toastError } from '@/lib/toast';
@@ -50,6 +50,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Use consistent auth pattern
   const { user } = useAuthStore();
@@ -253,8 +254,8 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       <Card className="mb-6">
         <CardContent className="flex items-center justify-between p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Users className="h-6 w-6 text-blue-600" />
+            <div className="w-12 h-12 bg-brand-100 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-brand-500" />
             </div>
             <div>
               <h3 className="text-lg font-semibold">Total Anggota</h3>
@@ -272,7 +273,19 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       {/* Members Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Anggota Kelas</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle>Daftar Anggota Kelas</CardTitle>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari nama atau email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {kelasData.members.length === 0 ? (
@@ -288,6 +301,31 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
             </div>
           ) : (
             <div className="overflow-x-auto">
+              {(() => {
+                const filteredMembers = kelasData.members.filter((member) => {
+                  if (!searchQuery.trim()) return true;
+                  const query = searchQuery.toLowerCase();
+                  return (
+                    member.nama_siswa?.toLowerCase().includes(query) ||
+                    member.email?.toLowerCase().includes(query)
+                  );
+                });
+
+                if (filteredMembers.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <Search className="mx-auto h-12 w-12 text-gray-400 mb-4 dark:text-gray-300" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2 dark:text-gray-100">
+                        Tidak Ditemukan
+                      </h3>
+                      <p className="text-gray-500 dark:text-gray-300">
+                        Tidak ada siswa yang cocok dengan pencarian &quot;{searchQuery}&quot;
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -299,10 +337,10 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {kelasData.members.map((member) => (
+                  {filteredMembers.map((member, index) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
-                        {member.no}
+                        {index + 1}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -374,6 +412,8 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
                   ))}
                 </TableBody>
               </Table>
+                );
+              })()}
             </div>
           )}
         </CardContent>

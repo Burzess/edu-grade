@@ -175,12 +175,12 @@ export default function NotFound() {
 
               {/* Common Suggestions */}
               {/* <motion.div 
-                className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800"
+                className="bg-brand-50 dark:bg-brand-950/30 p-4 rounded-lg border border-brand-200 dark:border-brand-800"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 1.4 }}
               >
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                <h4 className="font-medium text-brand-900 dark:text-brand-100 mb-2">
                   💡 Kemungkinan yang Anda Cari:
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">

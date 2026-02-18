@@ -327,7 +327,7 @@ export function ScreenshotToast({
                 }
             case 'info':
                 return {
-                    bgColor: 'bg-blue-500',
+                    bgColor: 'bg-brand-500',
                     icon: <Eye className="w-5 h-5" />,
                     emoji: 'ℹ️'
                 }

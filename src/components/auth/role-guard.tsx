@@ -52,11 +52,11 @@ const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => 
     }, [])
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-brand-100">
             <Card className="w-full max-w-md shadow-lg border-0">
                 <CardContent className="pt-8 pb-8">
                     <div className="flex flex-col items-center space-y-4">
-                        <Loader2 className={`h-8 w-8 animate-spin ${timeoutWarning ? 'text-orange-500' : 'text-blue-600'}`} />
+                        <Loader2 className={`h-8 w-8 animate-spin ${timeoutWarning ? 'text-orange-500' : 'text-brand-500'}`} />
                         <p className={`text-sm font-medium ${timeoutWarning ? 'text-orange-600' : 'text-muted-foreground'}`}>
                             {timeoutWarning ? "Memverifikasi akses (membutuhkan waktu lebih lama)..." : message}
                         </p>
@@ -65,7 +65,7 @@ const LoadingScreen = memo(({ message = "Memuat..." }: { message?: string }) => 
                         <div className="w-full bg-muted rounded-full h-1.5">
                             <div 
                                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    timeoutWarning ? 'bg-orange-500' : 'bg-blue-600'
+                                    timeoutWarning ? 'bg-orange-500' : 'bg-brand-500'
                                 }`}
                                 style={{ width: `${progress}%` }}
                             />

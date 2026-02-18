@@ -39,17 +39,17 @@ export function NotificationBanner({ onDismiss }: NotificationBannerProps) {
   }
 
   return (
-    <Card className="border-blue-200 bg-blue-50">
+    <Card className="border-brand-200 bg-brand-50">
       <CardContent className="pt-4">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <Bell className="h-5 w-5 text-blue-600" />
+            <Bell className="h-5 w-5 text-brand-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-blue-800">
+            <h3 className="text-sm font-medium text-brand-800">
               Aktifkan Notifikasi
             </h3>
-            <p className="mt-1 text-sm text-blue-700">
+            <p className="mt-1 text-sm text-brand-700">
               Dapatkan notifikasi langsung ketika ada ujian baru yang dimulai oleh guru, 
               sehingga Anda tidak perlu refresh halaman.
             </p>
@@ -57,7 +57,7 @@ export function NotificationBanner({ onDismiss }: NotificationBannerProps) {
               <Button 
                 size="sm" 
                 onClick={handleEnableNotifications}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-brand-500 hover:bg-brand-600 text-white"
               >
                 Aktifkan Notifikasi
               </Button>
@@ -65,7 +65,7 @@ export function NotificationBanner({ onDismiss }: NotificationBannerProps) {
                 size="sm" 
                 variant="ghost" 
                 onClick={handleDismiss}
-                className="text-blue-600 hover:text-blue-700"
+                className="text-brand-500 hover:text-brand-600"
               >
                 Nanti Saja
               </Button>
@@ -76,7 +76,7 @@ export function NotificationBanner({ onDismiss }: NotificationBannerProps) {
               variant="ghost" 
               size="sm"
               onClick={handleDismiss}
-              className="text-blue-600 hover:text-blue-700 h-5 w-5 p-0"
+              className="text-brand-500 hover:text-brand-600 h-5 w-5 p-0"
             >
               <X className="h-4 w-4" />
             </Button>

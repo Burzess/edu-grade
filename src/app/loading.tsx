@@ -42,7 +42,7 @@ export default function Loading() {
                 ease: "easeInOut"
               }}
             >
-              <BookOpen className="h-6 w-6 text-blue-500" />
+              <BookOpen className="h-6 w-6 text-brand-500" />
             </motion.div>
             
             <motion.div

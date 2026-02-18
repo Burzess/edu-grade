@@ -75,6 +75,8 @@ export interface Database {
                     created_at: string
                     updated_at: string
                     kelas_id: string | null
+                    allow_remidi: boolean
+                    max_attempts: number
                 }
                 Insert: {
                     id?: string
@@ -88,6 +90,8 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                     kelas_id?: string | null
+                    allow_remidi?: boolean
+                    max_attempts?: number
                 }
                 Update: {
                     id?: string
@@ -101,6 +105,8 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                     kelas_id?: string | null
+                    allow_remidi?: boolean
+                    max_attempts?: number
                 }
             }
             ujian_soal: {
@@ -134,6 +140,7 @@ export interface Database {
                     status: 'not_started' | 'in_progress' | 'completed'
                     started_at: string | null
                     submitted_at: string | null
+                    attempt_number: number
                 }
                 Insert: {
                     id?: string
@@ -142,6 +149,7 @@ export interface Database {
                     status?: 'not_started' | 'in_progress' | 'completed'
                     started_at?: string | null
                     submitted_at?: string | null
+                    attempt_number?: number
                 }
                 Update: {
                     id?: string
@@ -150,6 +158,7 @@ export interface Database {
                     status?: 'not_started' | 'in_progress' | 'completed'
                     started_at?: string | null
                     submitted_at?: string | null
+                    attempt_number?: number
                 }
             }
             jawaban_siswa: {
@@ -163,6 +172,7 @@ export interface Database {
                     ai_feedback: string | null
                     created_at: string
                     updated_at: string
+                    attempt_number: number
                 }
                 Insert: {
                     id?: string
@@ -174,6 +184,7 @@ export interface Database {
                     ai_feedback?: string | null
                     created_at?: string
                     updated_at?: string
+                    attempt_number?: number
                 }
                 Update: {
                     id?: string
@@ -185,6 +196,7 @@ export interface Database {
                     ai_feedback?: string | null
                     created_at?: string
                     updated_at?: string
+                    attempt_number?: number
                 }
             }
         }

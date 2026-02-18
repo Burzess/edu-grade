@@ -17,7 +17,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeft, Save, FileText, Clock, Loader2, Filter, X, ChevronDown } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { ArrowLeft, Save, FileText, Clock, Loader2, Filter, X, ChevronDown, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
@@ -30,6 +31,8 @@ const ujianSchema = z.object({
   duration_minutes: z.number().min(1, 'Durasi minimal 1 menit').max(480, 'Durasi maksimal 8 jam'),
   selected_soal: z.array(z.string()).min(1, 'Pilih minimal 1 soal'),
   kelas_id: z.string().nullable().optional(),
+  allow_remidi: z.boolean(),
+  max_attempts: z.number().min(1, 'Minimal 1 percobaan').max(10, 'Maksimal 10 percobaan'),
 })
 
 type UjianForm = z.infer<typeof ujianSchema>
@@ -246,6 +249,8 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
       duration_minutes: 60,
       selected_soal: [],
       kelas_id: null,
+      allow_remidi: false,
+      max_attempts: 2,
     },
   })
 
@@ -299,6 +304,8 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
         duration_minutes: ujian.duration_minutes || 60,
         selected_soal: ujian.ujian_soal?.map((us: any) => us.soal_id) || [],
         kelas_id: ujian.kelas_id || null,
+        allow_remidi: ujian.allow_remidi || false,
+        max_attempts: ujian.max_attempts || 2,
       })
     }
   }, [ujian, form])
@@ -340,6 +347,8 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
         duration_minutes: data.duration_minutes,
         selected_soal: data.selected_soal,
         kelas_id: data.kelas_id,
+        allow_remidi: data.allow_remidi,
+        max_attempts: data.allow_remidi ? data.max_attempts : 1,
       })
 
       router.push('/guru/ujian')
@@ -556,6 +565,63 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
                         </FormItem>
                       )}
                     />
+
+                    {/* Remidi Settings */}
+                    <div className="space-y-3 rounded-lg border p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Pengaturan Remidi</span>
+                      </div>
+                      
+                      <FormField
+                        control={form.control}
+                        name="allow_remidi"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between rounded-md">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm">Izinkan Remidi</FormLabel>
+                              <FormDescription className="text-xs">
+                                Siswa dapat mengulang ujian ini. Nilai tertinggi yang diambil.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch('allow_remidi') && (
+                        <FormField
+                          control={form.control}
+                          name="max_attempts"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm">Maksimal Percobaan</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="2"
+                                  max="10"
+                                  value={field.value}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value)
+                                    if (!isNaN(val)) field.onChange(val)
+                                  }}
+                                />
+                              </FormControl>
+                              <FormDescription className="text-xs">
+                                Jumlah total percobaan termasuk ujian pertama (2-10)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
 
                     <FormField
                       control={form.control}

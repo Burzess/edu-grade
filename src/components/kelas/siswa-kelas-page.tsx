@@ -171,8 +171,8 @@ export function SiswaKelasPage() {
       {/* Quick Action Card */}
       <Card className="mt-8 border-dashed border-2 border-gray-300">
         <CardContent className="flex flex-col items-center justify-center py-8">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Plus className="h-6 w-6 text-blue-600" />
+          <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center mb-4">
+            <Plus className="h-6 w-6 text-brand-500" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             Bergabung Kelas Baru
