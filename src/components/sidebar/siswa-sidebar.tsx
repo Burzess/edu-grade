@@ -300,7 +300,7 @@ export function MobileSiswaSidebar({
             <div className="flex items-center space-x-2">
               <div>
                 <img
-                  src="/school-of-creativepreneur-768x432.png"
+                  src="/school-of-creativepreneur-768x432.webp"
                   alt="Logo"
                   className="w-full h-full object-cover"
                 />
