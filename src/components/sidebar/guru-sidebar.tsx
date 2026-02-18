@@ -118,12 +118,12 @@ export function GuruSidebar({ className }: SidebarProps) {
       <div className="flex items-center justify-between p-4 border-b border-border">
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Trophy className="h-5 w-5 text-primary-foreground" />
-            </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">Edu-Grade</h1>
-              <p className="text-xs text-muted-foreground">Panel Guru</p>
+              <img 
+              src="/school-of-creativepreneur-768x432.png"
+              alt="Logo"
+              className="w-full h-full object-cover"
+              />
             </div>
           </div>
         )}

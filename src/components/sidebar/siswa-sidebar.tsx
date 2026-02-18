@@ -85,7 +85,7 @@ export function SiswaSidebar({ className }: SidebarProps) {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-      
+
       // Tambahkan delay minimal agar modal terlihat
       await Promise.all([
         signOut(),
@@ -153,7 +153,7 @@ export function SiswaSidebar({ className }: SidebarProps) {
         {navigationItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
-          
+
           return (
             <Link
               key={item.href}
@@ -191,7 +191,7 @@ export function SiswaSidebar({ className }: SidebarProps) {
 
       {/* Bottom Section */}
       <div className="p-2 border-t border-border space-y-1">
-        
+
         <Link
           href="/siswa/settings"
           className={cn(
@@ -226,8 +226,8 @@ export function SiswaSidebar({ className }: SidebarProps) {
       </div>
 
       {/* Modal Loading saat Logout */}
-      <Dialog open={isLoggingOut} onOpenChange={() => {}}>
-        <DialogContent 
+      <Dialog open={isLoggingOut} onOpenChange={() => { }}>
+        <DialogContent
           className="sm:max-w-md"
           showCloseButton={false}
         >
@@ -244,12 +244,12 @@ export function SiswaSidebar({ className }: SidebarProps) {
 }
 
 // Mobile Sidebar Overlay Component
-export function MobileSiswaSidebar({ 
-  isOpen, 
-  onClose 
-}: { 
+export function MobileSiswaSidebar({
+  isOpen,
+  onClose
+}: {
   isOpen: boolean
-  onClose: () => void 
+  onClose: () => void
 }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const pathname = usePathname()
@@ -267,7 +267,7 @@ export function MobileSiswaSidebar({
     try {
       setIsLoggingOut(true)
       onClose() // Tutup mobile sidebar
-      
+
       // Tambahkan delay minimal agar modal terlihat
       await Promise.all([
         signOut(),
@@ -287,23 +287,23 @@ export function MobileSiswaSidebar({
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/50 z-40 lg:hidden"
         onClick={onClose}
       />
-      
+
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 w-64 bg-card border-r border-border z-50 lg:hidden">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-primary-foreground" />
-              </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">Edu-Grade</h1>
-                <p className="text-xs text-muted-foreground">Panel Siswa</p>
+                <img
+                  src="/school-of-creativepreneur-768x432.png"
+                  alt="Logo"
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
             <Button
@@ -338,7 +338,7 @@ export function MobileSiswaSidebar({
             {navigationItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.href)
-              
+
               return (
                 <Link
                   key={item.href}
@@ -405,8 +405,8 @@ export function MobileSiswaSidebar({
       </div>
 
       {/* Modal Loading saat Logout untuk Mobile */}
-      <Dialog open={isLoggingOut} onOpenChange={() => {}}>
-        <DialogContent 
+      <Dialog open={isLoggingOut} onOpenChange={() => { }}>
+        <DialogContent
           className="sm:max-w-md"
           showCloseButton={false}
         >
