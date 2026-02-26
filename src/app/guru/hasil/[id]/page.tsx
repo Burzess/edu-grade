@@ -23,8 +23,10 @@ import {
   XCircle,
   Clock,
   User,
-  Award
+  Award,
+  Download
 } from 'lucide-react'
+import { exportHasilUjianToExcel } from '@/lib/export-excel'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -393,15 +395,24 @@ export default function HasilUjianDetail() {
     <GuruLayout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{ujian.name}</h1>
-            <p className="text-muted-foreground">{ujian.description || 'Tidak ada deskripsi'}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Kembali
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{ujian.name}</h1>
+              <p className="text-muted-foreground">{ujian.description || 'Tidak ada deskripsi'}</p>
+            </div>
           </div>
+          <Button
+            onClick={() => exportHasilUjianToExcel(ujian.name, siswaResults)}
+            disabled={siswaResults.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Excel
+          </Button>
         </div>
 
         {/* Stats */}

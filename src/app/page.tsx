@@ -12,7 +12,7 @@ function LandingPage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground dark:text-white mb-4">
-            Selamat Datang di <span className="text-primary">Edu-Grade</span>
+            Selamat Datang di <span className="text-blue-500 dark:text-blue-600">Edu-Grade</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto dark:text-blue-100">
             Platform ujian modern dengan sistem penilaian otomatis menggunakan AI

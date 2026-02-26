@@ -1,27 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSoalList, useDeleteSoal, useSoalTags } from '@/hooks/use-soal'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { AuthGuard } from '@/components/auth/auth-guards'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react'
-import Link from 'next/link'
 import { CreateSoalModal } from '@/components/soal/create-soal-modal'
+import { EditSoalModal } from '@/components/soal/edit-soal-modal'
 
 function SoalListPageContent() {
-    const router = useRouter()
-
     // Filters state
     const [search, setSearch] = useState('')
-    const [difficulty, setDifficulty] = useState<string>('all')
     const [page, setPage] = useState(1)
     const [selectedTags, setSelectedTags] = useState<string[]>([])
 
@@ -30,8 +25,7 @@ function SoalListPageContent() {
         page,
         limit: 10,
         search,
-        tags: selectedTags,
-        difficulty: difficulty === 'all' ? undefined : difficulty
+        tags: selectedTags
     })
 
     const { data: availableTags } = useSoalTags()
@@ -56,7 +50,6 @@ function SoalListPageContent() {
 
     const clearFilters = () => {
         setSearch('')
-        setDifficulty('all')
         setSelectedTags([])
         setPage(1)
     }
@@ -99,7 +92,7 @@ function SoalListPageContent() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                             <Input
@@ -112,21 +105,6 @@ function SoalListPageContent() {
                                 className="pl-10"
                             />
                         </div>
-
-                        <Select value={difficulty} onValueChange={(value) => {
-                            setDifficulty(value)
-                            setPage(1)
-                        }}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Tingkat Kesulitan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua Tingkat</SelectItem>
-                                <SelectItem value="easy">Mudah</SelectItem>
-                                <SelectItem value="medium">Sedang</SelectItem>
-                                <SelectItem value="hard">Sulit</SelectItem>
-                            </SelectContent>
-                        </Select>
 
                         <Button variant="outline" onClick={clearFilters}>
                             Bersihkan Filter
@@ -184,8 +162,7 @@ function SoalListPageContent() {
                                 <Table className="min-w-full">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[45%] min-w-[300px]">Soal</TableHead>
-                                            <TableHead className="w-[15%] min-w-[100px]">Tingkat</TableHead>
+                                            <TableHead className="w-[55%] min-w-[300px]">Soal</TableHead>
                                             <TableHead className="w-[20%] min-w-[120px]">Tags</TableHead>
                                             <TableHead className="w-[10%] min-w-[90px]">Tanggal Dibuat</TableHead>
                                             <TableHead className="w-[10%] min-w-[80px] text-right">Aksi</TableHead>
@@ -201,15 +178,6 @@ function SoalListPageContent() {
                                                 <div className="text-xs text-gray-500 mt-1">
                                                     {soal.question_type === 'essay' ? 'Essay' : 'Pilihan Ganda'}
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={
-                                                    soal.difficulty_level === 'easy' ? 'secondary' :
-                                                        soal.difficulty_level === 'medium' ? 'default' : 'destructive'
-                                                }>
-                                                    {soal.difficulty_level === 'easy' ? 'Mudah' :
-                                                        soal.difficulty_level === 'medium' ? 'Sedang' : 'Sulit'}
-                                                </Badge>
                                             </TableCell>
                                             <TableCell className="max-w-0 px-2">
                                                 <div className="flex flex-wrap gap-1 overflow-hidden max-w-[150px]">
@@ -236,11 +204,11 @@ function SoalListPageContent() {
                                             </TableCell>
                                             <TableCell className="text-right px-2">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="outline" size="sm" asChild className="h-8 w-8 p-0">
-                                                        <Link href={`/guru/soal/${soal.id}/edit`} title="Edit soal">
+                                                    <EditSoalModal soalId={soal.id}>
+                                                        <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Edit soal">
                                                             <Edit className="h-3 w-3" />
-                                                        </Link>
-                                                    </Button>
+                                                        </Button>
+                                                    </EditSoalModal>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Hapus soal">

@@ -25,7 +25,6 @@ import { GuruLayout } from '@/components/layout/guru-layout'
 const soalSchema = z.object({
   question_text: z.string().min(10, 'Pertanyaan minimal 10 karakter'),
   question_type: z.enum(['essay', 'multiple_choice']),
-  difficulty_level: z.enum(['easy', 'medium', 'hard']),
   tags: z.array(z.string()).max(10, 'Maksimal 10 tag').optional(),
   options: z.array(z.object({
     id: z.string(),
@@ -109,7 +108,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
     defaultValues: {
       question_text: '',
       question_type: 'essay',
-      difficulty_level: 'medium',
       tags: [],
       options: undefined,
       correct_answer: undefined,
@@ -168,7 +166,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
       const formData = {
         question_text: soal.question_text,
         question_type: soal.question_type,
-        difficulty_level: soal.difficulty_level,
         tags: soal.tags || [],
         options: undefined as any,
         correct_answer: undefined as any,
@@ -198,7 +195,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
         id: resolvedParams.id,
         question_text: data.question_text,
         question_type: data.question_type,
-        difficulty_level: data.difficulty_level,
         tags: data.tags || [],
       }
 
@@ -339,7 +335,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6">
                     <FormField
                       control={form.control}
                       name="question_type"
@@ -359,32 +355,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
                           </Select>
                           <FormDescription>
                             Pilih tipe soal: Essay untuk jawaban bebas, Pilihan Ganda untuk opsi A, B, C, D.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="difficulty_level"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tingkat Kesulitan *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih tingkat kesulitan" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="easy">Mudah</SelectItem>
-                              <SelectItem value="medium">Sedang</SelectItem>
-                              <SelectItem value="hard">Sulit</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Bantu kategorikan tingkat kesulitan soal.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

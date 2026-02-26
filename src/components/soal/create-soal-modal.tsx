@@ -28,7 +28,6 @@ import { Save, Plus, Trash2 } from 'lucide-react'
 const soalSchema = z.object({
     question_text: z.string().min(10, 'Pertanyaan minimal 10 karakter'),
     question_type: z.enum(['essay', 'multiple_choice']),
-    difficulty_level: z.enum(['easy', 'medium', 'hard']),
     tags: z.array(z.string()).max(10, 'Maksimal 10 tag').optional(),
     options: z.array(z.object({
         id: z.string(),
@@ -73,7 +72,6 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
     defaultValues: {
       question_text: '',
       question_type: 'essay',
-      difficulty_level: 'medium',
       tags: [],
       options: [],
       correct_answer: '',
@@ -124,7 +122,6 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
       const soalData: any = {
         question_text: data.question_text,
         question_type: data.question_type,
-        difficulty_level: data.difficulty_level,
         tags: data.tags || [],
       }
 
@@ -207,30 +204,6 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
                       <SelectContent>
                         <SelectItem value="essay">Essay</SelectItem>
                         <SelectItem value="multiple_choice">Pilihan Ganda</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Difficulty Level */}
-            <FormField
-              control={form.control}
-              name="difficulty_level"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tingkat Kesulitan *</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih tingkat kesulitan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Mudah</SelectItem>
-                        <SelectItem value="medium">Sedang</SelectItem>
-                        <SelectItem value="hard">Sulit</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormControl>
