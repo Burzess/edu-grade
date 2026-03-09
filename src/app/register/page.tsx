@@ -57,8 +57,8 @@ export default function RegisterPage() {
                 // Auto logged in (email confirmation disabled)
                 router.push('/')
             }
-        } catch (err: any) {
-            setError(err.message || "Terjadi kesalahan saat mendaftar")
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Terjadi kesalahan saat mendaftar")
         } finally {
             setLoading(false)
         }

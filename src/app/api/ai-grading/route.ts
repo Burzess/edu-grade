@@ -8,18 +8,31 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const { jawabanId, useOptimized = true, forceAI = false } = await request.json()
+    const supabase = await createClient()
 
-    console.log('🤖 AI Grading API called with:', { jawabanId, useOptimized, forceAI })
+    // Auth check — only guru can grade
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (!jawabanId) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'guru') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body: unknown = await request.json()
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+    const { jawabanId, useOptimized = true, forceAI = false } = body as Record<string, unknown>
+
+    if (!jawabanId || typeof jawabanId !== 'string') {
       return NextResponse.json(
         { error: 'Jawaban ID is required' },
         { status: 400 }
       )
     }
-
-    const supabase = await createClient()
 
     // Get jawaban with related soal
     const { data: jawaban, error: jawabanError } = await supabase
@@ -209,14 +222,11 @@ export async function POST(request: NextRequest) {
       method: useOptimized ? 'ai_optimized' : 'ai_traditional'
     })
 
-  } catch (error) {
-    console.error('❌ Auto-grading API error:', error)
+  } catch (error: unknown) {
+    console.error('Auto-grading API error:', error)
     
     return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
@@ -225,19 +235,31 @@ export async function POST(request: NextRequest) {
 // Hybrid batch grading: Auto-grading untuk MC, AI untuk Essay
 export async function PUT(request: NextRequest) {
   try {
-    const { ujianId, useBatching = true, useOptimized = true, forceAI = false } = await request.json()
+    const supabase = await createClient()
 
-    if (!ujianId) {
+    // Auth check — only guru can batch-grade
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'guru') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body: unknown = await request.json()
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+    const { ujianId, useBatching = true, useOptimized = true, forceAI = false } = body as Record<string, unknown>
+
+    if (!ujianId || typeof ujianId !== 'string') {
       return NextResponse.json(
         { error: 'Ujian ID is required' },
         { status: 400 }
       )
     }
-
-    console.log('🚀 Hybrid batch grading config:', { ujianId, useBatching, useOptimized, forceAI })
-
-
-    const supabase = await createClient()
 
     // Get all ungraded jawaban for this ujian
     const { data: jawabanList, error: jawabanError } = await supabase
@@ -348,7 +370,7 @@ export async function PUT(request: NextRequest) {
             autoGradedCount++
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         errorCount++
         console.error(`❌ Error auto-grading answer ${answerData.id}:`, error)
       }
@@ -510,7 +532,7 @@ export async function PUT(request: NextRequest) {
               const delay = useOptimized ? 800 : 1000
               await new Promise(resolve => setTimeout(resolve, delay))
 
-            } catch (error) {
+            } catch (error: unknown) {
               console.error(`❌ Error AI grading answer ${answerData.id}:`, error)
               errorCount++
             }
@@ -582,7 +604,7 @@ export async function PUT(request: NextRequest) {
             const delay = useOptimized ? 800 : 1000
             await new Promise(resolve => setTimeout(resolve, delay))
 
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`❌ Error AI grading answer ${answerData.id}:`, error)
             errorCount++
           }
@@ -628,14 +650,11 @@ export async function PUT(request: NextRequest) {
       }
     })
 
-  } catch (error) {
-    console.error('❌ Batch auto-grading API error:', error)
+  } catch (error: unknown) {
+    console.error('Batch auto-grading API error:', error)
     
     return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

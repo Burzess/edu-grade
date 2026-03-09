@@ -29,7 +29,7 @@ export const organizeQuestions = (ujianSoal: any[], ujianId: string) => {
     const essay = validQuestions.filter((us: any) => us.soal.question_type === 'essay')
 
     // Acak soal untuk setiap siswa (seed berdasarkan user ID + ujian ID)
-    const userId = localStorage.getItem('current_user_id') || Math.random().toString()
+    const userId = (typeof window !== 'undefined' ? (() => { try { return localStorage.getItem('current_user_id') } catch { return null } })() : null) || Math.random().toString()
     const seed = `${userId}-${ujianId}`
     
     // Acak soal multiple choice

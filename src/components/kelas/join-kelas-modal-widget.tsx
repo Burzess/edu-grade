@@ -61,7 +61,7 @@ export function JoinKelasModal({ isOpen, onClose, onSubmit }: JoinKelasModalProp
       // Reset form on success
       setFormData({ kode_kelas: '' });
       setErrors({});
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting form:', error);
     } finally {
       setIsSubmitting(false);

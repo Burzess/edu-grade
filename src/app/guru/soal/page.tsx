@@ -34,7 +34,7 @@ function SoalListPageContent() {
     const handleDelete = async (id: string) => {
         try {
             await deletesoalMutation.mutateAsync(id)
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error deleting soal:', error)
         }
     }

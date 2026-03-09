@@ -58,7 +58,7 @@ export function useOptimizedDebouncedSubmitJawaban() {
       
       localStorage.setItem(localKey, JSON.stringify(answers))
       console.log('✅ Answer auto-saved to localStorage successfully')
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error saving to localStorage:', error)
     }
     

@@ -64,7 +64,7 @@ export function GuruKelasWidget() {
       } else {
         throw new Error(result.error || 'Failed to fetch kelas');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching kelas:', error);
     } finally {
       setIsLoading(false);
@@ -105,7 +105,7 @@ export function GuruKelasWidget() {
       } else {
         throw new Error(result.error || 'Failed to create kelas');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating kelas:', error);
       toastError('Error', 'Gagal membuat kelas');
     }

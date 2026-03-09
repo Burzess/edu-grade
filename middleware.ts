@@ -79,10 +79,8 @@ export async function middleware(request: NextRequest) {
         // Cek metadata terlebih dahulu sebelum query database
         if (user.user_metadata?.role) {
             userRole = user.user_metadata.role
-        } else if (user.email?.includes('guru')) {
-            userRole = 'guru'
         } else {
-            // Hanya query database jika tidak ada metadata
+            // Query database jika tidak ada metadata
             try {
                 const { data: profile } = await supabase
                     .from('profiles')

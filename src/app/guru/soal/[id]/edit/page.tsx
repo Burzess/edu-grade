@@ -211,8 +211,8 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
       await updateSoalMutation.mutateAsync(updateData)
       
       router.push('/guru/soal')
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat mengupdate soal')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengupdate soal')
     }
   }
 

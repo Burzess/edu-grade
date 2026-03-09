@@ -40,9 +40,13 @@ export function ThemeProvider({
     setMounted(true);
     
     // Load theme from localStorage
-    const storedTheme = localStorage.getItem(storageKey) as Theme;
-    if (storedTheme) {
-      setTheme(storedTheme);
+    try {
+      const storedTheme = localStorage.getItem(storageKey) as Theme;
+      if (storedTheme) {
+        setTheme(storedTheme);
+      }
+    } catch {
+      // Ignore storage errors (private browsing, SSR, etc.)
     }
   }, [storageKey]);
 
@@ -83,7 +87,11 @@ export function ThemeProvider({
     theme,
     setTheme: (theme: Theme) => {
       if (mounted) {
-        localStorage.setItem(storageKey, theme);
+        try {
+          localStorage.setItem(storageKey, theme);
+        } catch {
+          // Ignore storage errors (private browsing, etc.)
+        }
       }
       setTheme(theme);
     },

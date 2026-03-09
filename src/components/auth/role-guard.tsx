@@ -3,7 +3,7 @@
 import { useRoleCheck, useQuickAuthCheck } from '@/hooks/use-optimized-auth'
 import { useAuthStore } from '@/store/auth'
 import { useRouter } from 'next/navigation'
-import { useEffect, ReactNode, memo, useState } from 'react'
+import { useEffect, ReactNode, memo, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Shield, Loader2 } from 'lucide-react'
 
@@ -131,14 +131,16 @@ const getDefaultDashboardPath = (role: UserRole): string => {
 const useAuthRedirect = () => {
     const router = useRouter()
     
-    const redirectTo = (path: string) => {
-        router.replace(path)
-    }
+    const redirectTo = useCallback((path: string) => {
+        // Use window.location for reliable redirect when auth state is broken
+        // router.replace can fail silently during auth state transitions
+        window.location.href = path
+    }, [])
     
-    const redirectToDashboard = (role: UserRole) => {
+    const redirectToDashboard = useCallback((role: UserRole) => {
         const dashboardPath = getDefaultDashboardPath(role)
         redirectTo(dashboardPath)
-    }
+    }, [redirectTo])
     
     return { redirectTo, redirectToDashboard }
 }

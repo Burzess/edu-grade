@@ -51,7 +51,7 @@ export async function fetchWithTimeout(
 
       return response
 
-    } catch (error) {
+    } catch (error: unknown) {
       lastError = error as Error
 
       // Clear timeout on error
@@ -122,7 +122,7 @@ export async function authFetch(url: string = '/api/auth/check'): Promise<Respon
     }
 
     return response
-  } catch (error) {
+  } catch (error: unknown) {
     // Emit error event
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       const errorType = (error as Error).name === 'AbortError' 
@@ -155,7 +155,7 @@ export async function safeFetch(
   try {
     const response = await fetchWithTimeout(url, options)
     return { response }
-  } catch (error) {
+  } catch (error: unknown) {
     const err = error as Error
     
     // Don't treat AbortError as real error untuk UX

@@ -56,7 +56,7 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
       // Reset form on success
       setFormData({ nama_kelas: '' });
       setErrors({});
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting form:', error);
     } finally {
       setIsSubmitting(false);

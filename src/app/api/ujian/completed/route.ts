@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get scores for completed ujian (include attempt_number)
-    let scoresData: any[] = []
+    let scoresData: { ujian_id: string; score: number | null; ai_feedback: string | null; attempt_number: number | null }[] = []
 
     if (ujianIds.length > 0) {
       const { data: scores } = await supabase
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get ujian_siswa records for attempt info
-    let ujianSiswaData: any[] = []
+    let ujianSiswaData: { ujian_id: string; attempt_number: number; status: string; submitted_at: string }[] = []
     if (ujianIds.length > 0) {
       const { data: ujianSiswa } = await supabase
         .from('ujian_siswa')
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     // Get guru names for ujian
     const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
-    let guruData: any[] = []
+    let guruData: { id: string; full_name: string | null }[] = []
     
     if (guruIds.length > 0) {
       const { data: profiles } = await supabase
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
 
     // Process completed ujian with scores (support multiple attempts)
     const completedUjian = (completedData || [])
-      .map((item: any) => {
+      .map((item: Record<string, unknown>) => {
         const ujianDetail = ujianData?.find(u => u.id === item.ujian_id)
         if (!ujianDetail) return null
 
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
             )
             const gradedInAttempt = attemptAnswers.filter(s => s.score !== null && s.score !== undefined)
             const avgScore = gradedInAttempt.length > 0
-              ? Math.round(gradedInAttempt.reduce((acc: number, s: any) => acc + s.score, 0) / gradedInAttempt.length)
+              ? Math.round(gradedInAttempt.reduce((acc: number, s: { score: number | null }) => acc + (s.score ?? 0), 0) / gradedInAttempt.length)
               : null
             attemptScores.push({
               attempt: attempt.attempt_number,
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
             ? Math.round(
                 ujianScores
                   .filter(s => s.score !== null && s.score !== undefined)
-                  .reduce((acc: number, s: any) => acc + s.score, 0) / gradedAnswers
+                  .reduce((acc: number, s: { score: number | null }) => acc + (s.score ?? 0), 0) / gradedAnswers
               )
             : null
           bestScore = averageScore
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
       })
       .filter(Boolean)
       // Remove duplicates by ujian_id
-      .filter((ujian: any, index: number, self: any[]) => 
+      .filter((ujian: Record<string, unknown>, index: number, self: Record<string, unknown>[]) => 
         index === self.findIndex(u => u.id === ujian.id)
       )
 
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
       data: completedUjian
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/ujian/completed:', error)
     return NextResponse.json(
       { 

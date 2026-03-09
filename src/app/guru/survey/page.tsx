@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Download, BarChart3 } from 'lucide-react';
@@ -15,17 +15,7 @@ export default function GuruSurveyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
-  useEffect(() => {
-    fetchSurveys();
-  }, []);
-
-  useEffect(() => {
-    if (selectedSurveyId) {
-      fetchStatistics(selectedSurveyId);
-    }
-  }, [selectedSurveyId]);
-
-  const fetchSurveys = async () => {
+  const fetchSurveys = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -40,14 +30,14 @@ export default function GuruSurveyPage() {
           setSelectedSurveyId(surveyList[0].id);
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching surveys:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStatistics = async (surveyId: string) => {
+  const fetchStatistics = useCallback(async (surveyId: string) => {
     try {
       setIsLoadingStats(true);
       const res = await fetch(`/api/survey/statistics?survey_id=${surveyId}`);
@@ -56,12 +46,22 @@ export default function GuruSurveyPage() {
       if (res.ok) {
         setStatistics(data);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching statistics:', error);
     } finally {
       setIsLoadingStats(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSurveys();
+  }, [fetchSurveys]);
+
+  useEffect(() => {
+    if (selectedSurveyId) {
+      fetchStatistics(selectedSurveyId);
+    }
+  }, [selectedSurveyId, fetchStatistics]);
 
   const exportToCSV = () => {
     if (!statistics) return;

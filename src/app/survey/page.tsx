@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2 } from 'lucide-react';
@@ -15,11 +15,7 @@ export default function SurveyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingSubmission, setIsCheckingSubmission] = useState(false); // Changed to false
 
-  useEffect(() => {
-    fetchActiveSurvey();
-  }, []);
-
-  const fetchActiveSurvey = async () => {
+  const fetchActiveSurvey = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -43,12 +39,16 @@ export default function SurveyPage() {
         //   setIsCheckingSubmission(false);
         // }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching survey:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchActiveSurvey();
+  }, [fetchActiveSurvey]);
 
   const handleSubmitSuccess = () => {
     setHasSubmitted(true);

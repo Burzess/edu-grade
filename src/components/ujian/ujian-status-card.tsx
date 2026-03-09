@@ -22,7 +22,7 @@ export function UjianStatusCard({ ujian, onStatusChange }: UjianStatusCardProps)
       await startUjianMutation.mutateAsync(ujian.id)
       toast.success(`Ujian "${ujian.name}" berhasil dimulai!`)
       onStatusChange?.()
-    } catch (error) {
+    } catch (error: unknown) {
       toast.error('Gagal memulai ujian')
     }
   }
@@ -38,7 +38,7 @@ export function UjianStatusCard({ ujian, onStatusChange }: UjianStatusCardProps)
       await completeUjianMutation.mutateAsync(ujian.id)
       toast.success(`Ujian "${ujian.name}" berhasil diakhiri!`)
       onStatusChange?.()
-    } catch (error) {
+    } catch (error: unknown) {
       toast.error('Gagal mengakhiri ujian')
     }
   }

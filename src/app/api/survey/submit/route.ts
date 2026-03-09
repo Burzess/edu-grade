@@ -5,13 +5,6 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    // DUMMY RESPONSE FOR PREVIEW
-    console.log('Survey submission (dummy mode):', await req.json());
-    return NextResponse.json({ 
-      message: 'Survey submitted successfully (preview mode - data not saved)' 
-    }, { status: 201 });
-
-    /* ORIGINAL CODE - Uncomment when ready to use real database
     const supabase = await createClient();
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -19,8 +12,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { survey_id, responses } = body;
+    const body: unknown = await req.json();
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { survey_id, responses } = body as Record<string, unknown>;
 
     if (!survey_id || !responses || !Array.isArray(responses)) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
@@ -54,12 +50,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Prepare responses data
-    const responsesData = responses.map((r: any) => ({
+    const responsesData = responses.map((r: Record<string, unknown>) => ({
       survey_id,
       user_id: user.id,
       question_id: r.question_id,
       answer_value: r.answer_value?.toString() || null,
-      answer_text: r.answer_text || null,
+      answer_text: (typeof r.answer_text === 'string' ? r.answer_text : null),
     }));
 
     // Insert responses
@@ -69,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     if (responsesError) {
       console.error('Error inserting responses:', responsesError);
-      return NextResponse.json({ error: responsesError.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to submit responses' }, { status: 500 });
     }
 
     // Mark as participant
@@ -82,26 +78,18 @@ export async function POST(req: NextRequest) {
 
     if (participantError) {
       console.error('Error marking participant:', participantError);
-      return NextResponse.json({ error: participantError.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to record participation' }, { status: 500 });
     }
 
     return NextResponse.json({ message: 'Survey submitted successfully' }, { status: 201 });
-    */
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error submitting survey:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    // DUMMY RESPONSE FOR PREVIEW
-    return NextResponse.json({ 
-      hasSubmitted: false,
-      submittedAt: null,
-    });
-
-    /* ORIGINAL CODE - Uncomment when ready to use real database
     const supabase = await createClient();
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -128,9 +116,8 @@ export async function GET(req: NextRequest) {
       hasSubmitted: !!participant,
       submittedAt: participant?.completed_at || null,
     });
-    */
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error checking submission:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

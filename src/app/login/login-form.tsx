@@ -88,8 +88,8 @@ export default function LoginForm() {
             // Langsung redirect ke dashboard yang sesuai tanpa delay
             router.replace(dashboardPath)
 
-        } catch (err: any) {
-            setError(err.message || "Terjadi kesalahan saat login")
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Terjadi kesalahan saat login")
         } finally {
             setLoading(false)
         }

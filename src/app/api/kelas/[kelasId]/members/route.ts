@@ -1,10 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const uuidSchema = z.string().uuid('Invalid kelas ID format');
+
+const deleteMemberSchema = z.object({
+  siswa_id: z.string().uuid('Invalid siswa ID format'),
+});
 
 /**
  * GET /api/kelas/[kelasId]/members - Mendapatkan daftar anggota kelas (guru only)
@@ -14,31 +18,19 @@ export async function GET(
   { params }: { params: Promise<{ kelasId: string }> }
 ) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = await createClient();
     const resolvedParams = await params;
     const kelasId = resolvedParams.kelasId;
-    
-    // Get user from auth header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
+
+    const kelasIdParsed = uuidSchema.safeParse(kelasId);
+    if (!kelasIdParsed.success) {
+      return NextResponse.json({ error: 'Invalid kelas ID' }, { status: 400 });
     }
 
-    // Set auth token
-    const token = authHeader.replace('Bearer ', '');
-    supabase.auth.setSession({
-      access_token: token,
-      refresh_token: token,
-    });
-
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Invalid authentication' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -81,14 +73,17 @@ export async function GET(
     }
 
     // Transform data
-    const transformedMembers = members?.map((member, index) => ({
-      id: member.id,
-      no: index + 1,
-      siswa_id: (member.profiles as any)?.id,
-      nama_siswa: (member.profiles as any)?.full_name,
-      email: (member.profiles as any)?.email,
-      tanggal_bergabung: member.joined_at
-    })) || [];
+    const transformedMembers = members?.map((member, index) => {
+      const profiles = member.profiles as Record<string, unknown> | null;
+      return {
+        id: member.id,
+        no: index + 1,
+        siswa_id: profiles?.id,
+        nama_siswa: profiles?.full_name,
+        email: profiles?.email,
+        tanggal_bergabung: member.joined_at
+      };
+    }) || [];
 
     return NextResponse.json({
       success: true,
@@ -102,7 +97,7 @@ export async function GET(
       }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/kelas/[kelasId]/members:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -119,45 +114,33 @@ export async function DELETE(
   { params }: { params: Promise<{ kelasId: string }> }
 ) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = await createClient();
     const resolvedParams = await params;
     const kelasId = resolvedParams.kelasId;
-    
-    // Get user from auth header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
+
+    const kelasIdParsed = uuidSchema.safeParse(kelasId);
+    if (!kelasIdParsed.success) {
+      return NextResponse.json({ error: 'Invalid kelas ID' }, { status: 400 });
     }
 
-    // Set auth token
-    const token = authHeader.replace('Bearer ', '');
-    supabase.auth.setSession({
-      access_token: token,
-      refresh_token: token,
-    });
-
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Invalid authentication' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Get request body
-    const body = await request.json();
-    const { siswa_id } = body;
-
-    if (!siswa_id) {
+    const body: unknown = await request.json();
+    const parsed = deleteMemberSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'siswa_id is required' },
+        { error: 'siswa_id is required and must be a valid UUID' },
         { status: 400 }
       );
     }
+
+    const { siswa_id } = parsed.data;
 
     // Use database function untuk remove siswa
     const { data, error } = await supabase
@@ -204,7 +187,7 @@ export async function DELETE(
       message: result.message
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in DELETE /api/kelas/[kelasId]/members:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -49,7 +49,7 @@ export function SessionExpiredHandler() {
       }
       
       console.error('Session refresh failed:', error.message)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Session refresh error:', error)
     } finally {
       setRefreshing(false)

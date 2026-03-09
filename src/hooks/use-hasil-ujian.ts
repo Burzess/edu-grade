@@ -124,7 +124,7 @@ export function useUjianGuru() {
                 )
 
                 return ujianWithStats
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useUjianGuru:', error)
                 throw error
             }
@@ -277,7 +277,7 @@ export function useHasilUjianDetail(ujianId: string) {
                     ujian: ujianData,
                     siswaResults
                 }
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useHasilUjianDetail:', error)
                 throw error
             }

@@ -129,7 +129,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
 
             console.log('✅ Ujian deleted successfully')
             router.push('/guru/ujian')
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('❌ Error deleting ujian:', err)
             setIsDeleting(false)
         }

@@ -352,9 +352,9 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
       })
 
       router.push('/guru/ujian')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Error updating ujian:', err)
-      setError(err.message || 'Terjadi kesalahan saat mengupdate ujian')
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengupdate ujian')
     }
   }
 

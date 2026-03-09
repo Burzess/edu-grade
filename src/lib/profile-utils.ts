@@ -46,7 +46,7 @@ export async function ensureProfileExists(
         }
 
         return { success: true }
-    } catch (error) {
+    } catch (error: unknown) {
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -69,7 +69,7 @@ export async function getProfile(userId: string) {
         }
 
         return { profile: data, error: null }
-    } catch (error) {
+    } catch (error: unknown) {
         return {
             profile: null,
             error: error instanceof Error ? error.message : 'Unknown error'

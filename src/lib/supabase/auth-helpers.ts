@@ -98,7 +98,7 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
       error: null,
       isAuthenticated: true
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Auth validation error:', err)
     return {
       user: null,
@@ -151,7 +151,7 @@ export async function validateServerAuth(): Promise<AuthResult> {
       error: null,
       isAuthenticated: true
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Server auth validation error:', err)
     return {
       user: null,
@@ -199,7 +199,7 @@ export async function validateClientAuth(): Promise<AuthResult> {
       error: null,
       isAuthenticated: true
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Client auth validation error:', err)
     return {
       user: null,

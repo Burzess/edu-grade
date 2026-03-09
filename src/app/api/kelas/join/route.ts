@@ -1,71 +1,55 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const joinKelasSchema = z.object({
+  kode_kelas: z.string().min(1, 'Kode kelas wajib diisi').trim(),
+});
 
 /**
  * POST /api/kelas/join - Siswa bergabung ke kelas menggunakan kode
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    
-    // Get user from auth header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
+    const supabase = await createClient();
 
-    // Set auth token
-    const token = authHeader.replace('Bearer ', '');
-    supabase.auth.setSession({
-      access_token: token,
-      refresh_token: token,
-    });
-
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Invalid authentication' },
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
     // Validate user is siswa
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (profileError || profile.role !== 'siswa') {
+    if (profile?.role !== 'siswa') {
       return NextResponse.json(
         { error: 'Only students can join classes' },
         { status: 403 }
       );
     }
 
-    // Get request body
-    const body = await request.json();
-    const { kode_kelas } = body;
-
-    // Validate kode kelas
-    if (!kode_kelas || kode_kelas.trim() === '') {
+    const body: unknown = await request.json();
+    const parsed = joinKelasSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Kode kelas wajib diisi' },
+        { error: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
+    const { kode_kelas } = parsed.data;
+
     // Clean dan normalize kode kelas
-    const cleanKode = kode_kelas.trim().toLowerCase().replace(/\s+/g, '');
+    const cleanKode = kode_kelas.toLowerCase().replace(/\s+/g, '');
     
     // Validasi format kode kelas (xxx-xxx-xxx)
     const kodeRegex = /^[a-z0-9]{3}-[a-z0-9]{3}-[a-z0-9]{3}$/;
@@ -76,15 +60,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`✅ User ${user.id} (${profile.role}) joining kelas with code: ${cleanKode}`);
     // Use database function untuk join kelas
     const { data, error } = await supabase
       .rpc('join_kelas_by_code', {
         p_kode_kelas: cleanKode,
         p_siswa_id: user.id
       });
-
-    console.log('🔄 join_kelas_by_code result:', { data, error });
 
     if (error) {
       return NextResponse.json(
@@ -135,7 +116,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/kelas/join:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

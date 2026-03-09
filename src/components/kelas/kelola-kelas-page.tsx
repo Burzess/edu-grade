@@ -85,7 +85,7 @@ export function KelolaKelasPage() {
       
       // No need to reload - createKelasMutation will handle cache invalidation
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ API create error:', error);
       
       let errorMessage = 'Gagal membuat kelas';
@@ -140,7 +140,7 @@ export function KelolaKelasPage() {
       
       // No need to reload - react-query will handle cache invalidation
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Edit error:', error);
       throw error; // Re-throw untuk di-handle oleh modal
     }
@@ -161,7 +161,7 @@ export function KelolaKelasPage() {
       
       // No need to reload - react-query will handle cache invalidation
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Toggle status error:', error);
       
       let errorMessage = 'Gagal mengubah status kelas';

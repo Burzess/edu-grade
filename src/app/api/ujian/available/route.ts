@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     // Get guru names for ujian
     const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
-    let guruData: any[] = []
+    let guruData: { id: string; full_name: string | null }[] = []
     
     if (guruIds.length > 0) {
       const { data: profiles } = await supabase
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
       data: availableUjian
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/ujian/available:', error)
     return NextResponse.json(
       { 

@@ -196,7 +196,11 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             }
 
             // Cleanup localStorage
-            localStorage.removeItem(`ujian_${ujianId}_answers`)
+            try {
+                localStorage.removeItem(`ujian_${ujianId}_answers`)
+            } catch {
+                // Ignore storage errors (private browsing, etc.)
+            }
 
             // SUCCESS: Reset submission flag and mark as submitted
             setIsSubmitting(false)
@@ -244,7 +248,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                 }
             }, isAutoSubmit ? 2000 : 1000)
 
-        } catch (error) {
+        } catch (error: unknown) {
             // CRITICAL ERROR: Reset submission flag
             setIsSubmitting(false)
             console.log('🔓 Setting isSubmitting=false (error)')
@@ -277,12 +281,12 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                     : errorMessage
             )
         }
-    }, [organizedQuestions, answers, batchSubmit, submitUjianSiswaMutation, ujianId, ujian?.kelas_id, ujian?.name]) // PERBAIKAN: Dependency yang lebih spesifik
+    }, [organizedQuestions, answers, batchSubmit, batchAIGrading, submitUjianSiswaMutation, ujianId, ujian?.kelas_id, ujian?.name, onSubmitted]) // PERBAIKAN: Dependency yang lebih spesifik
 
     // Setup auto submit ref
     useEffect(() => {
         autoSubmitRef.current = () => handleSubmitAll(true)
-    })
+    }, [handleSubmitAll])
 
     // Handle force save (for page unload, etc.) - Skip if exam is submitted
     useEffect(() => {
@@ -319,8 +323,12 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             const updated = { ...prev, [soalId]: answer }
             
             // Save ke localStorage untuk backup (menggunakan updated state)
-            const localKey = `ujian_${ujianId}_answers`
-            localStorage.setItem(localKey, JSON.stringify(updated))
+            try {
+                const localKey = `ujian_${ujianId}_answers`
+                localStorage.setItem(localKey, JSON.stringify(updated))
+            } catch {
+                // Ignore storage errors (private browsing, etc.)
+            }
             
             return updated
         })

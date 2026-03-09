@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth'
 import { ensureProfileExists } from '@/lib/profile-utils'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect } from 'react'
+import { createContext, useContext, useEffect, useRef, useCallback } from 'react'
 import { AuthErrorBoundary } from '@/components/auth/auth-error-boundary'
 
 interface AuthContextType {
@@ -26,6 +26,7 @@ export function AuthProvider({
     const supabase = createClient()
     const router = useRouter()
     const { setUser, setProfile, setLoading, logout, getCachedProfile, setCachedProfile } = useAuthStore()
+    const wasAuthenticatedRef = useRef(!!initialUser)
 
     useEffect(() => {
         // Jika ada initialUser dari server, gunakan itu untuk menghindari loading
@@ -85,10 +86,21 @@ export function AuthProvider({
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (session?.user) {
+                    wasAuthenticatedRef.current = true
                     setUser(session.user)
                     await getProfile(session.user)
                 } else {
+                    // Session expired or user signed out
+                    const wasAuthenticated = wasAuthenticatedRef.current
+                    wasAuthenticatedRef.current = false
                     logout()
+                    
+                    // If user was previously authenticated, redirect to login
+                    if (wasAuthenticated && event !== 'SIGNED_OUT') {
+                        console.warn('Session expired, redirecting to login')
+                        window.location.href = '/login?error=session_expired'
+                        return
+                    }
                 }
                 setLoading(false)
             }
@@ -96,6 +108,29 @@ export function AuthProvider({
 
         return () => subscription.unsubscribe()
     }, [supabase, setUser, setProfile, setLoading, logout, initialUser])
+
+    // Proactively check session when the tab regains focus after being idle
+    useEffect(() => {
+        const handleVisibilityChange = async () => {
+            if (document.hidden || !wasAuthenticatedRef.current) return
+            
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser()
+                if (error || !user) {
+                    // Session is no longer valid
+                    console.warn('Session invalid after tab regained focus')
+                    wasAuthenticatedRef.current = false
+                    logout()
+                    window.location.href = '/login?error=session_expired'
+                }
+            } catch {
+                // Network error — don't redirect, let the user retry
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }, [supabase, logout])
 
     const getProfile = async (user: User) => {
         try {
@@ -234,7 +269,7 @@ export function AuthProvider({
                 }, 10000)
             }
 
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('❌ Critical error in getProfile:', err)
             // Fallback profile untuk mencegah stuck loading
             const emergencyProfile = {

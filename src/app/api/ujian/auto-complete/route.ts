@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
 export async function POST(request: NextRequest) {
   try {
-    
+    // Auth check — only guru can trigger auto-complete
+    const supabaseAuth = await createClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'guru') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const supabase = await createAdminClient()
     const now = new Date().toISOString()
     
     // Find active ujian yang sudah melewati end_time
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
       console.error('❌ Error updating ujian status:', updateError)
       return NextResponse.json({ 
         success: false, 
-        error: updateError.message 
+        error: 'Failed to update ujian status' 
       }, { status: 500 })
     }
 
@@ -65,7 +72,7 @@ export async function POST(request: NextRequest) {
       completed: updatedUjian || []
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Unexpected error in auto-complete API:', error)
     return NextResponse.json({ 
       success: false, 
@@ -75,8 +82,21 @@ export async function POST(request: NextRequest) {
 }
 
 // GET method untuk status check
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Auth check
+    const supabaseAuth = await createClient()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'guru') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const supabase = await createAdminClient()
     const now = new Date().toISOString()
     
     // Count active ujian yang akan expired dalam 1 jam
@@ -93,7 +113,7 @@ export async function GET() {
     if (error) {
       return NextResponse.json({ 
         success: false, 
-        error: error.message 
+        error: 'Failed to check status' 
       }, { status: 500 })
     }
 
@@ -104,8 +124,8 @@ export async function GET() {
       ujian_details: soonExpired || []
     })
 
-  } catch (error) {
-    console.error('❌ Error in status check:', error)
+  } catch (error: unknown) {
+    console.error('Error in status check:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 

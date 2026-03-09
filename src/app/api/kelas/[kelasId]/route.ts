@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
+
+const uuidSchema = z.string().uuid('Invalid kelas ID format')
 
 export async function GET(
     request: NextRequest,
@@ -26,8 +29,6 @@ export async function GET(
             .eq('id', user.id)
             .single()
 
-        console.log(userProfile);
-
         if (userProfile?.role !== 'siswa') {
             return NextResponse.json({
                 success: false,
@@ -38,7 +39,13 @@ export async function GET(
         // Await params before using its properties
         const { kelasId } = await params
 
-        console.log('Checking kelas access for siswa_id:', user.id, 'kelas_id:', kelasId);
+        const kelasIdParsed = uuidSchema.safeParse(kelasId)
+        if (!kelasIdParsed.success) {
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid kelas ID'
+            }, { status: 400 })
+        }
 
         // Check if siswa is member of this kelas
         const { data: membershipData, error: membershipError } = await supabase
@@ -47,8 +54,6 @@ export async function GET(
             .eq('siswa_id', user.id)
             .eq('kelas_id', kelasId)
             .single()
-
-        console.log('Membership check result:', { membershipData, membershipError });
 
         if (membershipError || !membershipData) {
             return NextResponse.json({
@@ -68,8 +73,6 @@ export async function GET(
             `)
             .eq('id', kelasId)
             .single()
-
-        console.log('Kelas lookup result:', { kelasData, kelasError });
 
         if (kelasError || !kelasData) {
             return NextResponse.json({
@@ -104,7 +107,7 @@ export async function GET(
             data: kelasDetail
         })
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error in GET /api/kelas/[kelasId]:', error)
         return NextResponse.json(
             {

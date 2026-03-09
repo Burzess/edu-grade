@@ -267,7 +267,7 @@ function UjianPageContent() {
     try {
       await deleteUjianMutation.mutateAsync(id)
       toast.success('Ujian berhasil dihapus')
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error deleting ujian:', error)
       toast.error('Gagal menghapus ujian')
     }
@@ -279,7 +279,7 @@ function UjianPageContent() {
     try {
       await startUjianMutation.mutateAsync(id)
       toast.success('Ujian berhasil dimulai')
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error starting ujian:', error)
       toast.error('Gagal memulai ujian')
     }

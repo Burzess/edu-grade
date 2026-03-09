@@ -38,7 +38,7 @@ export function useMiddlewareAuth(): MiddlewareAuth {
             }
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.warn('Failed to parse auth cache:', error)
       }
     }
@@ -138,7 +138,7 @@ export function useMiddlewareAuth(): MiddlewareAuth {
           setProfile(minimalProfile)
         }
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to check middleware auth:', error)
         const errorMessage = error instanceof Error ? error.message : 'Auth check failed'
         

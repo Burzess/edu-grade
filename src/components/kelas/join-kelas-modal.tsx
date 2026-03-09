@@ -78,7 +78,7 @@ export function JoinKelasModal({ isOpen, onClose, onSubmit }: JoinKelasModalProp
       // Reset form on success (onSubmit will handle closing modal)
       setKodeKelas('');
       setError(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting form:', error);
       setError('Terjadi kesalahan saat bergabung ke kelas');
     } finally {

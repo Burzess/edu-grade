@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         .in('kelas_id', kelasIds)
 
       // Count members per kelas
-      memberData?.forEach((member: any) => {
+      memberData?.forEach((member: { kelas_id: string }) => {
         memberCounts[member.kelas_id] = (memberCounts[member.kelas_id] || 0) + 1
       })
     }
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       data: kelasWithCount
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/kelas/list:', error)
     return NextResponse.json(
       { 

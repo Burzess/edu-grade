@@ -34,7 +34,7 @@ export default async function RootLayout({
   let user = null;
   try {
     user = await getCurrentUser();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Layout auth check failed:', error);
     // Tidak throw error, biarkan client handle auth
   }

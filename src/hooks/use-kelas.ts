@@ -70,7 +70,7 @@ export function useKelasGuru() {
                     console.error('❌ API returned unsuccessful response:', result)
                     throw new Error(result.error || result.details || 'Failed to fetch kelas data')
                 }
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('useKelasGuru error:', error)
                 throw error
             }
@@ -209,7 +209,7 @@ export function useKelasSiswa() {
                     console.error('❌ Siswa API returned unsuccessful response:', result)
                     throw new Error(result.error || result.details || 'Failed to fetch kelas data')
                 }
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('useKelasSiswa error:', error)
                 throw error
             }

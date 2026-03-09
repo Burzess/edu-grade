@@ -44,7 +44,7 @@ const getInitialState = () => {
                     }
                 }
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.warn('Failed to parse auth cache:', error)
         }
     }
@@ -82,7 +82,7 @@ export const useAuthStore = create<AuthState>()(
                             state: { ...get(), ...newState },
                             timestamp: Date.now()
                         }))
-                    } catch (error) {
+                    } catch (error: unknown) {
                         console.warn('Failed to cache auth state:', error)
                     }
                 }
@@ -106,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
                             state: { ...get(), ...newState },
                             timestamp: Date.now()
                         }))
-                    } catch (error) {
+                    } catch (error: unknown) {
                         console.warn('Failed to cache auth state:', error)
                     }
                 }
@@ -141,7 +141,7 @@ export const useAuthStore = create<AuthState>()(
             if (typeof window !== 'undefined') {
                 try {
                     sessionStorage.removeItem('auth-state-cache')
-                } catch (error) {
+                } catch (error: unknown) {
                     console.warn('Failed to clear auth cache:', error)
                 }
             }

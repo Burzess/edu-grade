@@ -177,7 +177,7 @@ export function useCreateSoal() {
 
         console.log('✅ useCreateSoal: Full insert success!')
         return data
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('❌ useCreateSoal: Unexpected error:', err)
         throw err
       }
@@ -216,6 +216,9 @@ export function useUpdateSoal() {
       queryClient.invalidateQueries({ queryKey: soalKeys.lists() })
       queryClient.invalidateQueries({ queryKey: soalKeys.detail(data.id) })
     },
+    onError: (error: Error) => {
+      console.error('Failed to update soal:', error)
+    },
   })
 }
 
@@ -239,6 +242,9 @@ export function useDeleteSoal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: soalKeys.lists() })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to delete soal:', error)
     },
   })
 }

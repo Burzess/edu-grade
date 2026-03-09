@@ -143,7 +143,7 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
       setOpen(false)
       form.reset()
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error creating soal:', error)
       setError(error instanceof Error ? error.message : 'Terjadi kesalahan')
     }

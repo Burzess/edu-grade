@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
             }
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error in getProfile:', err)
         }
     }

@@ -57,7 +57,7 @@ export function KelasStatusToggle({
 
     try {
       await onToggle(kelas.id, newStatus);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error toggling kelas status:', error);
       // Error handling will be done by parent component via toast
     } finally {

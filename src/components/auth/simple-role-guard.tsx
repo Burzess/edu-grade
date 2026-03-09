@@ -81,11 +81,14 @@ export const SimpleRoleGuard = memo(({
                     }
                 }
             }
-        } catch (error) {
+        } catch (error: unknown) {
             // Ignore cache errors
         }
         
-        // Only show redirect message if no cache available
+        // No valid cache and not authenticated — redirect to login
+        if (!loading) {
+            window.location.href = '/login?error=session_expired'
+        }
         return null
     }
 

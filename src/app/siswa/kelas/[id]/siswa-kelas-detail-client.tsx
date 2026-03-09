@@ -427,7 +427,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
       if (result.success) {
         setKelasDetail(result.data)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching kelas detail:', error)
       toastError('Error', 'Gagal memuat detail kelas')
     } finally {
@@ -473,7 +473,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
         }
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching ujian:', error)
     } finally {
       setIsLoadingUjian(false)

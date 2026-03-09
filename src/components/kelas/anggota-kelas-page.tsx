@@ -113,7 +113,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       } else {
         throw new Error('Failed to fetch members from API');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ AnggotaKelas: Error fetching members:', error);
       toastError('Error', 'Gagal memuat data anggota kelas');
     } finally {
@@ -188,7 +188,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       } else {
         throw new Error(result.error || 'Failed to remove member');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ AnggotaKelas: Error removing member:', error);
       toastError('Error', 'Gagal mengeluarkan siswa dari kelas');
     } finally {

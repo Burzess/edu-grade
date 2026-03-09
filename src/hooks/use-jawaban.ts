@@ -82,9 +82,10 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
         if (jawabanData) {
             // Calculate final ujian score after this grading
             calculateUjianScore(jawabanData.ujian_id, jawabanData.siswa_id)
+                .catch(err => console.error('Score calculation failed after auto-grade:', err))
         }
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('❌ Error in auto-grading multiple choice:', error)
     }
 }
@@ -167,7 +168,7 @@ async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumb
             // or create a separate result table entry
         }
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('❌ Error calculating ujian score:', error)
     }
 }
@@ -211,7 +212,7 @@ async function triggerAIGrading(jawabanId: string, soalId: string) {
 
         const result = await response.json()
         console.log('✅ AI grading triggered successfully:', result)
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('❌ Error triggering AI grading:', error)
     }
 }
@@ -263,7 +264,7 @@ async function triggerBatchAIGrading(
         })
 
         return result
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('❌ Error triggering batch AI grading:', error)
         throw error
     }
@@ -436,7 +437,7 @@ export function useJawabanSiswa() {
 
                 console.log(`📊 Filtered results: ${validData.length}/${latestAnswers.length} valid answers`)
                 return validData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useJawabanSiswa query:', error)
                 throw error
             }
@@ -577,7 +578,7 @@ export function useLocalAutoSave() {
 
             localStorage.setItem(key, JSON.stringify(answers))
             console.log('💾 Auto-saved to localStorage:', { soalId, answerLength: answer.length })
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('❌ Error saving to localStorage:', error)
         }
     }, [])
@@ -591,7 +592,7 @@ export function useLocalAutoSave() {
                 console.log('📂 Loaded from localStorage:', Object.keys(answers).length, 'answers')
                 return answers
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('❌ Error loading from localStorage:', error)
         }
         return {}
@@ -602,7 +603,7 @@ export function useLocalAutoSave() {
             const key = `ujian_${ujianId}_answers`
             localStorage.removeItem(key)
             console.log('🗑️ Cleared localStorage for ujian:', ujianId)
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('❌ Error clearing localStorage:', error)
         }
     }, [])
@@ -652,7 +653,7 @@ export function useDebouncedSubmitJawaban(delay = 2000) {
             // Invalidate related queries (but don't trigger AI grading for auto-save)
             queryClient.invalidateQueries({ queryKey: ['jawaban', 'ujian', data.ujian_id] })
 
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('❌ Unexpected error in auto-save:', error)
         }
     }, [user?.id, queryClient])
@@ -771,6 +772,7 @@ export function useBatchSubmitJawaban() {
             // AI grading untuk essay akan dilakukan secara batch dari frontend
             data?.forEach(jawaban => {
                 checkMultipleChoiceAnswer(jawaban.id, jawaban.soal_id, jawaban.answer_text)
+                    .catch(err => console.error('Auto-grade failed for jawaban:', jawaban.id, err))
                 // REMOVED: triggerAIGrading - sekarang menggunakan batch AI grading
             })
 
@@ -783,8 +785,12 @@ export function useBatchSubmitJawaban() {
                 // Add delay to ensure all individual grading is complete
                 setTimeout(() => {
                     calculateUjianScore(ujianId, siswaId, attemptNumber)
+                        .catch(err => console.error('Score calculation failed:', err))
                 }, 2000)
             }
+        },
+        onError: (error: Error) => {
+            console.error('Failed to batch submit jawaban:', error)
         },
     })
 }
@@ -868,7 +874,7 @@ export function useCompletedUjianIds() {
                 })
                 
                 return uniqueIds
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useCompletedUjianIds:', error)
                 throw error
             }
@@ -1009,7 +1015,7 @@ export function useCompletedUjianSiswa() {
 
                 // Sort berdasarkan lastAttempt (terbaru dulu)
                 return completedUjian.sort((a, b) => new Date(b.lastAttempt).getTime() - new Date(a.lastAttempt).getTime())
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useCompletedUjianSiswa:', error)
                 throw error
             }
@@ -1089,7 +1095,7 @@ export function useInProgressUjianSiswa() {
                 const result = Array.from(ujianMap.values())
                 console.log('📝 In-progress ujian:', result.length)
                 return result
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useInProgressUjianSiswa:', error)
                 throw error
             }
@@ -1175,7 +1181,7 @@ export function useAvailableUjian() {
                 }
 
                 return data || []
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('❌ Error in useAvailableUjian:', {
                     error: error instanceof Error ? error.message : error,
                     userId: user?.id
@@ -1321,7 +1327,7 @@ export function useUjianForSiswa(ujianId: string) {
                 circuitBreaker.onSuccess()
                 
                 return result
-            } catch (error) {
+            } catch (error: unknown) {
                 // Error callback
                 circuitBreaker.onFailure()
                 

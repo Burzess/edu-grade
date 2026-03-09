@@ -7,6 +7,12 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
     
+    // Auth check
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
     const surveyId = searchParams.get('id');
@@ -21,7 +27,7 @@ export async function GET(req: NextRequest) {
         .single();
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch survey' }, { status: 500 });
       }
 
       if (!survey) {
@@ -36,7 +42,7 @@ export async function GET(req: NextRequest) {
           .order('order_number');
 
         if (questionsError) {
-          return NextResponse.json({ error: questionsError.message }, { status: 500 });
+          return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 });
         }
 
         return NextResponse.json({ ...survey, questions });
@@ -52,14 +58,14 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch surveys' }, { status: 500 });
       }
 
       return NextResponse.json(surveys);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching surveys:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -99,7 +105,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (surveyError) {
-      return NextResponse.json({ error: surveyError.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to create survey' }, { status: 500 });
     }
 
     // Create questions if provided
@@ -119,14 +125,14 @@ export async function POST(req: NextRequest) {
         .insert(questionsData);
 
       if (questionsError) {
-        return NextResponse.json({ error: questionsError.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to create questions' }, { status: 500 });
       }
     }
 
     return NextResponse.json(survey, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating survey:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -164,12 +170,12 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update survey' }, { status: 500 });
     }
 
     return NextResponse.json(survey);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating survey:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

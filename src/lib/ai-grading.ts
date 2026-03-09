@@ -221,7 +221,7 @@ export async function gradeEssayAnswer(
 
     return aiResponse
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ AI grading error:', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
@@ -284,7 +284,7 @@ export async function batchGradeAnswers(
       // Small delay between requests to respect rate limits
       await new Promise(resolve => setTimeout(resolve, 1500))
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Error grading answer ${answer.id}:`, error)
       
       // Add fallback result
@@ -343,7 +343,7 @@ export async function smartBatchGradeAnswers(
         try {
           const batchResults = await gradeMultipleEssaysInOneRequest(batch)
           results.push(...batchResults)
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('❌ Smart batch failed, falling back to individual grading:', error)
           
           // Fallback to individual grading
@@ -387,7 +387,7 @@ export async function smartBatchGradeAnswers(
           )
           results.push({ id: answer.id, result })
           await new Promise(resolve => setTimeout(resolve, 1000))
-        } catch (error) {
+        } catch (error: unknown) {
           results.push({
             id: answer.id,
             result: {

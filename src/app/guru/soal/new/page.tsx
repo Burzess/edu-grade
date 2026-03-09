@@ -152,9 +152,9 @@ export default function CreateSoalPage() {
             console.log('✅ Soal created successfully:', result)
 
             router.push('/guru/soal')
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('❌ Error creating soal:', err)
-            setError(err.message || 'Terjadi kesalahan saat membuat soal')
+            setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat soal')
         }
     }
 

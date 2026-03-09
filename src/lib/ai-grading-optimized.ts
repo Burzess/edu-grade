@@ -153,7 +153,7 @@ export async function gradeEssayAnswerOptimized(
     // Validate and return
     return validateAndFormatResponse(aiResponse)
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Optimized AI grading error:', {
       error: error instanceof Error ? error.message : error,
       questionPreview: question.substring(0, 100) + '...',
@@ -408,7 +408,7 @@ function parseAIResponse(text: string): AIGradingResponse {
       const parsed = JSON.parse(jsonMatch[1])
       console.log('✅ METHOD 1: Parsed JSON from code block successfully:', parsed)
       return parsed
-    } catch (error) {
+    } catch (error: unknown) {
       console.log('❌ METHOD 1: Failed to parse JSON from code block:', {
         error: error instanceof Error ? error.message : error,
         jsonString: jsonMatch[1]
@@ -431,7 +431,7 @@ function parseAIResponse(text: string): AIGradingResponse {
       const parsed = JSON.parse(jsonMatch[0])
       console.log('✅ METHOD 2: Parsed JSON from text successfully:', parsed)
       return parsed
-    } catch (error) {
+    } catch (error: unknown) {
       console.log('❌ METHOD 2: Failed to parse JSON from text:', {
         error: error instanceof Error ? error.message : error,
         jsonString: jsonMatch[0]
@@ -462,7 +462,7 @@ function parseAIResponse(text: string): AIGradingResponse {
       const parsed = JSON.parse(cleanedText)
       console.log('✅ METHOD 3: Parsed JSON from cleaned text successfully:', parsed)
       return parsed
-    } catch (error) {
+    } catch (error: unknown) {
       console.log('❌ METHOD 3: Failed to parse cleaned JSON:', {
         error: error instanceof Error ? error.message : error,
         cleanedText: cleanedText
@@ -484,7 +484,7 @@ function parseAIResponse(text: string): AIGradingResponse {
       const parsed = JSON.parse(aggressiveMatch[0])
       console.log('✅ METHOD 4: Parsed JSON with aggressive regex successfully:', parsed)
       return parsed
-    } catch (error) {
+    } catch (error: unknown) {
       console.log('❌ METHOD 4: Failed to parse with aggressive regex:', {
         error: error instanceof Error ? error.message : error,
         jsonString: aggressiveMatch[0]
@@ -761,7 +761,7 @@ export async function optimizedBatchGradeAnswers(
       // Reduced delay karena prompt lebih efisien
       await new Promise(resolve => setTimeout(resolve, 800))
       
-    } catch (error) {
+    } catch (error: unknown) {
       const processingTime = Date.now() - startTime
       
       console.error(`❌ BATCH ITEM ${results.length + 1} - Error grading answer:`, {

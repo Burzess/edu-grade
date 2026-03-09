@@ -68,7 +68,7 @@ export async function getCurrentUser(): Promise<User | null> {
       created_at: user.created_at,
     };
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('getCurrentUser error:', error);
     return null;
   }

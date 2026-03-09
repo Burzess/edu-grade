@@ -98,7 +98,7 @@ export function KelasSelector({
       } else {
         setError(result.error || 'Gagal mengambil daftar kelas')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching kelas list:', error)
       setError('Terjadi kesalahan saat mengambil daftar kelas')
     } finally {

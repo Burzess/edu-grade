@@ -228,6 +228,9 @@ export function useCreateUjian() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ujian'] })
     },
+    onError: (error: Error) => {
+      console.error('Failed to create ujian:', error)
+    },
   })
 }
 
@@ -324,6 +327,9 @@ export function useUpdateUjian() {
       queryClient.invalidateQueries({ queryKey: ['ujian'] })
       queryClient.invalidateQueries({ queryKey: ['ujian', data.id] })
     },
+    onError: (error: Error) => {
+      console.error('Failed to update ujian:', error)
+    },
   })
 }
 
@@ -356,6 +362,9 @@ export function useDeleteUjian() {
     onSuccess: () => {
       console.log('🔄 Invalidating ujian queries after delete')
       queryClient.invalidateQueries({ queryKey: ['ujian'] })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to delete ujian:', error)
     },
   })
 }
@@ -453,6 +462,9 @@ export function useStartUjian() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ujian'] })
     },
+    onError: (error: Error) => {
+      console.error('Failed to start ujian:', error)
+    },
   })
 }
 
@@ -491,6 +503,9 @@ export function useCompleteUjian() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ujian'] })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to complete ujian:', error)
     },
   })
 }
@@ -532,6 +547,9 @@ export function useAutoCompleteExpiredUjian() {
         queryClient.invalidateQueries({ queryKey: ['ujian'] })
       }
     },
+    onError: (error: Error) => {
+      console.error('Failed to auto-complete expired ujian:', error)
+    },
   })
 }
 
@@ -547,7 +565,7 @@ export function useUjianStatusChecker() {
     const interval = setInterval(async () => {
       try {
         await autoComplete.mutateAsync()
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error auto-completing expired ujian:', error)
       }
     }, 60000) // Check setiap 1 menit
@@ -825,7 +843,7 @@ export function useStartUjianSiswa() {
 
         console.log('✅ Siswa started ujian:', { ujianId, siswaId: user.id, attempt: nextAttemptNumber, isRemidi })
         return ujianSiswa
-      } catch (error) {
+      } catch (error: unknown) {
         // Remove from cache on error untuk allow retry
         registrationCache.current.delete(cacheKey)
         throw error
@@ -888,6 +906,9 @@ export function useSubmitUjianSiswa() {
           return !query.queryKey.includes('siswa')
         }
       })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to submit ujian:', error)
     },
   })
 }
@@ -1000,7 +1021,7 @@ export function useUjianSiswaStatusChecker() {
       interval = setInterval(async () => {
         try {
           await autoComplete.mutateAsync()
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Error auto-completing expired ujian siswa:', error)
         }
       }, 5 * 60 * 1000) // Check setiap 5 menit

@@ -53,7 +53,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
     try {
       await onScoreUpdate(jawaban.id, numScore, feedback.trim() || undefined)
       setIsOpen(false)
-    } catch (error) {
+    } catch (error: unknown) {
       // Error sudah ditangani di parent component
     } finally {
       setIsSubmitting(false)

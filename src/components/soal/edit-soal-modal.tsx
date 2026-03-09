@@ -163,8 +163,8 @@ export function EditSoalModal({ soalId, children }: EditSoalModalProps) {
       }
       await updateSoalMutation.mutateAsync(updateData)
       setOpen(false)
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat mengupdate soal')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengupdate soal')
     }
   }
 

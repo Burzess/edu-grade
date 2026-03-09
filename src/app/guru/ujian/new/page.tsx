@@ -331,9 +331,9 @@ export default function CreateUjianPage() {
       })
 
       router.push('/guru/ujian')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Error creating ujian:', err)
-      setError(err.message || 'Terjadi kesalahan saat membuat ujian')
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat ujian')
     }
   }
 

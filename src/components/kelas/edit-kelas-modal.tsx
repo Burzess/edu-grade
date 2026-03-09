@@ -87,7 +87,7 @@ export function EditKelasModal({
       
       // Success akan di-handle oleh parent component
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error updating kelas:', error);
       setError(
         error instanceof Error 

@@ -1,32 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * API endpoint sederhana untuk mendapatkan auth data dari middleware headers
- * Ini memungkinkan client-side components mengakses data user tanpa query database
+ * API endpoint untuk mendapatkan auth data
+ * Menggunakan server-side getUser() untuk validasi yang aman
  */
 export async function GET(request: NextRequest) {
-  // Headers ini sudah di-set oleh middleware
-  const userId = request.headers.get('x-user-id')
-  const userEmail = request.headers.get('x-user-email')
-  const userRole = request.headers.get('x-user-role')
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  const isAuthenticated = !!(userId && userEmail && userRole)
-
-  return NextResponse.json({
-    isAuthenticated,
-    user: isAuthenticated ? {
-      id: userId,
-      email: userEmail,
-      role: userRole
-    } : null
-  }, {
-    // Pass the headers back untuk client bisa akses
-    headers: {
-      'x-user-id': userId || '',
-      'x-user-email': userEmail || '',
-      'x-user-role': userRole || ''
+    if (error || !user) {
+      return NextResponse.json({
+        isAuthenticated: false,
+        user: null
+      })
     }
-  })
+
+    // Fetch role from database
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const userRole = profile?.role || 'siswa'
+
+    return NextResponse.json({
+      isAuthenticated: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: userRole
+      }
+    })
+  } catch (error: unknown) {
+    console.error('Auth check error:', error)
+    return NextResponse.json({
+      isAuthenticated: false,
+      user: null
+    })
+  }
 }

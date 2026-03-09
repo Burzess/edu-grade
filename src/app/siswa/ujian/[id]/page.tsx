@@ -185,7 +185,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
             try {
                 const parsedAnswers = JSON.parse(localAnswers)
                 setAnswers(prev => ({ ...prev, ...parsedAnswers }))
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('Error parsing local answers:', error)
             }
         }
@@ -402,7 +402,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                                     .eq('siswa_id', user.id)
                                     .eq('status', 'in_progress')
                                 console.log('✅ Updated ujian_siswa.started_at to:', now)
-                            } catch (err) {
+                            } catch (err: unknown) {
                                 console.error('Failed to update started_at:', err)
                             }
                         }
