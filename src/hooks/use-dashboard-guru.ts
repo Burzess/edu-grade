@@ -1,11 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
-
-// Inisialisasi Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 interface ActivityItem {
   id: string
@@ -25,23 +20,10 @@ export const useDashboardStats = () => {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      console.log('Fetching dashboard stats for user:', user.id)
+      const supabase = createClient()
 
-      // Gunakan RPC function baru dengan nama bahasa Indonesia
+      // Gunakan RPC function untuk statistik ujian guru
       const { data: stats, error: rpcError } = await supabase.rpc('ambil_statistik_ujian_guru')
-      console.log('RPC stats:', stats, 'RPC Error:', rpcError);
-      
-      // Debug untuk cek info user login
-      const { data: debugUserInfo, error: debugUserError } = await supabase.rpc('cek_info_user_login')
-      console.log('Debug user info:', debugUserInfo, 'Debug Error:', debugUserError);
-
-      // Test count langsung
-      const { count: debugUjian, error: debugError } = await supabase
-        .from('ujian')
-        .select('*', { count: 'exact' })
-        .eq('created_by', user.id)
-
-      console.log('Debug ujian count:', debugUjian, 'Count Error:', debugError);
       
       // Query untuk mendapatkan statistik ujian
       const { data: ujianStats, error: ujianError } = await supabase
@@ -49,12 +31,7 @@ export const useDashboardStats = () => {
         .select('id, status, created_at')
         .eq('created_by', user.id)
 
-      if (ujianError) {
-        console.error('Error fetching ujian stats:', ujianError)
-        throw ujianError
-      }
-
-      console.log('Ujian stats:', ujianStats)
+      if (ujianError) throw ujianError
 
       // Query untuk mendapatkan total siswa yang pernah mengikuti ujian guru ini dari ujian_siswa
       const { data: ujianSiswaStats, error: ujianSiswaError } = await supabase
@@ -66,13 +43,7 @@ export const useDashboardStats = () => {
         `)
         .eq('ujian.created_by', user.id)
 
-      if (ujianSiswaError) {
-        console.error('Error fetching ujian siswa stats:', ujianSiswaError)
-        // Jangan throw error jika tabel ujian_siswa belum ada data
-        console.log('ujian_siswa table might be empty or not exist, continuing...')
-      }
-
-      console.log('Ujian siswa stats:', ujianSiswaStats)
+      // Jangan throw error jika tabel ujian_siswa belum ada data
 
       // Query untuk mendapatkan rata-rata nilai dari jawaban_siswa
       const { data: nilaiStats, error: nilaiError } = await supabase
@@ -84,13 +55,7 @@ export const useDashboardStats = () => {
         .eq('ujian.created_by', user.id)
         .not('score', 'is', null)
 
-      if (nilaiError) {
-        console.error('Error fetching nilai stats:', nilaiError)
-        // Jangan throw error jika tabel jawaban_siswa belum ada data
-        console.log('jawaban_siswa table might be empty or not exist, continuing...')
-      }
-
-      console.log('Nilai stats:', nilaiStats)
+      // Jangan throw error jika tabel jawaban_siswa belum ada data
 
       // Alternatif: coba query dari tabel jawaban jika jawaban_siswa tidak ada
       let backupNilaiStats = null
@@ -105,7 +70,6 @@ export const useDashboardStats = () => {
 
       if (!backupNilaiError && backupNilai) {
         backupNilaiStats = backupNilai
-        console.log('Using backup from jawaban table:', backupNilaiStats)
       }
 
       // Hitung statistik - prioritaskan dari RPC function jika ada
@@ -127,7 +91,7 @@ export const useDashboardStats = () => {
         ? Math.round(validScores.reduce((sum: number, score: number) => sum + score, 0) / validScores.length)
         : null
 
-      const result = {
+      return {
         totalUjian,
         activeUjian,
         completedUjian,
@@ -135,14 +99,7 @@ export const useDashboardStats = () => {
         totalSiswa: uniqueSiswa,
         siswaAktif,
         averageScore,
-        ujianData: ujianStats,
-        ujianSiswaData: ujianSiswaStats,
-        rpcStats: stats,
-        debugInfo: debugUserInfo
       }
-
-      console.log('Final dashboard stats:', result)
-      return result
     },
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -158,7 +115,7 @@ export const useRecentActivity = () => {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      console.log('Fetching recent activity for user:', user.id)
+      const supabase = createClient()
 
       // Query untuk ujian terbaru yang dibuat
       const { data: recentUjian, error: ujianError } = await supabase
@@ -168,12 +125,7 @@ export const useRecentActivity = () => {
         .order('created_at', { ascending: false })
         .limit(3)
 
-      if (ujianError) {
-        console.error('Error fetching recent ujian:', ujianError)
-        throw ujianError
-      }
-
-      console.log('Recent ujian:', recentUjian)
+      if (ujianError) throw ujianError
 
       // Query untuk aktivitas siswa terbaru dari ujian_siswa
       const { data: recentUjianSiswa, error: ujianSiswaError } = await supabase
@@ -197,13 +149,7 @@ export const useRecentActivity = () => {
         .order('started_at', { ascending: false, nullsFirst: false })
         .limit(10)
 
-      if (ujianSiswaError) {
-        console.error('Error fetching ujian siswa activity:', ujianSiswaError)
-        // Jangan throw error, lanjutkan dengan data kosong
-        console.log('ujian_siswa table might be empty, continuing...')
-      }
-
-      console.log('Recent ujian siswa:', recentUjianSiswa)
+      // Jangan throw error, lanjutkan dengan data kosong
 
       // Query untuk jawaban terbaru yang masuk dari jawaban_siswa
       const { data: recentJawaban, error: jawabanError } = await supabase
@@ -217,11 +163,7 @@ export const useRecentActivity = () => {
         .eq('ujian.created_by', user.id)
         .order('created_at', { ascending: false })
 
-      if (jawabanError) {
-        console.error('Error fetching recent jawaban:', jawabanError)
-        // Coba gunakan tabel jawaban sebagai fallback
-        console.log('Trying fallback to jawaban table...')
-      }
+      // Coba gunakan tabel jawaban sebagai fallback jika jawaban_siswa error
 
       // Fallback: coba query dari tabel jawaban jika jawaban_siswa tidak ada
       let backupJawaban = null
@@ -240,7 +182,6 @@ export const useRecentActivity = () => {
 
         if (!backupJawabanError && backupJawabanData) {
           backupJawaban = backupJawabanData
-          console.log('Using backup jawaban data:', backupJawaban)
         }
       }
 
@@ -325,7 +266,6 @@ export const useRecentActivity = () => {
         .sort((a, b) => b.time.getTime() - a.time.getTime())
         .slice(0, 8)
 
-      console.log('Final activities:', sortedActivities)
       return sortedActivities
     },
     enabled: !!user?.id,

@@ -84,20 +84,6 @@ export default function GuruDashboardClient() {
     error: activityError 
   } = useRecentActivity()
 
-  console.log('Dashboard Stats:', stats)
-  console.log('Dashboard Stats Loading:', isStatsLoading)
-  console.log('Dashboard Stats Error:', statsError)
-  console.log('Recent Activity:', recentActivity)
-  
-  // Debug informasi untuk troubleshooting
-  if (statsError) {
-    console.error('Stats error details:', statsError)
-  }
-
-  if (activityError) {
-    console.error('Activity error details:', activityError)
-  }
-
   return (
     <>
       {/* Error Display */}

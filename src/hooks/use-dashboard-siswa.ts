@@ -1,13 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@supabase/supabase-js'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
-
-// Inisialisasi Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 interface ActivityItem {
   id: string
@@ -26,6 +19,8 @@ export const useDashboardStatsSiswa = () => {
     queryKey: ['dashboard-stats-siswa', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
+
+      const supabase = createClient()
 
       // Query untuk mendapatkan statistik ujian siswa
       const { data: ujianSiswaStats, error: ujianSiswaError } = await supabase
@@ -113,6 +108,8 @@ export const useRecentActivitySiswa = () => {
     queryKey: ['recent-activity-siswa', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
+
+      const supabase = createClient()
 
       // Query untuk aktivitas ujian siswa terbaru
       const { data: recentUjianSiswa, error: ujianSiswaError } = await supabase
@@ -241,6 +238,8 @@ export const useAvailableUjianForSiswaDashboard = () => {
     queryKey: ['available-ujian-dashboard', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
+
+      const supabase = createClient()
 
       // Get ujian yang statusnya active dan belum diikuti siswa ini
       const { data, error } = await supabase
