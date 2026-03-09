@@ -264,27 +264,24 @@ export const useAvailableUjianForSiswaDashboard = () => {
 
       // Filter ujian yang belum expired dan belum diikuti
       const now = new Date()
-      const availableUjian = []
 
-      for (const ujian of data || []) {
-        // Check if not expired
-        if (ujian.end_time && new Date(ujian.end_time) <= now) continue
+      // Fetch semua ujian_siswa milik user sekaligus (hindari N+1 query)
+      const { data: studentUjians } = await supabase
+        .from('ujian_siswa')
+        .select('ujian_id')
+        .eq('siswa_id', user.id)
 
-        // Check if student hasn't taken this exam
-        const { data: existingUjianSiswa } = await supabase
-          .from('ujian_siswa')
-          .select('id')
-          .eq('ujian_id', ujian.id)
-          .eq('siswa_id', user.id)
-          .single()
+      const takenUjianIds = new Set(studentUjians?.map(su => su.ujian_id) || [])
 
-        if (!existingUjianSiswa) {
-          availableUjian.push({
-            ...ujian,
-            totalSoal: ujian.ujian_soal?.[0]?.count || 0
-          })
-        }
-      }
+      const availableUjian = (data || [])
+        .filter(ujian => {
+          if (ujian.end_time && new Date(ujian.end_time) <= now) return false
+          return !takenUjianIds.has(ujian.id)
+        })
+        .map(ujian => ({
+          ...ujian,
+          totalSoal: (ujian.ujian_soal as { count: number }[])?.[0]?.count || 0
+        }))
 
       return availableUjian
     },

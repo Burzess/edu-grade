@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 
-interface ActivityItem {
+export interface ActivityItem {
   id: string
   type: string
   title: string

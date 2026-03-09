@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useDashboardStats, useRecentActivity } from '@/hooks/use-dashboard-guru'
+import { useDashboardStats, useRecentActivity, type ActivityItem } from '@/hooks/use-dashboard-guru'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +21,7 @@ import {
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 
-function ActivityItem({ activity }: { activity: any }) {
+function ActivityItemCard({ activity }: { activity: ActivityItem }) {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'ujian_aktif':
@@ -265,7 +265,7 @@ export default function GuruDashboardClient() {
               </div>
             ) : (
               recentActivity.map((activity) => (
-                <ActivityItem key={activity.id} activity={activity} />
+                <ActivityItemCard key={activity.id} activity={activity} />
               ))
             )}
             <div className="pt-2">
