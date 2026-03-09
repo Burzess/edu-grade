@@ -199,8 +199,8 @@ export async function GET(request: NextRequest) {
       })
       .filter(Boolean)
       // Remove duplicates by ujian_id
-      .filter((ujian: Record<string, unknown>, index: number, self: Record<string, unknown>[]) => 
-        index === self.findIndex(u => u.id === ujian.id)
+      .filter((ujian, index, self) => 
+        index === self.findIndex(u => u?.id === ujian?.id)
       )
 
     return NextResponse.json({

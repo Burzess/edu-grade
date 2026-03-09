@@ -74,7 +74,7 @@ export async function GET(
 
     // Transform data
     const transformedMembers = members?.map((member, index) => {
-      const profiles = member.profiles as Record<string, unknown> | null;
+      const profiles = member.profiles as unknown as { id: string; full_name: string; email: string } | null;
       return {
         id: member.id,
         no: index + 1,
