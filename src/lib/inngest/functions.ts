@@ -26,9 +26,9 @@ export const gradeEssayJob = inngest.createFunction(
         limit: 2,
         key: 'event.data.jawabanId'
       }
-    ]
+    ],
+    triggers: [{ event: 'essay/grade.requested' }]
   },
-  { event: 'essay/grade.requested' },
   async ({ event, step }) => {
     const { jawabanId, question, answer, correctAnswer } = event.data
 
