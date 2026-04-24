@@ -80,9 +80,7 @@ Berikan penilaian objektif dengan skor 0-100.`
 
         // TAHAP 3: Gunakan generateObject untuk structured output
         const { object } = await generateObject({
-          model: google('gemini-2.0-flash-exp', {
-            structuredOutputs: true
-          }),
+          model: google('gemini-2.0-flash-exp'),
           schema: GradingResultSchema,
           prompt,
           temperature: 0.3
