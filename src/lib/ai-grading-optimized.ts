@@ -105,6 +105,7 @@ export async function gradeEssayAnswerOptimized(
       referenceAnswerPreview: correctAnswer ? correctAnswer.substring(0, 100) + '...' : 'N/A',
       fullPrompt: prompt,
       modelConfig: {
+        model: 'google/gemini-2.0-flash-exp:free',
         temperature: config.temperature,
         maxOutputTokens: config.maxOutputTokens,
         retryAttempt: retryCount

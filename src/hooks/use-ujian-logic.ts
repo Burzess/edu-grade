@@ -162,28 +162,29 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                 return
             }
                 
-            // NEW: Trigger batch AI grading untuk semua jawaban sekaligus
-            if (Array.isArray(result) && result.length > 0) {
-                console.log('🚀 Starting batch AI grading for all answers...')
-                
-                try {
-                    // Trigger batch AI grading dengan optimized mode
-                    await batchAIGrading.mutateAsync({
-                        ujianId,
-                        options: {
-                            useOptimized: true,
-                            useBatching: true,
-                            forceAI: false // Akan auto-grade multiple choice, AI untuk essay
-                        }
-                    })
-                    
-                    console.log('✅ Batch AI grading completed successfully')
-                } catch (aiGradingError) {
-                    console.error('❌ Batch AI grading failed (non-critical):', aiGradingError)
-                    // Don't fail the submission if AI grading fails
-                    toast.warning('Jawaban tersimpan, tapi penilaian AI mengalami masalah. Akan diproses ulang nanti.')
-                }
-            }
+            // AUTO AI GRADING DISABLED (causes 403 for siswa)
+            // AI grading hanya bisa dilakukan oleh GURU dari dashboard
+            // if (Array.isArray(result) && result.length > 0) {
+            //     console.log('🚀 Starting batch AI grading for all answers...')
+            //     
+            //     try {
+            //         await batchAIGrading.mutateAsync({
+            //             ujianId,
+            //             options: {
+            //                 useOptimized: true,
+            //                 useBatching: true,
+            //                 forceAI: false
+            //             }
+            //         })
+            //         
+            //         console.log('✅ Batch AI grading completed successfully')
+            //     } catch (aiGradingError) {
+            //         console.error('❌ Batch AI grading failed (non-critical):', aiGradingError)
+            //         toast.warning('Jawaban tersimpan, tapi penilaian AI mengalami masalah. Akan diproses ulang nanti.')
+            //     }
+            // }
+            
+            console.log('✅ Jawaban tersimpan. Menunggu penilaian dari guru.')
 
             // PERBAIKAN: Update status ujian_siswa dengan error handling
             try {

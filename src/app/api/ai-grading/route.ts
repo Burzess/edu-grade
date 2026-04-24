@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { gradeEssayAnswer } from '@/lib/ai-grading'
 import { gradeEssayAnswerOptimized, optimizedBatchGradeAnswers, type PromptConfig } from '@/lib/ai-grading-optimized'
 import { autoGradeQuestion, needsAIGrading, type AutoGradingResponse } from '@/lib/auto-grading'
+import { inngest } from '@/lib/inngest/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -152,75 +153,82 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Prepare correct answer for multiple choice (only for AI grading)
+    // Prepare correct answer for essay questions
     let correctAnswer = undefined
     if (jawaban.soal.question_type === 'essay' && jawaban.soal.correct_answer) {
-      // For essay questions, use correct_answer as reference
       correctAnswer = jawaban.soal.correct_answer
     }
 
-    console.log('🤖 Starting AI grading process for essay question...')
+    console.log('🚀 Triggering background AI grading job via Inngest...')
     
-    // Choose grading method based on useOptimized flag
-    let gradingResult
-    if (useOptimized) {
-      console.log('📈 Using OPTIMIZED AI grading (reduced token usage)')
-      
-      const promptConfig: PromptConfig = {
-        mode: 'concise', // Use concise prompts for cost efficiency
-        maxOutputTokens: 500, // Reduced from 1000
-        temperature: 0.3
-      }
-      
-      gradingResult = await gradeEssayAnswerOptimized(
-        jawaban.soal.question_text,
-        jawaban.answer_text,
-        jawaban.soal.question_type,
-        correctAnswer,
-        promptConfig
-      )
-    } else {
-      console.log('📝 Using TRADITIONAL AI grading (detailed prompts)')
-      
-      // Grade using original AI method
-      gradingResult = await gradeEssayAnswer(
-        jawaban.soal.question_text,
-        jawaban.answer_text,
-        jawaban.soal.question_type,
-        correctAnswer
-      )
-    }
-
-    console.log('✅ AI grading completed:', {
-      score: gradingResult.score,
-      feedbackLength: gradingResult.feedback.length
-    })
-
-    // Update jawaban with AI grading result
+    // TAHAP 1: Update status to PENDING dan trigger background job
     const { error: updateError } = await supabase
       .from('jawaban_siswa')
       .update({
-        score: gradingResult.score,
-        ai_feedback: gradingResult.feedback,
+        score: null, // Tetap null sampai job selesai
+        ai_feedback: 'Sedang dinilai oleh AI... (PENDING)',
         updated_at: new Date().toISOString()
       })
       .eq('id', jawabanId)
 
     if (updateError) {
-      console.error('❌ Error updating jawaban with AI score:', updateError)
+      console.error('❌ Error updating jawaban status:', updateError)
       return NextResponse.json(
-        { error: 'Failed to update score' },
+        { error: 'Failed to update status' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      score: gradingResult.score,
-      feedback: gradingResult.feedback,
-      reasoning: gradingResult.reasoning,
-      method: useOptimized ? 'ai_optimized' : 'ai_traditional'
-    })
+    // Trigger Inngest background job
+    try {
+      await inngest.send({
+        name: 'essay/grade.requested',
+        data: {
+          jawabanId,
+          question: jawaban.soal.question_text,
+          answer: jawaban.answer_text,
+          correctAnswer
+        }
+      })
+
+      console.log('✅ Background grading job triggered successfully')
+
+      // Return 200 OK immediately - client akan polling untuk hasil
+      return NextResponse.json({
+        success: true,
+        status: 'PENDING',
+        message: 'Penilaian sedang diproses di background. Status akan diupdate otomatis.',
+        jawabanId
+      })
+    } catch (inngestError: unknown) {
+      console.error('❌ Failed to trigger Inngest job:', inngestError)
+      
+      // Fallback to synchronous grading jika Inngest gagal
+      console.log('⚠️ Falling back to synchronous grading...')
+      
+      const gradingResult = await gradeEssayAnswer(
+        jawaban.soal.question_text,
+        jawaban.answer_text,
+        jawaban.soal.question_type,
+        correctAnswer
+      )
+
+      await supabase
+        .from('jawaban_siswa')
+        .update({
+          score: gradingResult.score,
+          ai_feedback: gradingResult.feedback,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jawabanId)
+
+      return NextResponse.json({
+        success: true,
+        score: gradingResult.score,
+        feedback: gradingResult.feedback,
+        method: 'fallback_sync'
+      })
+    }
 
   } catch (error: unknown) {
     console.error('Auto-grading API error:', error)
