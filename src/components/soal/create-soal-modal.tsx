@@ -117,7 +117,7 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
   const onSubmit = async (data: SoalForm) => {
     try {
       setError(null)
-      console.log('🔄 Starting soal creation...', data)
+      console.log('Starting soal creation...', data)
 
       const soalData: any = {
         question_text: data.question_text,
@@ -135,16 +135,16 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
         soalData.correct_answer = data.correct_answer || null // Bisa kosong untuk essay
       }
 
-      console.log('📤 Sending data to server:', soalData)
+      console.log('Sending data to server:', soalData)
 
       await createSoalMutation.mutateAsync(soalData)
       
-      console.log('✅ Soal created successfully')
+      console.log('Soal created successfully')
       setOpen(false)
       form.reset()
       
     } catch (error: unknown) {
-      console.error('❌ Error creating soal:', error)
+      console.error('Error creating soal:', error)
       setError(error instanceof Error ? error.message : 'Terjadi kesalahan')
     }
   }

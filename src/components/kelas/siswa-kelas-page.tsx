@@ -23,7 +23,7 @@ export function SiswaKelasPage() {
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
-      console.log('🔄 Joining kelas with code:', kodeKelas);
+      console.log('Joining kelas with code:', kodeKelas);
       
       await joinKelasMutation.mutateAsync(kodeKelas);
       
@@ -33,7 +33,7 @@ export function SiswaKelasPage() {
       // No need to manual refetch - mutation will invalidate cache
       
     } catch (error: any) {
-      console.error('❌ Join failed:', error);
+      console.error('Join failed:', error);
       
       let errorMessage = 'Gagal bergabung ke kelas';
       const errorMsg = error?.message || '';

@@ -22,25 +22,25 @@ class Logger {
 
   debug(message: any, ...args: any[]): void {
     if (this.shouldLog('debug')) {
-      console.log(`🐛 [DEBUG]`, message, ...args);
+      console.log(`[DEBUG]`, message, ...args);
     }
   }
 
   info(message: any, ...args: any[]): void {
     if (this.shouldLog('info')) {
-      console.info(`ℹ️ [INFO]`, message, ...args);
+      console.info(`[INFO]`, message, ...args);
     }
   }
 
   warn(message: any, ...args: any[]): void {
     if (this.shouldLog('warn')) {
-      console.warn(`⚠️ [WARN]`, message, ...args);
+      console.warn(`[WARN]`, message, ...args);
     }
   }
 
   error(message: any, ...args: any[]): void {
     if (this.shouldLog('error')) {
-      console.error(`❌ [ERROR]`, message, ...args);
+      console.error(`[ERROR]`, message, ...args);
     }
   }
 

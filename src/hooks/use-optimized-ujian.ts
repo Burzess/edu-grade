@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 
 // Hook untuk optimized ujian status - EMERGENCY DISABLED
 export function useOptimizedUjianStatus(ujianId?: string) {
-  console.log('🚫 useOptimizedUjianStatus: DISABLED to prevent infinite requests')
+  console.log('useOptimizedUjianStatus: DISABLED to prevent infinite requests')
   return {
     data: null,
     isLoading: false,
@@ -16,7 +16,7 @@ export function useOptimizedUjianStatus(ujianId?: string) {
 
 // Hook untuk optimized ujian status checker - EMERGENCY DISABLED
 export function useOptimizedUjianStatusChecker() {
-  console.log('🚫 useOptimizedUjianStatusChecker: DISABLED to prevent infinite requests')
+  console.log('useOptimizedUjianStatusChecker: DISABLED to prevent infinite requests')
   return useMutation({
     mutationFn: async () => {
       return null // No-op
@@ -26,7 +26,7 @@ export function useOptimizedUjianStatusChecker() {
 
 // Hook untuk active ujian siswa - EMERGENCY DISABLED
 export function useActiveUjianSiswa() {
-  console.log('🚫 useActiveUjianSiswa: DISABLED to prevent infinite requests')
+  console.log('useActiveUjianSiswa: DISABLED to prevent infinite requests')
   return {
     data: null,
     isLoading: false,
@@ -37,7 +37,7 @@ export function useActiveUjianSiswa() {
 
 // Hook untuk optimized batch submit jawaban - EMERGENCY DISABLED
 export function useOptimizedBatchSubmitJawaban() {
-  console.log('🚫 useOptimizedBatchSubmitJawaban: DISABLED to prevent infinite requests')
+  console.log('useOptimizedBatchSubmitJawaban: DISABLED to prevent infinite requests')
   return useMutation({
     mutationFn: async () => {
       return null // No-op

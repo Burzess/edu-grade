@@ -31,7 +31,7 @@ export function AuthProvider({
     useEffect(() => {
         // Jika ada initialUser dari server, gunakan itu untuk menghindari loading
         if (initialUser) {
-            console.log('🚀 Using server-side initial user:', initialUser.email)
+            console.log('Using server-side initial user:', initialUser.email)
             
             // Set profile langsung dari server data
             const serverProfile = {
@@ -138,13 +138,13 @@ export function AuthProvider({
             const controller = new AbortController()
             const timeoutId = setTimeout(() => {
                 controller.abort()
-                console.error('⏰ Profile fetch timeout after 5 seconds')
+                console.error('Profile fetch timeout after 5 seconds')
             }, 5000) // Kurangi ke 5 detik
 
             // Cek cache terlebih dahulu dengan validasi yang lebih ketat
             const cachedProfile = getCachedProfile(user.id)
             if (cachedProfile && cachedProfile.email && cachedProfile.role) {
-                console.log('🔄 Using cached profile for user:', user.id)
+                console.log('Using cached profile for user:', user.id)
                 setProfile(cachedProfile)
                 clearTimeout(timeoutId)
                 return
@@ -160,7 +160,7 @@ export function AuthProvider({
                     role: metadata.role as 'siswa' | 'guru',
                     created_at: user.created_at
                 }
-                console.log('⚡ Using metadata profile for user:', user.id)
+                console.log('Using metadata profile for user:', user.id)
                 setProfile(quickProfile)
                 setCachedProfile(user.id, quickProfile)
                 clearTimeout(timeoutId)
@@ -169,7 +169,7 @@ export function AuthProvider({
 
             // Check network connectivity
             if (!navigator.onLine) {
-                console.warn('🔌 No internet connection, using fallback profile')
+                console.warn('No internet connection, using fallback profile')
                 clearTimeout(timeoutId)
                 const fallbackProfile = {
                     id: user.id,
@@ -184,7 +184,7 @@ export function AuthProvider({
             }
 
             // Fallback ke database query dengan retry logic yang dipercepat
-            console.log('📡 Fetching profile from database for user:', user.id)
+            console.log('Fetching profile from database for user:', user.id)
             let retries = 2 // Kurangi dari 3 ke 2 retry
             let profileData = null
 
@@ -233,12 +233,12 @@ export function AuthProvider({
                     }
                 } catch (fetchError: any) {
                     if (fetchError.name === 'AbortError') {
-                        console.error('⏰ Profile fetch aborted due to timeout')
+                        console.error('Profile fetch aborted due to timeout')
                         break
                     }
                     
                     retries--
-                    console.warn(`⚠️ Profile fetch failed, ${retries} retries left:`, fetchError)
+                    console.warn(`Profile fetch failed, ${retries} retries left:`, fetchError)
                     
                     if (retries > 0) {
                         // Kurangi delay retry dari exponential backoff
@@ -251,7 +251,7 @@ export function AuthProvider({
 
             // Jika setelah retry masih gagal atau timeout, buat profile fallback
             if (!profileData || controller.signal.aborted) {
-                console.warn('⚠️ Unable to fetch/create profile, using emergency fallback')
+                console.warn('Unable to fetch/create profile, using emergency fallback')
                 const emergencyProfile = {
                     id: user.id,
                     email: user.email!,
@@ -264,13 +264,13 @@ export function AuthProvider({
                 
                 // Schedule background sync untuk update profile nanti
                 setTimeout(() => {
-                    console.log('🔄 Attempting background profile sync...')
+                    console.log('Attempting background profile sync...')
                     getProfile(user).catch(console.error)
                 }, 10000)
             }
 
         } catch (err: unknown) {
-            console.error('❌ Critical error in getProfile:', err)
+            console.error('Critical error in getProfile:', err)
             // Fallback profile untuk mencegah stuck loading
             const emergencyProfile = {
                 id: user.id,

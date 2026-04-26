@@ -58,7 +58,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         // Debounce: ignore duplicate events within 500ms
         const now = Date.now()
         if (now - lastRecordTime.current < 500 && type !== 'tab_switch') {
-            console.log(`⏭️ Security event debounced: ${type}`)
+            console.log(`Security event debounced: ${type}`)
             return
         }
         lastRecordTime.current = now
@@ -87,7 +87,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
             }
         }
         
-        console.log(`📊 Recording security event:`, { 
+        console.log(`Recording security event:`, { 
             type, 
             details: event.details,
             totalViolations: newTotalCount 
@@ -302,7 +302,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                     })
                 }
                 
-                console.log('⬅️ DEBUG - User left tab, sending event:', {
+                console.log('DEBUG - User left tab, sending event:', {
                     action: 'left',
                     tabSwitchCount: tabSwitchCount + 1
                 })
@@ -314,7 +314,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                 setIsWindowFocused(true)
                 const timeAway = now.getTime() - lastVisibilityChange.current.getTime()
                 
-                console.log('🔄 DEBUG - User returned to tab, sending event:', {
+                console.log('DEBUG - User returned to tab, sending event:', {
                     action: 'returned',
                     timeAwayMs: timeAway,
                     tabSwitchCount: tabSwitchCount,
@@ -354,7 +354,7 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             // Don't record or show warning if exam is successfully submitted
             if (isSubmitted) {
-                console.log('✅ Exam submitted - skipping beforeunload warning')
+                console.log('Exam submitted - skipping beforeunload warning')
                 return
             }
             

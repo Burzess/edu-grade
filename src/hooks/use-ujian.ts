@@ -168,7 +168,7 @@ export function useCreateUjian() {
       allow_remidi?: boolean
       max_attempts?: number
     }) => {
-      console.log('📘 Creating new ujian...', {
+      console.log('Creating new ujian...', {
         name,
         duration: duration_minutes,
         soalCount: selected_soal?.length || 0,
@@ -318,7 +318,7 @@ export function useUpdateUjian() {
           throw insertError
         }
 
-        console.log('✅ Ujian soal list updated successfully')
+        console.log('Ujian soal list updated successfully')
       }
 
       return ujian
@@ -356,11 +356,11 @@ export function useDeleteUjian() {
         throw error
       }
 
-      console.log('✅ Ujian deleted successfully:', { id })
+      console.log('Ujian deleted successfully:', { id })
       return id
     },
     onSuccess: () => {
-      console.log('🔄 Invalidating ujian queries after delete')
+      console.log('Invalidating ujian queries after delete')
       queryClient.invalidateQueries({ queryKey: ['ujian'] })
     },
     onError: (error: Error) => {
@@ -419,7 +419,7 @@ export function useStartUjian() {
       }
 
       const now = new Date().toISOString()
-      console.log('📅 Current time for start ujian:', now)
+      console.log('Current time for start ujian:', now)
 
       // First, get the ujian to access duration_minutes
       const { data: currentUjian, error: fetchError } = await supabase
@@ -539,7 +539,7 @@ export function useAutoCompleteExpiredUjian() {
         throw error
       }
 
-      console.log('✅ Auto-completed expired ujian:', data?.length || 0)
+      console.log('Auto-completed expired ujian:', data?.length || 0)
       return data || []
     },
     onSuccess: (data) => {
@@ -638,7 +638,7 @@ export function useAvailableUjianForSiswa() {
   useEffect(() => {
     if (!user?.id || user.role !== 'siswa') return
 
-    console.log('🔄 Setting up realtime subscription for ujian (siswa)')
+    console.log('Setting up realtime subscription for ujian (siswa)')
     
     const channel = supabase
       .channel('ujian-changes')
@@ -650,7 +650,7 @@ export function useAvailableUjianForSiswa() {
           table: 'ujian',
         },
         (payload) => {
-          console.log('📡 Realtime ujian change detected:', payload.eventType, payload.new || payload.old)
+          console.log('Realtime ujian change detected:', payload.eventType, payload.new || payload.old)
           
           // Throttle invalidations - hanya invalidate untuk perubahan penting
           if (payload.eventType === 'INSERT' || 
@@ -674,7 +674,7 @@ export function useAvailableUjianForSiswa() {
             
             if (oldData?.status === 'draft' && newData?.status === 'active') {
               // Ujian baru dimulai
-              console.log('🎯 Ujian baru dimulai:', newData.name)
+              console.log('Ujian baru dimulai:', newData.name)
               
               // Show notification jika user sudah memberikan permission
               if (permission === 'granted') {
@@ -687,7 +687,7 @@ export function useAvailableUjianForSiswa() {
       .subscribe()
 
     return () => {
-      console.log('🔄 Cleaning up ujian realtime subscription')
+      console.log('Cleaning up ujian realtime subscription')
       supabase.removeChannel(channel)
     }
   }, [user?.id, user?.role, queryClient, showUjianNotification, permission])
@@ -755,7 +755,7 @@ export function useStartUjianSiswa() {
       // PERBAIKAN: Check cache untuk mencegah duplicate registration
       const cacheKey = `${user.id}-${ujianId}`
       if (registrationCache.current.has(cacheKey)) {
-        console.log('🚫 Registration already in progress or completed for:', cacheKey)
+        console.log('Registration already in progress or completed for:', cacheKey)
         throw new Error('Anda sudah terdaftar untuk ujian ini')
       }
 
@@ -771,9 +771,9 @@ export function useStartUjianSiswa() {
 
         if (cachedUjianData && typeof cachedUjianData === 'object' && cachedUjianData !== null) {
           ujian = cachedUjianData as any
-          console.log('📂 Using cached ujian data for registration check')
+          console.log('Using cached ujian data for registration check')
         } else {
-          console.log('🔍 Fetching ujian data from database for registration')
+          console.log('Fetching ujian data from database for registration')
           const { data: ujianData, error: ujianError } = await supabase
             .from('ujian')
             .select('id, name, status, end_time, allow_remidi, max_attempts')
@@ -841,7 +841,7 @@ export function useStartUjianSiswa() {
           throw error
         }
 
-        console.log('✅ Siswa started ujian:', { ujianId, siswaId: user.id, attempt: nextAttemptNumber, isRemidi })
+        console.log('Siswa started ujian:', { ujianId, siswaId: user.id, attempt: nextAttemptNumber, isRemidi })
         return ujianSiswa
       } catch (error: unknown) {
         // Remove from cache on error untuk allow retry
@@ -892,7 +892,7 @@ export function useSubmitUjianSiswa() {
         throw error
       }
 
-      console.log('✅ Siswa submitted ujian:', { ujianId, siswaId: user.id })
+      console.log('Siswa submitted ujian:', { ujianId, siswaId: user.id })
       return ujianSiswa
     },
     onSuccess: () => {
@@ -920,7 +920,7 @@ export function useActiveUjianSiswa(ujianId: string) {
   return useQuery({
     queryKey: ['active-ujian-siswa', ujianId, user?.id],
     queryFn: async () => {
-      console.log('🚫 useActiveUjianSiswa: BLOCKED to prevent infinite requests')
+      console.log('useActiveUjianSiswa: BLOCKED to prevent infinite requests')
       return null
     },
     enabled: false, // EMERGENCY: Completely disable this hook
@@ -992,7 +992,7 @@ export function useAutoCompleteExpiredUjianSiswa() {
         throw error
       }
 
-      console.log('✅ Auto-completed expired ujian siswa:', completedUjian?.length || 0)
+      console.log('Auto-completed expired ujian siswa:', completedUjian?.length || 0)
       return completedUjian || []
     },
     onSuccess: (data) => {

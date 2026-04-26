@@ -28,7 +28,7 @@ export async function gradeEssayAnswer(
   correctAnswer?: string
 ): Promise<AIGradingResponse> {
   try {
-    console.log('🤖 Starting AI grading...', { 
+    console.log('Starting AI grading...', { 
       questionLength: question.length, 
       answerLength: studentAnswer.length,
       questionType,
@@ -173,7 +173,7 @@ export async function gradeEssayAnswer(
 
     const text = result.choices[0]?.message?.content || ''
 
-    console.log('🤖 Raw AI response:', text.substring(0, 200) + '...')
+    console.log('Raw AI response:', text.substring(0, 200) + '...')
 
     // Cari JSON dalam response dengan lebih fleksibel
     let jsonMatch = text.match(/\{[\s\S]*?\}/)
@@ -185,7 +185,7 @@ export async function gradeEssayAnswer(
     }
 
     if (!jsonMatch) {
-      console.error('❌ No valid JSON found in AI response:', text)
+      console.error('No valid JSON found in AI response:', text)
       throw new Error('Invalid AI response format - no JSON found')
     }
 
@@ -193,7 +193,7 @@ export async function gradeEssayAnswer(
     try {
       aiResponse = JSON.parse(jsonMatch[0])
     } catch (parseError) {
-      console.error('❌ Failed to parse JSON:', parseError, 'Raw JSON:', jsonMatch[0])
+      console.error('Failed to parse JSON:', parseError, 'Raw JSON:', jsonMatch[0])
       throw new Error('Invalid JSON in AI response')
     }
     
@@ -206,14 +206,14 @@ export async function gradeEssayAnswer(
         !aiResponse.reasoning ||
         typeof aiResponse.reasoning !== 'string') {
       
-      console.error('❌ Invalid AI response structure:', aiResponse)
+      console.error('Invalid AI response structure:', aiResponse)
       throw new Error('Invalid AI response structure')
     }
 
     // Ensure score is integer
     aiResponse.score = Math.round(aiResponse.score)
 
-    console.log('✅ AI grading completed:', {
+    console.log('AI grading completed:', {
       score: aiResponse.score,
       feedbackLength: aiResponse.feedback.length,
       reasoningLength: aiResponse.reasoning.length
@@ -222,7 +222,7 @@ export async function gradeEssayAnswer(
     return aiResponse
 
   } catch (error: unknown) {
-    console.error('❌ AI grading error:', {
+    console.error('AI grading error:', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
       question: question.substring(0, 100) + '...',
@@ -249,7 +249,7 @@ export async function batchGradeAnswers(
     correctAnswer?: string
   }>
 ): Promise<Array<{ id: string; result: AIGradingResponse }>> {
-  console.log('🤖 Starting batch AI grading for', answers.length, 'answers')
+  console.log('Starting batch AI grading for', answers.length, 'answers')
   
   const results = []
   
@@ -285,7 +285,7 @@ export async function batchGradeAnswers(
       await new Promise(resolve => setTimeout(resolve, 1500))
       
     } catch (error: unknown) {
-      console.error(`❌ Error grading answer ${answer.id}:`, error)
+      console.error(`Error grading answer ${answer.id}:`, error)
       
       // Add fallback result
       results.push({
@@ -299,7 +299,7 @@ export async function batchGradeAnswers(
     }
   }
   
-  console.log('✅ Batch AI grading completed:', results.length, 'results')
+  console.log('Batch AI grading completed:', results.length, 'results')
   return results
 }
 
@@ -314,7 +314,7 @@ export async function smartBatchGradeAnswers(
   }>,
   batchSize: number = 3 // Jumlah jawaban per request (untuk essay serupa)
 ): Promise<Array<{ id: string; result: AIGradingResponse }>> {
-  console.log('🤖 Starting SMART batch AI grading for', answers.length, 'answers with batch size:', batchSize)
+  console.log('Starting SMART batch AI grading for', answers.length, 'answers with batch size:', batchSize)
   
   // Group answers by similar questions to optimize batching
   const questionGroups = new Map<string, typeof answers>()
@@ -331,7 +331,7 @@ export async function smartBatchGradeAnswers(
   
   // Process each question group
   for (const [questionKey, groupAnswers] of questionGroups) {
-    console.log(`📝 Processing ${groupAnswers.length} answers for question group:`, questionKey.substring(0, 50) + '...')
+    console.log(`Processing ${groupAnswers.length} answers for question group:`, questionKey.substring(0, 50) + '...')
     
     // For essay questions, try smart batching
     if (groupAnswers[0].questionType === 'essay' && groupAnswers.length >= 2) {
@@ -344,7 +344,7 @@ export async function smartBatchGradeAnswers(
           const batchResults = await gradeMultipleEssaysInOneRequest(batch)
           results.push(...batchResults)
         } catch (error: unknown) {
-          console.error('❌ Smart batch failed, falling back to individual grading:', error)
+          console.error('Smart batch failed, falling back to individual grading:', error)
           
           // Fallback to individual grading
           for (const answer of batch) {
@@ -401,7 +401,7 @@ export async function smartBatchGradeAnswers(
     }
   }
   
-  console.log('✅ Smart batch AI grading completed:', results.length, 'results')
+  console.log('Smart batch AI grading completed:', results.length, 'results')
   return results
 }
 
@@ -479,7 +479,7 @@ async function gradeMultipleEssaysInOneRequest(
 
   const text = result.choices[0]?.message?.content || ''
 
-  console.log('🤖 Smart batch AI response preview:', text.substring(0, 300) + '...')
+  console.log('Smart batch AI response preview:', text.substring(0, 300) + '...')
 
   // Parse JSON array response
   let jsonMatch = text.match(/\[[\s\S]*\]/)
@@ -497,7 +497,7 @@ async function gradeMultipleEssaysInOneRequest(
   try {
     batchResults = JSON.parse(jsonMatch[0])
   } catch (parseError) {
-    console.error('❌ Failed to parse batch JSON:', parseError)
+    console.error('Failed to parse batch JSON:', parseError)
     throw new Error('Invalid JSON in batch AI response')
   }
 
@@ -529,6 +529,6 @@ async function gradeMultipleEssaysInOneRequest(
     }
   }
 
-  console.log(`✅ Smart batch processed ${formattedResults.length} answers successfully`)
+  console.log(`Smart batch processed ${formattedResults.length} answers successfully`)
   return formattedResults
 }

@@ -48,7 +48,7 @@ export function useAntiScreenshot(options: UseAntiScreenshotOptions = {}) {
         // Debounce: skip if recorded within last 1 second to prevent duplicates
         const now = Date.now()
         if (now - lastRecordedTime.current < 1000) {
-            console.log(`⏭️ Screenshot attempt debounced (${method}), too soon after last record`)
+            console.log(`Screenshot attempt debounced (${method}), too soon after last record`)
             return null
         }
         lastRecordedTime.current = now
@@ -73,7 +73,7 @@ export function useAntiScreenshot(options: UseAntiScreenshotOptions = {}) {
         })
         
         // Log untuk debugging
-        console.warn(`🚫 Screenshot Attempt Blocked: ${method}`, attempt)
+        console.warn(`Screenshot Attempt Blocked: ${method}`, attempt)
         
         // Reset counter setelah beberapa detik jika tidak ada percobaan lagi
         setTimeout(() => {

@@ -3,15 +3,15 @@
 
 // Placeholder provider tanpa realtime functionality
 export function OptimizedRealtimeProvider({ children }: { children: React.ReactNode }) {
-  console.log('🚫 OptimizedRealtimeProvider: DISABLED - realtime subscriptions removed')
+  console.log('OptimizedRealtimeProvider: DISABLED - realtime subscriptions removed')
   return <>{children}</>
 }
 
 // Placeholder hooks tanpa functionality
 export function useConnectionHealth() {
-  console.log('� useConnectionHealth: DISABLED')
+  console.log('useConnectionHealth: DISABLED')
 }
 
 export function usePerformanceMonitor() {
-  console.log('� usePerformanceMonitor: DISABLED')
+  console.log('usePerformanceMonitor: DISABLED')
 }

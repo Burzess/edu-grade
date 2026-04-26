@@ -296,7 +296,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
   // Update form values when ujian data is loaded
   useEffect(() => {
     if (ujian) {
-      console.log('🔄 EditUjianPage: Setting form data:', ujian)
+      console.log('EditUjianPage: Setting form data:', ujian)
 
       form.reset({
         name: ujian.name,
@@ -338,7 +338,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
   const onSubmit = async (data: UjianForm) => {
     try {
       setError(null)
-      console.log('🔄 Updating ujian...', { id: resolvedParams.id, data })
+      console.log('Updating ujian...', { id: resolvedParams.id, data })
 
       await updateUjianMutation.mutateAsync({
         id: resolvedParams.id,
@@ -353,7 +353,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
 
       router.push('/guru/ujian')
     } catch (err: unknown) {
-      console.error('❌ Error updating ujian:', err)
+      console.error('Error updating ujian:', err)
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengupdate ujian')
     }
   }

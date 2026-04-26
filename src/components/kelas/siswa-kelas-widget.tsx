@@ -35,31 +35,31 @@ export function SiswaKelasWidget() {
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
-      console.log('🔄 Widget: Joining kelas with code:', kodeKelas);
-      console.log('🔄 Widget: Current user from auth store:', user?.id);
+      console.log('Widget: Joining kelas with code:', kodeKelas);
+      console.log('Widget: Current user from auth store:', user?.id);
       
       // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
       const accessToken = await getValidAccessToken(supabase);
-      console.log('🔄 Widget: Token validation:', { 
+      console.log('Widget: Token validation:', { 
         hasToken: !!accessToken
       });
       
       if (!user?.id || !accessToken) {
-        console.warn('❌ Widget: Session tidak valid - redirecting to login');
+        console.warn('Widget: Session tidak valid - redirecting to login');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         return;
       }
 
       // Try dengan hook pertama
-      console.log('🔄 Widget: Using hook mutation...');
+      console.log('Widget: Using hook mutation...');
       const result = await joinKelasMutation.mutateAsync(kodeKelas);
-      console.log('🔄 Widget: Hook result received:', result);
+      console.log('Widget: Hook result received:', result);
 
       // Check if result indicates success or failure
       if (result && typeof result === 'object' && 'success' in result) {
         if (result.success === false) {
-          console.log('❌ Widget: Hook returned failure:', result);
+          console.log('Widget: Hook returned failure:', result);
           
           // Throw error to be caught by catch block
           const errorMsg = result.message || 'Join kelas gagal';
@@ -67,7 +67,7 @@ export function SiswaKelasWidget() {
         }
       }
 
-      console.log('✅ Widget: Join kelas successful via hook:', result);
+      console.log('Widget: Join kelas successful via hook:', result);
       
       toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
       setShowJoinModal(false);
@@ -76,7 +76,7 @@ export function SiswaKelasWidget() {
       await refetch();
       
     } catch (error: any) {
-      console.error('❌ Widget: Hook join failed, trying API fallback:', error);
+      console.error('Widget: Hook join failed, trying API fallback:', error);
       
       // Fallback ke API endpoint jika hook gagal
       try {
@@ -87,7 +87,7 @@ export function SiswaKelasWidget() {
           throw new Error('Session tidak valid untuk API call');
         }
         
-        console.log('🔄 Widget: Trying API endpoint fallback...');
+        console.log('Widget: Trying API endpoint fallback...');
         console.log(kodeKelas);
         const response = await fetch('/api/kelas/join', {
           method: 'POST',
@@ -101,7 +101,7 @@ export function SiswaKelasWidget() {
         const result = await response.json();
         
         if (result.success) {
-          console.log('✅ Widget: Join successful via API fallback:', result);
+          console.log('Widget: Join successful via API fallback:', result);
           toastSuccess('Berhasil!', result.message);
           setShowJoinModal(false);
           await refetch();
@@ -110,7 +110,7 @@ export function SiswaKelasWidget() {
           throw new Error(result.message || 'API join failed');
         }
       } catch (apiError: any) {
-        console.error('❌ Widget: Both hook and API failed:', apiError);
+        console.error('Widget: Both hook and API failed:', apiError);
         
         let errorMessage = 'Gagal bergabung ke kelas';
         

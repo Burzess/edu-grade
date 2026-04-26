@@ -34,7 +34,7 @@ class UniversalSupabaseClient {
 
   // Channel methods - REALTIME REMOVED: Disabled to prevent infinite requests
   channel(name: string) {
-    console.log('🚫 Supabase Channel: DISABLED - realtime functionality removed')
+    console.log('Supabase Channel: DISABLED - realtime functionality removed')
     // Return mock channel that does nothing
     return {
       on: () => this,
@@ -48,7 +48,7 @@ class UniversalSupabaseClient {
   }
 
   removeChannel(channel: any) {
-    console.log('🚫 removeChannel: DISABLED - realtime functionality removed')
+    console.log('removeChannel: DISABLED - realtime functionality removed')
     return Promise.resolve('ok')
   }
 }

@@ -29,18 +29,18 @@ export function useCircuitBreaker(options: CircuitBreakerOptions) {
     // If circuit is open, check if we should reset
     if (currentState.state === 'OPEN') {
       if (now - currentState.lastFailureTime >= resetTimeout) {
-        console.log('🔄 Circuit breaker: Transitioning to HALF_OPEN')
+        console.log('Circuit breaker: Transitioning to HALF_OPEN')
         currentState.state = 'HALF_OPEN'
         currentState.failures = 0
         return true
       }
-      console.log('⚡ Circuit breaker: BLOCKED - Too many failures')
+      console.log('Circuit breaker: BLOCKED - Too many failures')
       return false
     }
 
     // If too many consecutive failures, open circuit
     if (currentState.failures >= maxFailures) {
-      console.log('⚡ Circuit breaker: OPENING - Max failures reached')
+      console.log('Circuit breaker: OPENING - Max failures reached')
       currentState.state = 'OPEN'
       currentState.lastFailureTime = now
       return false
@@ -51,7 +51,7 @@ export function useCircuitBreaker(options: CircuitBreakerOptions) {
 
   const onSuccess = useCallback(() => {
     if (state.current.state === 'HALF_OPEN') {
-      console.log('✅ Circuit breaker: CLOSING - Recovery successful')
+      console.log('Circuit breaker: CLOSING - Recovery successful')
       state.current.state = 'CLOSED'
     }
     state.current.failures = 0
@@ -61,16 +61,16 @@ export function useCircuitBreaker(options: CircuitBreakerOptions) {
     state.current.failures += 1
     state.current.lastFailureTime = Date.now()
     
-    console.log(`❌ Circuit breaker: Failure ${state.current.failures}/${maxFailures}`)
+    console.log(`Circuit breaker: Failure ${state.current.failures}/${maxFailures}`)
     
     if (state.current.failures >= failureThreshold && state.current.state === 'CLOSED') {
-      console.log('⚡ Circuit breaker: OPENING due to failure threshold')
+      console.log('Circuit breaker: OPENING due to failure threshold')
       state.current.state = 'OPEN'
     }
   }, [maxFailures, failureThreshold])
 
   const reset = useCallback(() => {
-    console.log('🔄 Circuit breaker: Manual RESET')
+    console.log('Circuit breaker: Manual RESET')
     state.current.failures = 0
     state.current.state = 'CLOSED'
     state.current.lastFailureTime = 0
@@ -102,7 +102,7 @@ export function useRateLimiter(maxCalls: number = 10, windowMs: number = 60000) 
     
     // Check if we're under the limit
     if (calls.current.length >= maxCalls) {
-      console.log(`🚫 Rate limiter: Blocked - ${calls.current.length}/${maxCalls} calls in window`)
+      console.log(`Rate limiter: Blocked - ${calls.current.length}/${maxCalls} calls in window`)
       return false
     }
     

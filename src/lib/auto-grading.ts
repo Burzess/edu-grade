@@ -19,7 +19,7 @@ export function gradeMultipleChoice(
   correctAnswer: string,
   question?: string
 ): AutoGradingResponse {
-  console.log('⚡ Auto-grading multiple choice (no AI needed)', {
+  console.log('Auto-grading multiple choice (no AI needed)', {
     studentAnswer: studentAnswer?.substring(0, 50),
     correctAnswer: correctAnswer?.substring(0, 50)
   })
@@ -63,7 +63,7 @@ export function gradeTrueFalse(
   studentAnswer: string,
   correctAnswer: string
 ): AutoGradingResponse {
-  console.log('⚡ Auto-grading true/false (no AI needed)')
+  console.log('Auto-grading true/false (no AI needed)')
 
   const normalizedStudentAnswer = studentAnswer?.trim().toLowerCase()
   const normalizedCorrectAnswer = correctAnswer?.trim().toLowerCase()
@@ -185,7 +185,7 @@ export function batchAutoGrade(
     }
   }
   
-  console.log('🔄 Batch auto-grading summary:', {
+  console.log('Batch auto-grading summary:', {
     autoGraded: autoGraded.length,
     needsAI: needsAI.length,
     totalProcessed: answers.length

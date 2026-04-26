@@ -226,7 +226,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                 // Auto-resume: jika sudah in_progress, skip rules dialog dan mulai timer
                 setShowRulesDialog(false)
                 setExamStarted(true)
-                console.log('🔄 Resuming exam, started_at:', data.started_at)
+                console.log('Resuming exam, started_at:', data.started_at)
             }
         }
 
@@ -245,7 +245,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
     // Handle answer changes with current question context
     const handleCurrentAnswerChange = useCallback((answer: string) => {
         if (!currentQuestion?.soal?.id) {
-            console.error('❌ No current question or soal ID available')
+            console.error('No current question or soal ID available')
             return
         }
         handleAnswerChange(currentQuestion.soal.id, answer)
@@ -401,7 +401,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                                     .eq('ujian_id', ujianId)
                                     .eq('siswa_id', user.id)
                                     .eq('status', 'in_progress')
-                                console.log('✅ Updated ujian_siswa.started_at to:', now)
+                                console.log('Updated ujian_siswa.started_at to:', now)
                             } catch (err: unknown) {
                                 console.error('Failed to update started_at:', err)
                             }
@@ -477,7 +477,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                                 <h4 className="font-bold text-sm mb-2">🔧 Debug Tools</h4>
                                 <button 
                                     onClick={() => {
-                                        console.log('🧪 Simulating tab switch returned event')
+                                        console.log('Simulating tab switch returned event')
                                         window.dispatchEvent(new Event('focus'))
                                         document.dispatchEvent(new Event('visibilitychange'))
                                     }}
@@ -487,7 +487,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                                 </button>
                                 <button 
                                     onClick={() => {
-                                        console.log('🧪 Simulating right click')
+                                        console.log('Simulating right click')
                                         document.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }))
                                     }}
                                     className="text-xs bg-red-500 text-white px-2 py-1 rounded"
@@ -605,7 +605,7 @@ function UjianSiswaWithSecurity() {
     // Handler untuk pelanggaran keamanan di level provider dengan logic alert
     const handleSecurityViolation = useCallback((violationType: string, details?: any) => {
         // Debug logging
-        console.log(`🔍 DEBUG - Security Violation Detected:`, {
+        console.log(`DEBUG - Security Violation Detected:`, {
             type: violationType,
             details,
             action: details?.action,
@@ -625,7 +625,7 @@ function UjianSiswaWithSecurity() {
         const totalCount = details?.totalViolationCount || 1
         
         if (violationType === 'tab_switch' && details?.action === 'returned') {
-            console.log('🚨 Showing tab switch modal for returned action')
+            console.log('Showing tab switch modal for returned action')
             window.dispatchEvent(new CustomEvent('showSecurityModal', {
                 detail: {
                     violationType: 'tab_switch',
@@ -635,7 +635,7 @@ function UjianSiswaWithSecurity() {
                 }
             }))
         } else if (violationType === 'tab_switch' && details?.action === 'left') {
-            console.log('📝 Tab switch - left action detected, no modal shown')
+            console.log('Tab switch - left action detected, no modal shown')
         } else if (violationType === 'right_click') {
             window.dispatchEvent(new CustomEvent('showSecurityModal', {
                 detail: {

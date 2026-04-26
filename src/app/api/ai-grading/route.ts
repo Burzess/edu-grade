@@ -52,14 +52,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (jawabanError || !jawaban) {
-      console.error('❌ Error fetching jawaban:', jawabanError)
+      console.error('Error fetching jawaban:', jawabanError)
       return NextResponse.json(
         { error: 'Jawaban not found' },
         { status: 404 }
       )
     }
 
-    console.log('📄 Found jawaban:', {
+    console.log('Found jawaban:', {
       id: jawaban.id,
       soalType: jawaban.soal?.question_type,
       hasAnswer: !!jawaban.answer_text,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Skip if already graded
     if (jawaban.score !== null) {
-      console.log('⏭️ Already graded, skipping AI grading')
+      console.log('Already graded, skipping AI grading')
       return NextResponse.json({ 
         success: true, 
         message: 'Already graded',
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     // Skip if no answer provided
     if (!jawaban.answer_text || jawaban.answer_text.trim() === '') {
-      console.log('⚠️ Empty answer, setting score to 0')
+      console.log('Empty answer, setting score to 0')
       
       await supabase
         .from('jawaban_siswa')
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Check if question can be auto-graded (multiple choice, true/false, etc.)
     if (!forceAI && !needsAIGrading(jawaban.soal.question_type)) {
-      console.log('⚡ Using AUTO-GRADING (no AI needed) for question type:', jawaban.soal.question_type)
+      console.log(' Using AUTO-GRADING (no AI needed) for question type:', jawaban.soal.question_type)
       
       // Prepare correct answer for auto-grading
       let correctAnswer = jawaban.soal.correct_answer
@@ -129,14 +129,14 @@ export async function POST(request: NextRequest) {
           .eq('id', jawabanId)
 
         if (updateError) {
-          console.error('❌ Error updating jawaban with auto score:', updateError)
+          console.error('Error updating jawaban with auto score:', updateError)
           return NextResponse.json(
             { error: 'Failed to update score' },
             { status: 500 }
           )
         }
 
-        console.log('✅ Auto-grading completed:', {
+        console.log('Auto-grading completed:', {
           score: autoResult.score,
           method: autoResult.method,
           type: jawaban.soal.question_type
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       correctAnswer = jawaban.soal.correct_answer
     }
 
-    console.log('🚀 Triggering background AI grading job via Inngest...')
+    console.log('Triggering background AI grading job via Inngest...')
     
     // TAHAP 1: Update status to PENDING dan trigger background job
     const { error: updateError } = await supabase
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
       .eq('id', jawabanId)
 
     if (updateError) {
-      console.error('❌ Error updating jawaban status:', updateError)
+      console.error('Error updating jawaban status:', updateError)
       return NextResponse.json(
         { error: 'Failed to update status' },
         { status: 500 }
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      console.log('✅ Background grading job triggered successfully')
+      console.log('Background grading job triggered successfully')
 
       // Return 200 OK immediately - client akan polling untuk hasil
       return NextResponse.json({
@@ -201,10 +201,10 @@ export async function POST(request: NextRequest) {
         jawabanId
       })
     } catch (inngestError: unknown) {
-      console.error('❌ Failed to trigger Inngest job:', inngestError)
+      console.error('Failed to trigger Inngest job:', inngestError)
       
       // Fallback to synchronous grading jika Inngest gagal
-      console.log('⚠️ Falling back to synchronous grading...')
+      console.log('Falling back to synchronous grading...')
       
       const gradingResult = await gradeEssayAnswer(
         jawaban.soal.question_text,
@@ -286,7 +286,7 @@ export async function PUT(request: NextRequest) {
       .is('score', null)
 
     if (jawabanError) {
-      console.error('❌ Error fetching jawaban for batch grading:', jawabanError)
+      console.error('Error fetching jawaban for batch grading:', jawabanError)
       return NextResponse.json(
         { error: 'Failed to fetch answers' },
         { status: 500 }
@@ -301,7 +301,7 @@ export async function PUT(request: NextRequest) {
       })
     }
 
-    console.log('📊 Processing', jawabanList.length, 'ungraded answers')
+    console.log('Processing', jawabanList.length, 'ungraded answers')
 
     // PHASE 1: Separate auto-gradable vs AI-needed questions
     const autoGradableAnswers = []
@@ -339,7 +339,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    console.log('🔄 Grading strategy:', {
+    console.log('Grading strategy:', {
       autoGradable: autoGradableAnswers.length,
       needsAI: aiNeededAnswers.length,
       total: jawabanList.length
@@ -373,28 +373,28 @@ export async function PUT(request: NextRequest) {
 
           if (updateError) {
             errorCount++
-            console.error(`❌ Error updating auto-graded answer ${answerData.id}:`, updateError)
+            console.error(`Error updating auto-graded answer ${answerData.id}:`, updateError)
           } else {
             autoGradedCount++
           }
         }
       } catch (error: unknown) {
         errorCount++
-        console.error(`❌ Error auto-grading answer ${answerData.id}:`, error)
+        console.error(`Error auto-grading answer ${answerData.id}:`, error)
       }
     }
 
-    console.log('⚡ Auto-grading completed:', autoGradedCount, 'questions')
+    console.log('Auto-grading completed:', autoGradedCount, 'questions')
 
     // PHASE 3: AI-grade essay questions only
     if (aiNeededAnswers.length > 0) {
-      console.log('🤖 Starting AI grading for', aiNeededAnswers.length, 'essay questions')
+      console.log(' Starting AI grading for', aiNeededAnswers.length, 'essay questions')
 
       if (useBatching && aiNeededAnswers.length > 1) {
         // Use batching for essay questions
         try {
           if (useOptimized) {
-            console.log('📈 Using OPTIMIZED batch grading for essays')
+            console.log(' Using OPTIMIZED batch grading for essays')
             
             const promptConfig: PromptConfig = {
               mode: 'concise',
@@ -426,19 +426,19 @@ export async function PUT(request: NextRequest) {
 
                 if (updateError) {
                   errorCount++
-                  console.error(`❌ Error updating AI-graded answer ${result.id}:`, updateError)
+                  console.error(`Error updating AI-graded answer ${result.id}:`, updateError)
                 } else {
                   aiGradedCount++
                 }
               } catch (updateError) {
                 errorCount++
-                console.error(`❌ Exception updating AI-graded answer ${result.id}:`, updateError)
+                console.error(`Exception updating AI-graded answer ${result.id}:`, updateError)
               }
             }
 
           } else {
             // Traditional AI batch grading
-            console.log('📝 Using traditional AI batch grading')
+            console.log(' Using traditional AI batch grading')
             
             const { smartBatchGradeAnswers } = await import('@/lib/ai-grading')
             
@@ -476,7 +476,7 @@ export async function PUT(request: NextRequest) {
           }
 
         } catch (batchError) {
-          console.error('❌ AI batch grading failed, falling back to individual:', batchError)
+          console.error(' AI batch grading failed, falling back to individual:', batchError)
           
           // Fallback to individual AI grading
           for (const answerData of aiNeededAnswers) {
@@ -541,7 +541,7 @@ export async function PUT(request: NextRequest) {
               await new Promise(resolve => setTimeout(resolve, delay))
 
             } catch (error: unknown) {
-              console.error(`❌ Error AI grading answer ${answerData.id}:`, error)
+              console.error(` Error AI grading answer ${answerData.id}:`, error)
               errorCount++
             }
           }
@@ -549,7 +549,7 @@ export async function PUT(request: NextRequest) {
 
       } else {
         // Individual AI grading for single essays or when batching disabled
-        console.log('🤖 Using individual AI grading for', aiNeededAnswers.length, 'essays')
+        console.log('Using individual AI grading for', aiNeededAnswers.length, 'essays')
         
         for (const answerData of aiNeededAnswers) {
           try {
@@ -613,7 +613,7 @@ export async function PUT(request: NextRequest) {
             await new Promise(resolve => setTimeout(resolve, delay))
 
           } catch (error: unknown) {
-            console.error(`❌ Error AI grading answer ${answerData.id}:`, error)
+            console.error(`Error AI grading answer ${answerData.id}:`, error)
             errorCount++
           }
         }
@@ -626,7 +626,7 @@ export async function PUT(request: NextRequest) {
     const totalProcessed = autoGradedCount + aiGradedCount
     const costSavingsPercent = Math.round((autoGradedCount / jawabanList.length) * 100)
 
-    console.log('✅ Hybrid grading completed:', {
+    console.log('Hybrid grading completed:', {
       autoGraded: autoGradedCount,
       aiGraded: aiGradedCount,
       errors: errorCount,

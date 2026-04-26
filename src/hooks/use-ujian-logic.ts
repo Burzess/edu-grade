@@ -33,18 +33,18 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             
             // ENHANCED: Multiple layers of duplicate prevention
             if (isSubmitting) {
-                console.log('🛑 Submit already in progress (isSubmitting=true), aborting...')
+                console.log('Submit already in progress (isSubmitting=true), aborting...')
                 return
             }
 
             if (batchSubmit.isPending) {
-                console.log('🛑 Submit already pending (batchSubmit.isPending=true), aborting...')
+                console.log('Submit already pending (batchSubmit.isPending=true), aborting...')
                 return
             }
 
             // Prevent rapid successive submissions (< 2 seconds apart)
             if (now - lastSubmissionTime < 2000) {
-                console.log('🛑 Rapid submission prevented (< 2 seconds since last attempt)')
+                console.log('Rapid submission prevented (< 2 seconds since last attempt)')
                 toast.warning('Mohon tunggu sebelum mencoba submit lagi')
                 return
             }
@@ -52,7 +52,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             // Set submission flag and timestamp immediately
             setIsSubmitting(true)
             setLastSubmissionTime(now)
-            console.log('🔒 Setting isSubmitting=true to prevent duplicates')
+            console.log('Setting isSubmitting=true to prevent duplicates')
 
             // PERBAIKAN: Validasi lebih ketat sebelum submit
             if (!ujianId) {
@@ -81,7 +81,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                 }
             }
 
-            console.log('� FINAL SUBMIT - This should be the ONLY database submission:', {
+            console.log('FINAL SUBMIT - This should be the ONLY database submission:', {
                 isAutoSubmit,
                 totalQuestions: organizedQuestions.length,
                 answeredQuestions: organizedQuestions.length - unansweredQuestions.length,
@@ -106,7 +106,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                     // Deduplicate by creating unique key
                     const key = `${submission.ujian_id}-${submission.soal_id}`
                     if (uniqueSubmissions.has(key)) {
-                        console.warn('🔄 Duplicate submission detected and filtered:', key)
+                        console.warn('Duplicate submission detected and filtered:', key)
                         return false
                     }
                     uniqueSubmissions.set(key, true)
@@ -120,7 +120,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             }
 
             // ENHANCED: Log submission details for debugging
-            console.log('📊 Prepared unique submissions:', {
+            console.log('Prepared unique submissions:', {
                 submissionCount: submissions.length,
                 originalCount: organizedQuestions.filter(q => q?.soal?.id).length,
                 duplicatesFiltered: organizedQuestions.filter(q => q?.soal?.id).length - submissions.length,
@@ -136,9 +136,9 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             let result
             try {
                 result = await batchSubmit.mutateAsync(submissions)
-                console.log('✅ Batch submit successful:', result)
+                console.log('Batch submit successful:', result)
             } catch (batchError) {
-                console.error('❌ Error in batch submission:', {
+                console.error('Error in batch submission:', {
                     error: batchError,
                     message: batchError instanceof Error ? batchError.message : 'Unknown error',
                     submissions: submissions.length
@@ -165,7 +165,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             // AUTO AI GRADING DISABLED (causes 403 for siswa)
             // AI grading hanya bisa dilakukan oleh GURU dari dashboard
             // if (Array.isArray(result) && result.length > 0) {
-            //     console.log('🚀 Starting batch AI grading for all answers...')
+            //     console.log('Starting batch AI grading for all answers...')
             //     
             //     try {
             //         await batchAIGrading.mutateAsync({
@@ -177,21 +177,21 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             //             }
             //         })
             //         
-            //         console.log('✅ Batch AI grading completed successfully')
+            //         console.log('Batch AI grading completed successfully')
             //     } catch (aiGradingError) {
-            //         console.error('❌ Batch AI grading failed (non-critical):', aiGradingError)
+            //         console.error('Batch AI grading failed (non-critical):', aiGradingError)
             //         toast.warning('Jawaban tersimpan, tapi penilaian AI mengalami masalah. Akan diproses ulang nanti.')
             //     }
             // }
             
-            console.log('✅ Jawaban tersimpan. Menunggu penilaian dari guru.')
+            console.log('Jawaban tersimpan. Menunggu penilaian dari guru.')
 
             // PERBAIKAN: Update status ujian_siswa dengan error handling
             try {
                 await submitUjianSiswaMutation.mutateAsync(ujianId)
-                console.log('✅ Status ujian_siswa berhasil diupdate menjadi completed')
+                console.log('Status ujian_siswa berhasil diupdate menjadi completed')
             } catch (statusError) {
-                console.error('❌ Error updating ujian_siswa status:', statusError)
+                console.error('Error updating ujian_siswa status:', statusError)
                 // Jangan gagalkan submit karena masalah status update
                 toast.warning('Jawaban tersimpan, tapi ada masalah update status ujian')
             }
@@ -207,7 +207,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             setIsSubmitting(false)
             setIsSubmitted(true) // Mark as successfully submitted
             onSubmitted?.() // Call callback to notify parent component
-            console.log('🔓 Setting isSubmitting=false (success)')
+            console.log('Setting isSubmitting=false (success)')
 
             // Tampilkan pesan toast yang informatif tergantung tujuan redirect
             if (ujian?.kelas_id) {
@@ -231,7 +231,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                 // PERBAIKAN: Redirect ke halaman kelas jika ujian terkait dengan kelas tertentu
                 if (ujian?.kelas_id) {
                     const kelasUrl = `/siswa/kelas/${ujian.kelas_id}`
-                    console.log('🎯 Redirecting to kelas page:', {
+                    console.log('Redirecting to kelas page:', {
                         ujianId,
                         kelasId: ujian.kelas_id,
                         ujianName: ujian.name,
@@ -239,7 +239,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
                     })
                     window.location.href = kelasUrl
                 } else {
-                    console.log('🎯 Redirecting to dashboard (no kelas_id):', {
+                    console.log('Redirecting to dashboard (no kelas_id):', {
                         ujianId,
                         ujianName: ujian?.name || 'Unknown',
                         kelasId: 'null/undefined',
@@ -252,9 +252,9 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
         } catch (error: unknown) {
             // CRITICAL ERROR: Reset submission flag
             setIsSubmitting(false)
-            console.log('🔓 Setting isSubmitting=false (error)')
+            console.log('Setting isSubmitting=false (error)')
             
-            console.error('❌ Critical error in handleSubmitAll:', {
+            console.error('Critical error in handleSubmitAll:', {
                 error,
                 message: error instanceof Error ? error.message : 'Unknown error',
                 stack: error instanceof Error ? error.stack : undefined,
@@ -294,7 +294,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
         const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
             // If exam is successfully submitted, allow navigation without warning
             if (isSubmitted) {
-                console.log('✅ Exam submitted - allowing navigation without warning')
+                console.log('Exam submitted - allowing navigation without warning')
                 return
             }
             
@@ -315,7 +315,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
     // Handle perubahan jawaban dengan optimized auto-save
     const handleAnswerChange = useCallback((soalId: string, answer: string) => {
         if (!soalId) {
-            console.error('❌ No soal ID available')
+            console.error('No soal ID available')
             return
         }
 
@@ -334,7 +334,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             return updated
         })
 
-        console.log('🔄 Answer changed for soal:', soalId, 'answer', answer, 'triggering auto-save...')
+        console.log('Answer changed for soal:', soalId, 'answer', answer, 'triggering auto-save...')
         
         // Trigger optimized auto-save dengan debouncing
         debouncedSubmit({
@@ -366,20 +366,20 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
         
         // Guard untuk mencegah registration berulang
         if (startUjianSiswaMutation.isPending) {
-            console.log('⏳ Registration sudah dalam proses, skip...')
+            console.log('Registration sudah dalam proses, skip...')
             return
         }
         
         if (ujian.status === 'active') {
             startUjianSiswaMutation.mutate({ ujianId, isRemidi }, {
                 onSuccess: () => {
-                    console.log('✅ Siswa berhasil terdaftar untuk ujian:', ujianId, isRemidi ? '(remidi)' : '')
+                    console.log('Siswa berhasil terdaftar untuk ujian:', ujianId, isRemidi ? '(remidi)' : '')
                 },
                 onError: (error: any) => {
                     if (error.message.includes('sudah terdaftar')) {
-                        console.log('ℹ️ Siswa sudah terdaftar untuk ujian:', ujianId)
+                        console.log('Siswa sudah terdaftar untuk ujian:', ujianId)
                     } else {
-                        console.error('❌ Error mendaftarkan siswa:', error)
+                        console.error('Error mendaftarkan siswa:', error)
                         toast.error('Gagal mendaftarkan ke ujian: ' + error.message)
                     }
                 }
@@ -428,7 +428,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
 
             if (remainingSeconds <= 0 && !hasAutoSubmitted) {
                 hasAutoSubmitted = true
-                console.log('⏰ Time is up! Auto-submitting ujian...')
+                console.log('Time is up! Auto-submitting ujian...')
 
                 toast.warning('Waktu ujian habis! Otomatis mengumpulkan jawaban...', {
                     duration: 3000
@@ -448,7 +448,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             if (remainingSeconds > 0 && remainingSeconds <= 300 && remainingSeconds % 60 === 0) {
                 if (lastNotifiedMinute !== minutesLeft) {
                     lastNotifiedMinute = minutesLeft
-                    toast.warning(`⚠️ Sisa waktu: ${minutesLeft} menit!`, {
+                    toast.warning(` Sisa waktu: ${minutesLeft} menit!`, {
                         duration: 2000
                     })
                 }
@@ -457,7 +457,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
             if (remainingSeconds > 0 && remainingSeconds <= 60 && remainingSeconds % 10 === 0) {
                 if (lastNotifiedSecond !== remainingSeconds) {
                     lastNotifiedSecond = remainingSeconds
-                    toast.error(`⏰ Sisa waktu: ${remainingSeconds} detik!`, {
+                    toast.error(` Sisa waktu: ${remainingSeconds} detik!`, {
                         duration: 1000
                     })
                 }
@@ -468,7 +468,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: any[], ujian?
         const interval = setInterval(updateTimer, 1000)
 
         return () => {
-            console.log('🧹 Cleaning up timer interval')
+            console.log('Cleaning up timer interval')
             clearInterval(interval)
         }
     }, []) // Dependency array kosong untuk mencegah re-creation

@@ -312,7 +312,7 @@ export default function CreateUjianPage() {
   const onSubmit = async (data: UjianForm) => {
     try {
       setError(null)
-      console.log('🔄 Creating ujian...', data)
+      console.log('Creating ujian...', data)
 
       // Pastikan duration_minutes memiliki nilai valid
       if (!data.duration_minutes || data.duration_minutes === 0) {
@@ -332,7 +332,7 @@ export default function CreateUjianPage() {
 
       router.push('/guru/ujian')
     } catch (err: unknown) {
-      console.error('❌ Error creating ujian:', err)
+      console.error('Error creating ujian:', err)
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat ujian')
     }
   }

@@ -129,7 +129,7 @@ export default function SiswaDashboardClient() {
   // Filter hanya kelas aktif sebagai double-check (API sudah filter tapi ini untuk safety)
   const kelasList = rawKelasList.filter((kelas: any) => {
     // Debug log untuk setiap kelas
-    console.log('🔍 Kelas filter check:', {
+    console.log('Kelas filter check:', {
       id: kelas.id,
       nama: kelas.nama_kelas,
       is_active: kelas.is_active,
@@ -141,7 +141,7 @@ export default function SiswaDashboardClient() {
     return kelas.is_active === true;
   })
 
-  console.log('📊 Dashboard: Filtered kelas count:', {
+  console.log('Dashboard: Filtered kelas count:', {
     raw: rawKelasList.length,
     filtered: kelasList.length,
     isLoading
@@ -153,13 +153,13 @@ export default function SiswaDashboardClient() {
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
-      console.log('🔄 Dashboard: Joining kelas with code:', kodeKelas);
+      console.log('Dashboard: Joining kelas with code:', kodeKelas);
       
       // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
       const accessToken = await getValidAccessToken(supabase);
       
       if (!user?.id || !accessToken) {
-        console.warn('❌ Dashboard: Session tidak valid');
+        console.warn('Dashboard: Session tidak valid');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         return;
@@ -173,7 +173,7 @@ export default function SiswaDashboardClient() {
         }
       }
 
-      console.log('✅ Dashboard: Join kelas successful:', result);
+      console.log('Dashboard: Join kelas successful:', result);
       
       toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
       setShowJoinModal(false);
@@ -182,7 +182,7 @@ export default function SiswaDashboardClient() {
       await refetch();
       
     } catch (error: any) {
-      console.error('❌ Dashboard: Join failed:', error);
+      console.error('Dashboard: Join failed:', error);
       
       let errorMessage = 'Gagal bergabung ke kelas';
       const errorMsg = error?.message || '';
@@ -201,7 +201,7 @@ export default function SiswaDashboardClient() {
   };
 
   // Debug: Log semua data yang diterima
-  console.log('🎓 Dashboard Render:', {
+  console.log('Dashboard Render:', {
     isLoading,
     rawCount: rawKelasList.length,
     filteredCount: kelasList.length,

@@ -19,7 +19,7 @@ export function useOptimizedDebouncedSubmitJawaban() {
     // NOW: Only used for force cleanup (but doesn't actually submit to database)
     
     if (pendingSubmissions.current.size > 0) {
-      console.log('🗑️ Clearing pending submissions (database auto-save disabled):', pendingSubmissions.current.size)
+      console.log('Clearing pending submissions (database auto-save disabled):', pendingSubmissions.current.size)
       pendingSubmissions.current.clear()
     }
     
@@ -29,7 +29,7 @@ export function useOptimizedDebouncedSubmitJawaban() {
       timeoutRef.current = null
     }
     
-    console.log('ℹ️ Auto-save system disabled - only localStorage backup active')
+    console.log('Auto-save system disabled - only localStorage backup active')
   }, [])
 
   const debouncedSubmit = useCallback((jawaban: any) => {
@@ -39,7 +39,7 @@ export function useOptimizedDebouncedSubmitJawaban() {
     // Previously: Add to pending submissions and auto-save to database
     // NOW: Only save to localStorage for recovery purposes
     
-    console.log('💾 Auto-saving to localStorage only (database auto-save disabled):', {
+    console.log('Auto-saving to localStorage only (database auto-save disabled):', {
       soalId: jawaban.soal_id,
       answerLength: jawaban.answer_text?.length || 0
     })
@@ -57,9 +57,9 @@ export function useOptimizedDebouncedSubmitJawaban() {
       }
       
       localStorage.setItem(localKey, JSON.stringify(answers))
-      console.log('✅ Answer auto-saved to localStorage successfully')
+      console.log('Answer auto-saved to localStorage successfully')
     } catch (error: unknown) {
-      console.error('❌ Error saving to localStorage:', error)
+      console.error('Error saving to localStorage:', error)
     }
     
     // REMOVED: Database auto-save to prevent duplicate submissions
@@ -75,7 +75,7 @@ export function useOptimizedDebouncedSubmitJawaban() {
       // 🚫 DISABLED: Auto-save on unmount to prevent duplicate submissions
       // Previously: Final submit on unmount
       // NOW: Only localStorage cleanup
-      console.log('🧹 Cleanup: Auto-save disabled, localStorage preserved for recovery')
+      console.log('Cleanup: Auto-save disabled, localStorage preserved for recovery')
     }
   }, [submitBatch])
 
@@ -169,16 +169,16 @@ export class OptimizedRealtimeManager {
   }
 
   subscribeToUjianChanges(userId: string, callback: (payload: any) => void): () => void {
-    console.log('🚫 OptimizedRealtimeManager: DISABLED - no realtime subscriptions')
+    console.log('OptimizedRealtimeManager: DISABLED - no realtime subscriptions')
     return () => {} // Return empty cleanup
   }
 
   cleanup() {
-    console.log('� OptimizedRealtimeManager.cleanup(): DISABLED')
+    console.log('OptimizedRealtimeManager.cleanup(): DISABLED')
   }
 }
 
 // Hook placeholder untuk mencegah error
 export function useOptimizedRealtimeUjian(userId: string | undefined, onUjianChange: (payload: any) => void) {
-  console.log('🚫 useOptimizedRealtimeUjian: DISABLED')
+  console.log('useOptimizedRealtimeUjian: DISABLED')
 }

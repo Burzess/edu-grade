@@ -123,7 +123,7 @@ export default function CreateSoalPage() {
     const onSubmit = async (data: SoalForm) => {
         try {
             setError(null)
-            console.log('🔄 Starting soal creation...', data)
+            console.log('Starting soal creation...', data)
 
             const soalData: any = {
                 question_text: data.question_text,
@@ -135,7 +135,7 @@ export default function CreateSoalPage() {
             if (data.question_type === 'multiple_choice') {
                 soalData.options = data.options || []
                 soalData.correct_answer = data.correct_answer
-                console.log('📝 Multiple choice data:', {
+                console.log('Multiple choice data:', {
                     options: soalData.options,
                     correct_answer: soalData.correct_answer
                 })
@@ -143,17 +143,17 @@ export default function CreateSoalPage() {
                 // Untuk essay, set null/undefined
                 soalData.options = null
                 soalData.correct_answer = null
-                console.log('📝 Essay data - options and correct_answer set to null')
+                console.log('Essay data - options and correct_answer set to null')
             }
 
-            console.log('📤 Sending data to server:', soalData)
+            console.log('Sending data to server:', soalData)
 
             const result = await createSoalMutation.mutateAsync(soalData)
-            console.log('✅ Soal created successfully:', result)
+            console.log('Soal created successfully:', result)
 
             router.push('/guru/soal')
         } catch (err: unknown) {
-            console.error('❌ Error creating soal:', err)
+            console.error('Error creating soal:', err)
             setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat soal')
         }
     }

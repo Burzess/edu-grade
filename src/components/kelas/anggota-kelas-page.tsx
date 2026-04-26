@@ -63,24 +63,24 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
     try {
       setIsLoading(true);
 
-      console.log('🔄 AnggotaKelas: Fetching members for kelas:', kelasId);
-      console.log('🔄 AnggotaKelas: Current user from auth store:', user?.id);
+      console.log('AnggotaKelas: Fetching members for kelas:', kelasId);
+      console.log('AnggotaKelas: Current user from auth store:', user?.id);
 
       // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
       const accessToken = await getValidAccessToken(supabase);
-      console.log('🔄 AnggotaKelas: Token validation:', {
+      console.log('AnggotaKelas: Token validation:', {
         hasToken: !!accessToken
       });
 
       if (!accessToken) {
-        console.warn('❌ AnggotaKelas: Session tidak valid - redirecting to login');
+        console.warn('AnggotaKelas: Session tidak valid - redirecting to login');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         setIsLoading(false);
         return;
       }
 
-      console.log('🔄 AnggotaKelas: Making API call to fetch members...');
+      console.log('AnggotaKelas: Making API call to fetch members...');
 
       const response = await fetch(`/api/kelas/${kelasId}/members`, {
         headers: {
@@ -88,16 +88,16 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
         },
       });
 
-      console.log('🔄 AnggotaKelas: API response status:', response.status);
+      console.log('AnggotaKelas: API response status:', response.status);
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.warn('❌ AnggotaKelas: Kelas not found or access denied');
+          console.warn('AnggotaKelas: Kelas not found or access denied');
           toastError('Error', 'Kelas tidak ditemukan atau Anda tidak memiliki akses');
           router.back();
           return;
         } else if (response.status === 401) {
-          console.warn('❌ AnggotaKelas: Unauthorized - redirecting to login');
+          console.warn('AnggotaKelas: Unauthorized - redirecting to login');
           toastError('Error', 'Session expired, silakan login ulang');
           router.push('/login');
           return;
@@ -106,7 +106,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       }
 
       const result: GetMembersResponse = await response.json();
-      console.log('✅ AnggotaKelas: Members fetched successfully:', result);
+      console.log('AnggotaKelas: Members fetched successfully:', result);
 
       if (result.success) {
         setKelasData(result.data);
@@ -114,7 +114,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
         throw new Error('Failed to fetch members from API');
       }
     } catch (error: unknown) {
-      console.error('❌ AnggotaKelas: Error fetching members:', error);
+      console.error('AnggotaKelas: Error fetching members:', error);
       toastError('Error', 'Gagal memuat data anggota kelas');
     } finally {
       setIsLoading(false);
@@ -122,10 +122,10 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   };
 
   useEffect(() => {
-    console.log('🔄 AnggotaKelas: Component mounted with:', { kelasId, userId: user?.id });
+    console.log('AnggotaKelas: Component mounted with:', { kelasId, userId: user?.id });
 
     if (!user?.id) {
-      console.warn('❌ AnggotaKelas: No user in auth store - redirecting to login');
+      console.warn('AnggotaKelas: No user in auth store - redirecting to login');
       router.push('/login');
       return;
     }
@@ -139,24 +139,24 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
     try {
       setRemovingMemberId(siswaId);
 
-      console.log('🔄 AnggotaKelas: Removing member:', { siswaId, namaSiswa, kelasId });
-      console.log('🔄 AnggotaKelas: Current user:', user?.id);
+      console.log('AnggotaKelas: Removing member:', { siswaId, namaSiswa, kelasId });
+      console.log('AnggotaKelas: Current user:', user?.id);
 
       // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
       const accessToken = await getValidAccessToken(supabase);
-      console.log('🔄 AnggotaKelas: Token for remove:', {
+      console.log('AnggotaKelas: Token for remove:', {
         hasToken: !!accessToken
       });
 
       if (!accessToken) {
-        console.warn('❌ AnggotaKelas: Session tidak valid - redirecting to login');
+        console.warn('AnggotaKelas: Session tidak valid - redirecting to login');
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         setRemovingMemberId(null);
         return;
       }
 
-      console.log('🔄 AnggotaKelas: Making DELETE API call...');
+      console.log('AnggotaKelas: Making DELETE API call...');
 
       const response = await fetch(`/api/kelas/${kelasId}/members`, {
         method: 'DELETE',
@@ -167,11 +167,11 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
         body: JSON.stringify({ siswa_id: siswaId }),
       });
 
-      console.log('🔄 AnggotaKelas: Remove API response status:', response.status);
+      console.log('AnggotaKelas: Remove API response status:', response.status);
 
       if (!response.ok) {
         if (response.status === 401) {
-          console.warn('❌ AnggotaKelas: Unauthorized for remove - redirecting to login');
+          console.warn('AnggotaKelas: Unauthorized for remove - redirecting to login');
           toastError('Error', 'Session expired, silakan login ulang');
           router.push('/login');
           return;
@@ -180,7 +180,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
       }
 
       const result = await response.json();
-      console.log('✅ AnggotaKelas: Remove result:', result);
+      console.log('AnggotaKelas: Remove result:', result);
 
       if (result.success) {
         toastSuccess('Berhasil!', result.message || `${namaSiswa} berhasil dikeluarkan dari kelas`);
@@ -189,7 +189,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
         throw new Error(result.error || 'Failed to remove member');
       }
     } catch (error: unknown) {
-      console.error('❌ AnggotaKelas: Error removing member:', error);
+      console.error('AnggotaKelas: Error removing member:', error);
       toastError('Error', 'Gagal mengeluarkan siswa dari kelas');
     } finally {
       setRemovingMemberId(null);

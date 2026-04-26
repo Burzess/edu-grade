@@ -262,25 +262,25 @@ function UjianPageContent() {
   const startUjianMutation = useStartUjian()
 
   const handleDelete = async (id: string) => {
-    console.log('🗑️ Deleting ujian:', { id })
+    console.log('Deleting ujian:', { id })
     
     try {
       await deleteUjianMutation.mutateAsync(id)
       toast.success('Ujian berhasil dihapus')
     } catch (error: unknown) {
-      console.error('❌ Error deleting ujian:', error)
+      console.error('Error deleting ujian:', error)
       toast.error('Gagal menghapus ujian')
     }
   }
 
   const handleStartUjian = async (id: string) => {
-    console.log('🚀 Starting ujian:', { id })
+    console.log('Starting ujian:', { id })
     
     try {
       await startUjianMutation.mutateAsync(id)
       toast.success('Ujian berhasil dimulai')
     } catch (error: unknown) {
-      console.error('❌ Error starting ujian:', error)
+      console.error('Error starting ujian:', error)
       toast.error('Gagal memulai ujian')
     }
   }

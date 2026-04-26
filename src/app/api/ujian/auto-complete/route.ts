@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       .lt('end_time', now)
 
     if (findError) {
-      console.error('❌ Error finding expired ujian:', findError)
+      console.error('Error finding expired ujian:', findError)
       return NextResponse.json({ 
         success: false, 
         error: findError.message 
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       .select('id, name, status, end_time')
 
     if (updateError) {
-      console.error('❌ Error updating ujian status:', updateError)
+      console.error('Error updating ujian status:', updateError)
       return NextResponse.json({ 
         success: false, 
         error: 'Failed to update ujian status' 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: unknown) {
-    console.error('❌ Unexpected error in auto-complete API:', error)
+    console.error('Unexpected error in auto-complete API:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 

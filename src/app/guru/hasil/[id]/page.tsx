@@ -332,29 +332,29 @@ export default function HasilUjianDetail() {
   // Add debug function to window in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Debug mode enabled. Use window.debugScoreUpdate(jawabanId) to troubleshoot')
+      console.log('Debug mode enabled. Use window.debugScoreUpdate(jawabanId) to troubleshoot')
     }
   }, [])
 
   const handleScoreUpdate = async (jawabanId: string, score: number, feedback?: string) => {
     try {
-      console.log('🎯 Starting score update:', { jawabanId, score, feedback })
-      console.log('🔒 Update mutation state:', {
+      console.log('Starting score update:', { jawabanId, score, feedback })
+      console.log('Update mutation state:', {
         isLoading: updateScoreMutation.isPending,
         isError: updateScoreMutation.isError,
         error: updateScoreMutation.error
       })
       
       await updateScoreMutation.mutateAsync({ jawabanId, score, feedback })
-      console.log('✅ Score update completed successfully')
+      console.log('Score update completed successfully')
       toast.success('Nilai berhasil diperbarui')
     } catch (error: any) {
-      console.error('❌ Error updating score:', error)
-      console.error('❌ Error type:', typeof error)
-      console.error('❌ Error properties:', Object.keys(error || {}))
+      console.error('Error updating score:', error)
+      console.error('Error type:', typeof error)
+      console.error('Error properties:', Object.keys(error || {}))
       
       const errorMessage = error?.message || 'Gagal memperbarui nilai'
-      console.error('📝 Showing error toast:', errorMessage)
+      console.error('Showing error toast:', errorMessage)
       toast.error(errorMessage)
     }
   }

@@ -138,7 +138,7 @@ export function MyUjianList() {
 export function UjianWorkspace({ ujianId }: { ujianId: string }) {
   // EMERGENCY: Hook ini di-disable, redirect user ke halaman yang benar
   React.useEffect(() => {
-    console.warn('⚠️ UjianWorkspace is deprecated, redirecting to proper ujian page')
+    console.warn('UjianWorkspace is deprecated, redirecting to proper ujian page')
     window.location.href = `/siswa/ujian/${ujianId}`
   }, [ujianId])
 

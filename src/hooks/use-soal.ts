@@ -82,19 +82,19 @@ export function useSoalList(params?: {
 export function useSoal(id: string) {
   const { user } = useAuthStore()
   
-  console.log('🔄 useSoal: Called with id:', id, 'user:', user?.email)
+  console.log('useSoal: Called with id:', id, 'user:', user?.email)
 
   return useQuery({
     queryKey: soalKeys.detail(id),
     queryFn: async () => {
-      console.log('🔄 useSoal: QueryFn executing for id:', id)
+      console.log('useSoal: QueryFn executing for id:', id)
       
       if (!user) {
-        console.error('❌ useSoal: User not authenticated')
+        console.error('useSoal: User not authenticated')
         throw new Error('User not authenticated')
       }
 
-      console.log('📤 useSoal: Fetching soal from database...')
+      console.log('useSoal: Fetching soal from database...')
       
       const { data, error } = await supabase
         .from('soal')
@@ -103,14 +103,14 @@ export function useSoal(id: string) {
         .eq('created_by', user.id)
         .single()
 
-      console.log('📥 useSoal: Database response:', { data, error })
+      console.log('useSoal: Database response:', { data, error })
 
       if (error) {
-        console.error('❌ useSoal: Database error:', error)
+        console.error('useSoal: Database error:', error)
         throw error
       }
       
-      console.log('✅ useSoal: Success, returning data:', data)
+      console.log('useSoal: Success, returning data:', data)
       return data
     },
     enabled: !!user && !!id,
@@ -129,7 +129,7 @@ export function useCreateSoal() {
     mutationFn: async (soal: Omit<SoalInsert, 'created_by'>) => {
       if (!user) throw new Error('User not authenticated')
 
-      console.log('🔄 useCreateSoal: Starting mutation...', { soal, user: user.id })
+      console.log('useCreateSoal: Starting mutation...', { soal, user: user.id })
 
       // Buat copy data tanpa kolom yang mungkin belum ada di database
       const { options, correct_answer, ...baseData } = soal
@@ -139,7 +139,7 @@ export function useCreateSoal() {
         created_by: user.id,
       }
 
-      console.log('📤 useCreateSoal: Insert data (without options/correct_answer):', insertData)
+      console.log('useCreateSoal: Insert data (without options/correct_answer):', insertData)
 
       try {
         // Coba insert dengan semua kolom dulu
@@ -152,10 +152,10 @@ export function useCreateSoal() {
           .select()
           .single()
 
-        console.log('📥 useCreateSoal: Full insert response:', { data, error })
+        console.log('useCreateSoal: Full insert response:', { data, error })
 
         if (error) {
-          console.error('❌ Full insert failed, trying without options/correct_answer:', error)
+          console.error('Full insert failed, trying without options/correct_answer:', error)
 
           // Jika gagal, coba tanpa options dan correct_answer
           const { data: fallbackData, error: fallbackError } = await supabase
@@ -164,30 +164,30 @@ export function useCreateSoal() {
             .select()
             .single()
 
-          console.log('📥 useCreateSoal: Fallback insert response:', { data: fallbackData, error: fallbackError })
+          console.log('useCreateSoal: Fallback insert response:', { data: fallbackData, error: fallbackError })
 
           if (fallbackError) {
-            console.error('❌ useCreateSoal: Fallback also failed:', fallbackError)
+            console.error('useCreateSoal: Fallback also failed:', fallbackError)
             throw fallbackError
           }
 
-          console.log('✅ useCreateSoal: Fallback success!')
+          console.log('useCreateSoal: Fallback success!')
           return fallbackData
         }
 
-        console.log('✅ useCreateSoal: Full insert success!')
+        console.log('useCreateSoal: Full insert success!')
         return data
       } catch (err: unknown) {
-        console.error('❌ useCreateSoal: Unexpected error:', err)
+        console.error('useCreateSoal: Unexpected error:', err)
         throw err
       }
     },
     onSuccess: () => {
-      console.log('🔄 useCreateSoal: Invalidating queries...')
+      console.log('useCreateSoal: Invalidating queries...')
       queryClient.invalidateQueries({ queryKey: soalKeys.lists() })
     },
     onError: (error) => {
-      console.error('❌ useCreateSoal: Mutation error:', error)
+      console.error('useCreateSoal: Mutation error:', error)
     },
   })
 }

@@ -123,14 +123,14 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
     const handleDelete = async () => {
         try {
             setIsDeleting(true)
-            console.log('🔄 Deleting ujian...', resolvedParams.id)
+            console.log('Deleting ujian...', resolvedParams.id)
 
             await deleteUjianMutation.mutateAsync(resolvedParams.id)
 
-            console.log('✅ Ujian deleted successfully')
+            console.log('Ujian deleted successfully')
             router.push('/guru/ujian')
         } catch (err: unknown) {
-            console.error('❌ Error deleting ujian:', err)
+            console.error('Error deleting ujian:', err)
             setIsDeleting(false)
         }
     }

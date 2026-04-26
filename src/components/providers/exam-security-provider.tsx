@@ -112,7 +112,7 @@ export function ExamSecurityProvider({
         }
         
         // Log untuk debugging dan monitoring
-        console.warn(`🔒 Exam Security Violation: ${violationType}`, {
+        console.warn(`Exam Security Violation: ${violationType}`, {
             timestamp: new Date().toISOString(),
             type: violationType,
             details,

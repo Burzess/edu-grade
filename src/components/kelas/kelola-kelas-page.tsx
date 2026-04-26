@@ -51,7 +51,7 @@ export function KelolaKelasPage() {
   // Handle create kelas via API endpoint untuk bypass RLS issue
   const handleCreateKelas = async (data: { nama_kelas: string; }) => {
     try {
-      console.log('🔄 Creating kelas via API endpoint:', data);
+      console.log('Creating kelas via API endpoint:', data);
       
       // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
       const accessToken = await getValidAccessToken(supabase);
@@ -73,12 +73,12 @@ export function KelolaKelasPage() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ API response error:', errorData);
+        console.error('API response error:', errorData);
         throw new Error(errorData.error || errorData.message || 'Failed to create kelas');
       }
       
       const result = await response.json();
-      console.log('✅ Kelas created via API:', result);
+      console.log('Kelas created via API:', result);
       
       toastSuccess('Berhasil!', result.message || 'Kelas berhasil dibuat');
       setShowCreateModal(false);
@@ -86,7 +86,7 @@ export function KelolaKelasPage() {
       // No need to reload - createKelasMutation will handle cache invalidation
       
     } catch (error: unknown) {
-      console.error('❌ API create error:', error);
+      console.error('API create error:', error);
       
       let errorMessage = 'Gagal membuat kelas';
       
@@ -132,7 +132,7 @@ export function KelolaKelasPage() {
 
   const handleEditSubmit = async (data: { kelas_id: string; nama_kelas: string }) => {
     try {
-      console.log('🔄 Updating kelas name via mutation hook:', data);
+      console.log('Updating kelas name via mutation hook:', data);
       
       await updateKelasNameMutation.mutateAsync(data);
       
@@ -141,14 +141,14 @@ export function KelolaKelasPage() {
       // No need to reload - react-query will handle cache invalidation
       
     } catch (error: unknown) {
-      console.error('❌ Edit error:', error);
+      console.error('Edit error:', error);
       throw error; // Re-throw untuk di-handle oleh modal
     }
   };
 
   const handleToggleStatus = async (kelasId: string, newStatus: boolean) => {
     try {
-      console.log('🔄 Toggling kelas status via mutation hook:', { kelasId, newStatus });
+      console.log('Toggling kelas status via mutation hook:', { kelasId, newStatus });
       
       await toggleStatusMutation.mutateAsync({ 
         kelas_id: kelasId, 
@@ -162,7 +162,7 @@ export function KelolaKelasPage() {
       // No need to reload - react-query will handle cache invalidation
       
     } catch (error: unknown) {
-      console.error('❌ Toggle status error:', error);
+      console.error('Toggle status error:', error);
       
       let errorMessage = 'Gagal mengubah status kelas';
       if (error instanceof Error) {

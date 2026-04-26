@@ -13,7 +13,7 @@ const supabase = createClient()
 // Function to check multiple choice answer automatically
 async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answer: string) {
     try {
-        console.log('🎯 Checking multiple choice answer:', { jawabanId, soalId, answer })
+        console.log('Checking multiple choice answer:', { jawabanId, soalId, answer })
 
         // Get soal data with options to check correct answer
         const { data: soal, error: soalError } = await supabase
@@ -23,13 +23,13 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
             .maybeSingle()
 
         if (soalError || !soal) {
-            console.error('❌ Error fetching soal for auto-grading:', soalError)
+            console.error('Error fetching soal for auto-grading:', soalError)
             return
         }
 
         // Only process multiple choice questions
         if (soal.question_type !== 'multiple_choice' || !soal.correct_answer) {
-            console.log('⏭️ Skipping auto-grading: Not a multiple choice or no correct answer')
+            console.log('Skipping auto-grading: Not a multiple choice or no correct answer')
             return
         }
 
@@ -41,7 +41,7 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
         const answerText = soal.options?.find((opt: any) => opt.id === answer)?.text || answer
         const correctText = soal.options?.find((opt: any) => opt.id === soal.correct_answer)?.text || soal.correct_answer
 
-        console.log('📊 Auto-grading result:', {
+        console.log('Auto-grading result:', {
             answer,
             answerText,
             correctAnswer: soal.correct_answer,
@@ -66,11 +66,11 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
             .eq('id', jawabanId)
 
         if (updateError) {
-            console.error('❌ Error updating jawaban with auto-grade:', updateError)
+            console.error('Error updating jawaban with auto-grade:', updateError)
             return
         }
 
-        console.log('✅ Multiple choice auto-graded successfully:', { jawabanId, score, isCorrect })
+        console.log('Multiple choice auto-graded successfully:', { jawabanId, score, isCorrect })
 
         // Get siswa_id and ujian_id to calculate final score
         const { data: jawabanData } = await supabase
@@ -86,14 +86,14 @@ async function checkMultipleChoiceAnswer(jawabanId: string, soalId: string, answ
         }
 
     } catch (error: unknown) {
-        console.error('❌ Error in auto-grading multiple choice:', error)
+        console.error('Error in auto-grading multiple choice:', error)
     }
 }
 
 // Function to calculate ujian final score
 async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumber?: number) {
     try {
-        console.log('📊 Calculating final ujian score:', { ujianId, siswaId, attemptNumber })
+        console.log('Calculating final ujian score:', { ujianId, siswaId, attemptNumber })
 
         // Determine attempt number if not provided
         let actualAttempt = attemptNumber
@@ -118,7 +118,7 @@ async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumb
             .eq('attempt_number', actualAttempt)
 
         if (jawabanError || !allJawaban) {
-            console.error('❌ Error fetching jawaban for score calculation:', jawabanError)
+            console.error('Error fetching jawaban for score calculation:', jawabanError)
             return
         }
 
@@ -126,14 +126,14 @@ async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumb
         const gradedAnswers = allJawaban.filter(j => j.score !== null)
 
         if (gradedAnswers.length === 0) {
-            console.log('⏭️ No graded answers yet, skipping final score calculation')
+            console.log('No graded answers yet, skipping final score calculation')
             return
         }
 
         const totalScore = gradedAnswers.reduce((sum, j) => sum + (j.score || 0), 0)
         const averageScore = Math.round(totalScore / gradedAnswers.length)
 
-        console.log('📈 Score calculation:', {
+        console.log('Score calculation:', {
             totalAnswers: allJawaban.length,
             gradedAnswers: gradedAnswers.length,
             totalScore,
@@ -147,13 +147,13 @@ async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumb
             .eq('ujian_id', ujianId)
 
         if (soalError || !totalSoal) {
-            console.error('❌ Error fetching total soal:', soalError)
+            console.error('Error fetching total soal:', soalError)
             return
         }
 
         const allAnswersGraded = gradedAnswers.length >= totalSoal.length
 
-        console.log('🔍 Completion check:', {
+        console.log('Completion check:', {
             totalSoal: totalSoal.length,
             gradedAnswers: gradedAnswers.length,
             allAnswersGraded
@@ -162,20 +162,20 @@ async function calculateUjianScore(ujianId: string, siswaId: string, attemptNumb
         // If all answers are graded, we can provide final score
         if (allAnswersGraded) {
             // Optionally update ujian status or create result record
-            console.log('🎯 All answers graded! Final score:', averageScore)
+            console.log('All answers graded! Final score:', averageScore)
 
             // Here you can add logic to update ujian status to 'completed'
             // or create a separate result table entry
         }
 
     } catch (error: unknown) {
-        console.error('❌ Error calculating ujian score:', error)
+        console.error('Error calculating ujian score:', error)
     }
 }
 // LEGACY: Individual AI grading (deprecated)
 async function triggerAIGrading(jawabanId: string, soalId: string) {
     try {
-        console.log('🤖 Checking if AI grading needed for jawaban:', jawabanId)
+        console.log('Checking if AI grading needed for jawaban:', jawabanId)
 
         // Get soal data to check question type
         const { data: soal, error: soalError } = await supabase
@@ -185,17 +185,17 @@ async function triggerAIGrading(jawabanId: string, soalId: string) {
             .maybeSingle()
 
         if (soalError || !soal) {
-            console.error('❌ Error fetching soal for AI grading check:', soalError)
+            console.error('Error fetching soal for AI grading check:', soalError)
             return
         }
 
         // Only trigger AI grading for essay questions
         if (soal.question_type !== 'essay') {
-            console.log('⏭️ Skipping AI grading: Not an essay question')
+            console.log('Skipping AI grading: Not an essay question')
             return
         }
 
-        console.log('🤖 Triggering AI grading for essay question:', jawabanId)
+        console.log('Triggering AI grading for essay question:', jawabanId)
 
         const response = await fetch('/api/ai-grading', {
             method: 'POST',
@@ -206,14 +206,14 @@ async function triggerAIGrading(jawabanId: string, soalId: string) {
         })
 
         if (!response.ok) {
-            console.error('❌ AI grading request failed:', response.statusText)
+            console.error('AI grading request failed:', response.statusText)
             return
         }
 
         const result = await response.json()
-        console.log('✅ AI grading triggered successfully:', result)
+        console.log('AI grading triggered successfully:', result)
     } catch (error: unknown) {
-        console.error('❌ Error triggering AI grading:', error)
+        console.error('Error triggering AI grading:', error)
     }
 }
 
@@ -229,7 +229,7 @@ async function triggerBatchAIGrading(
             forceAI = false
         } = options
 
-        console.log('🚀 Triggering batch AI grading for ujian:', ujianId, {
+        console.log(' Triggering batch AI grading for ujian:', ujianId, {
             useOptimized,
             useBatching,
             forceAI
@@ -249,13 +249,13 @@ async function triggerBatchAIGrading(
         })
 
         if (!response.ok) {
-            console.error('❌ Batch AI grading request failed:', response.statusText)
+            console.error(' Batch AI grading request failed:', response.statusText)
             const errorData = await response.json().catch(() => null)
             throw new Error(errorData?.error || 'Batch AI grading failed')
         }
 
         const result: BatchAIGradingResponse = await response.json()
-        console.log('✅ Batch AI grading completed successfully:', {
+        console.log('Batch AI grading completed successfully:', {
             autoGraded: result.autoGradedCount,
             aiGraded: result.aiGradedCount,
             errors: result.errorCount,
@@ -265,7 +265,7 @@ async function triggerBatchAIGrading(
 
         return result
     } catch (error: unknown) {
-        console.error('❌ Error triggering batch AI grading:', error)
+        console.error(' Error triggering batch AI grading:', error)
         throw error
     }
 }
@@ -319,7 +319,7 @@ export function useJawabanByUjian(ujianId: string) {
                 .order('created_at', { ascending: false })
 
             if (error) {
-                console.error('❌ Error fetching jawaban:', error)
+                console.error('Error fetching jawaban:', error)
                 throw error
             }
 
@@ -342,7 +342,7 @@ export function useJawabanByUjian(ujianId: string) {
             // Convert map ke array dan sort berdasarkan soal urutan (jika ada)
             const latestAnswers = Array.from(latestAnswersMap.values())
             
-            console.log('🔍 Latest answers for ujian:', {
+            console.log('Latest answers for ujian:', {
                 ujianId,
                 totalAnswers: allJawaban.length,
                 latestAnswers: latestAnswers.length,
@@ -365,10 +365,10 @@ export function useJawabanSiswa() {
     return useQuery({
         queryKey: ['jawaban', 'siswa'],
         queryFn: async () => {
-            console.log('📝 Fetching all jawaban for siswa (latest attempts only):', { userId: user?.id })
+            console.log('Fetching all jawaban for siswa (latest attempts only):', { userId: user?.id })
 
             if (!user?.id) {
-                console.log('❌ User not authenticated for useJawabanSiswa')
+                console.log('User not authenticated for useJawabanSiswa')
                 return []
             }
 
@@ -395,7 +395,7 @@ export function useJawabanSiswa() {
                     .order('created_at', { ascending: false })
 
                 if (error) {
-                    console.error('❌ Error fetching jawaban siswa:', error)
+                    console.error('Error fetching jawaban siswa:', error)
                     throw error
                 }
 
@@ -417,7 +417,7 @@ export function useJawabanSiswa() {
 
                 const latestAnswers = Array.from(latestAnswersMap.values())
 
-                console.log('✅ Jawaban siswa fetched (latest attempts only):', {
+                console.log('Jawaban siswa fetched (latest attempts only):', {
                     totalAnswers: allJawaban.length,
                     latestAnswers: latestAnswers.length,
                     uniqueUjian: [...new Set(latestAnswers.map(j => j.ujian_id))].length
@@ -426,7 +426,7 @@ export function useJawabanSiswa() {
                 // Filter out answers without valid ujian data
                 const validData = latestAnswers.filter((jawaban: any) => {
                     if (!jawaban.ujian) {
-                        console.warn('⚠️ Found jawaban without ujian data:', {
+                        console.warn('Found jawaban without ujian data:', {
                             jawabanId: jawaban.id,
                             ujianId: jawaban.ujian_id
                         })
@@ -435,10 +435,10 @@ export function useJawabanSiswa() {
                     return true
                 })
 
-                console.log(`📊 Filtered results: ${validData.length}/${latestAnswers.length} valid answers`)
+                console.log(`Filtered results: ${validData.length}/${latestAnswers.length} valid answers`)
                 return validData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             } catch (error: unknown) {
-                console.error('❌ Error in useJawabanSiswa query:', error)
+                console.error('Error in useJawabanSiswa query:', error)
                 throw error
             }
         },
@@ -453,18 +453,18 @@ export function useSubmitJawaban() {
 
     return useMutation({
         mutationFn: async (jawaban: Omit<JawabanSiswaInsert, 'siswa_id'>) => {
-            console.log('📝 Submitting jawaban:', jawaban)
+            console.log('Submitting jawaban:', jawaban)
 
             if (!user?.id) {
                 const error = new Error('User not authenticated')
-                console.error('❌ Error submitting jawaban:', error)
+                console.error('Error submitting jawaban:', error)
                 throw error
             }
 
             // Validate required fields
             if (!jawaban.ujian_id || !jawaban.soal_id) {
                 const error = new Error('Missing required fields: ujian_id or soal_id')
-                console.error('❌ Error submitting jawaban:', {
+                console.error('Error submitting jawaban:', {
                     error,
                     received: jawaban,
                     missingFields: {
@@ -478,7 +478,7 @@ export function useSubmitJawaban() {
             // Validate answer_text is provided (can be empty string but not undefined)
             if (jawaban.answer_text === undefined || jawaban.answer_text === null) {
                 const error = new Error('answer_text cannot be null or undefined')
-                console.error('❌ Error submitting jawaban:', {
+                console.error('Error submitting jawaban:', {
                     error,
                     received: jawaban
                 })
@@ -491,7 +491,7 @@ export function useSubmitJawaban() {
                 updated_at: new Date().toISOString()
             }
 
-            console.log('📤 Sending data to Supabase:', submissionData)
+            console.log('Sending data to Supabase:', submissionData)
 
             try {
                 const { data, error } = await supabase
@@ -500,10 +500,10 @@ export function useSubmitJawaban() {
                     .select()
                     .single()
 
-                console.log('📥 Supabase response received:', { data, error })
+                console.log('Supabase response received:', { data, error })
 
                 if (error) {
-                    console.error('❌ Error submitting jawaban - Supabase error:', {
+                    console.error('Error submitting jawaban - Supabase error:', {
                         error,
                         code: error.code,
                         message: error.message,
@@ -516,14 +516,14 @@ export function useSubmitJawaban() {
 
                 if (!data) {
                     const errorMsg = 'No data returned from Supabase'
-                    console.error('❌ Error submitting jawaban:', errorMsg)
+                    console.error('Error submitting jawaban:', errorMsg)
                     throw new Error(errorMsg)
                 }
 
-                console.log('✅ Jawaban submitted successfully:', data)
+                console.log('Jawaban submitted successfully:', data)
                 return data
             } catch (supabaseError) {
-                console.error('❌ Unexpected error during Supabase operation:', {
+                console.error('Unexpected error during Supabase operation:', {
                     error: supabaseError,
                     submissionData,
                     timestamp: new Date().toISOString()
@@ -532,7 +532,7 @@ export function useSubmitJawaban() {
             }
         },
         onSuccess: (data) => {
-            console.log('🎉 useSubmitJawaban onSuccess triggered:', data)
+            console.log('useSubmitJawaban onSuccess triggered:', data)
 
             // PERBAIKAN: Throttled invalidation untuk mencegah excessive requests
             setTimeout(() => {
@@ -544,7 +544,7 @@ export function useSubmitJawaban() {
             }, 500) // Delay 500ms untuk batching invalidation
 
             // Auto-grade based on question type
-            console.log('🚀 Starting auto-grading process for:', {
+            console.log('Starting auto-grading process for:', {
                 jawabanId: data.id,
                 soalId: data.soal_id,
                 answer: data.answer_text
@@ -554,7 +554,7 @@ export function useSubmitJawaban() {
             triggerAIGrading(data.id, data.soal_id)
         },
         onError: (error) => {
-            console.error('❌ Mutation failed in useSubmitJawaban:', {
+            console.error('Mutation failed in useSubmitJawaban:', {
                 error,
                 message: error.message,
                 stack: error.stack
@@ -577,9 +577,9 @@ export function useLocalAutoSave() {
             }
 
             localStorage.setItem(key, JSON.stringify(answers))
-            console.log('💾 Auto-saved to localStorage:', { soalId, answerLength: answer.length })
+            console.log('Auto-saved to localStorage:', { soalId, answerLength: answer.length })
         } catch (error: unknown) {
-            console.error('❌ Error saving to localStorage:', error)
+            console.error('Error saving to localStorage:', error)
         }
     }, [])
 
@@ -589,11 +589,11 @@ export function useLocalAutoSave() {
             const saved = localStorage.getItem(key)
             if (saved) {
                 const answers = JSON.parse(saved)
-                console.log('📂 Loaded from localStorage:', Object.keys(answers).length, 'answers')
+                console.log('Loaded from localStorage:', Object.keys(answers).length, 'answers')
                 return answers
             }
         } catch (error: unknown) {
-            console.error('❌ Error loading from localStorage:', error)
+            console.error('Error loading from localStorage:', error)
         }
         return {}
     }, [])
@@ -602,9 +602,9 @@ export function useLocalAutoSave() {
         try {
             const key = `ujian_${ujianId}_answers`
             localStorage.removeItem(key)
-            console.log('🗑️ Cleared localStorage for ujian:', ujianId)
+            console.log('Cleared localStorage for ujian:', ujianId)
         } catch (error: unknown) {
-            console.error('❌ Error clearing localStorage:', error)
+            console.error('Error clearing localStorage:', error)
         }
     }, [])
 
@@ -623,12 +623,12 @@ export function useDebouncedSubmitJawaban(delay = 2000) {
 
     const submitJawaban = useCallback(async (jawaban: Omit<JawabanSiswaInsert, 'siswa_id'>) => {
         if (!user?.id) {
-            console.error('❌ User not authenticated for debounced submit')
+            console.error('User not authenticated for debounced submit')
             return
         }
 
         try {
-            console.log('💾 Auto-saving jawaban:', {
+            console.log('Auto-saving jawaban:', {
                 soal_id: jawaban.soal_id,
                 answer_length: jawaban.answer_text?.length || 0
             })
@@ -644,17 +644,17 @@ export function useDebouncedSubmitJawaban(delay = 2000) {
                 .single()
 
             if (error) {
-                console.error('❌ Error auto-saving jawaban:', error)
+                console.error('Error auto-saving jawaban:', error)
                 return
             }
 
-            console.log('✅ Jawaban auto-saved successfully')
+            console.log('Jawaban auto-saved successfully')
 
             // Invalidate related queries (but don't trigger AI grading for auto-save)
             queryClient.invalidateQueries({ queryKey: ['jawaban', 'ujian', data.ujian_id] })
 
         } catch (error: unknown) {
-            console.error('❌ Unexpected error in auto-save:', error)
+            console.error('Unexpected error in auto-save:', error)
         }
     }, [user?.id, queryClient])
 
@@ -696,7 +696,7 @@ export function useBatchSubmitJawaban() {
             answer_text: string
             attempt_number?: number
         }>) => {
-            console.log('📤 Batch submitting jawaban:', jawabans.length, 'answers')
+            console.log('Batch submitting jawaban:', jawabans.length, 'answers')
 
             if (!user?.id) {
                 throw new Error('User not authenticated')
@@ -728,7 +728,7 @@ export function useBatchSubmitJawaban() {
                 updated_at: new Date().toISOString()
             }))
 
-            console.log('🔄 Using standard UPSERT (soal can be reused across ujian)')
+            console.log('Using standard UPSERT (soal can be reused across ujian)')
 
             // Use standard upsert - let database handle existing records naturally
             const { data, error } = await supabase
@@ -737,15 +737,15 @@ export function useBatchSubmitJawaban() {
                 .select()
 
             if (error) {
-                console.error('❌ Error batch submitting jawaban:', error)
+                console.error('Error batch submitting jawaban:', error)
                 throw error
             }
 
-            console.log('✅ Batch submit successful:', data?.length, 'answers saved')
+            console.log('Batch submit successful:', data?.length, 'answers saved')
             
             // Log any discrepancy for debugging (but don't treat as error)
             if (data && data.length !== jawabans.length) {
-                console.log('ℹ️ Info: Response count difference (normal with upserts)', {
+                console.log('Info: Response count difference (normal with upserts)', {
                     expected: jawabans.length,
                     actual: data.length,
                     note: 'Upsert may update existing records instead of creating new ones'
@@ -801,7 +801,7 @@ export function useUpdateJawaban() {
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: { id: string } & JawabanSiswaUpdate) => {
-            console.log('📝 Updating jawaban:', { id, updates })
+            console.log('Updating jawaban:', { id, updates })
 
             const { data, error } = await supabase
                 .from('jawaban_siswa')
@@ -814,11 +814,11 @@ export function useUpdateJawaban() {
                 .single()
 
             if (error) {
-                console.error('❌ Error updating jawaban:', error)
+                console.error('Error updating jawaban:', error)
                 throw error
             }
 
-            console.log('✅ Jawaban updated successfully:', data)
+            console.log('Jawaban updated successfully:', data)
             return data
         },
         onSuccess: (data) => {
@@ -849,7 +849,7 @@ export function useCompletedUjianIds() {
                     .order('created_at', { ascending: false })
 
                 if (error) {
-                    console.error('❌ Error fetching answered ujian IDs:', error)
+                    console.error('Error fetching answered ujian IDs:', error)
                     throw error
                 }
 
@@ -867,7 +867,7 @@ export function useCompletedUjianIds() {
                 
                 const uniqueIds = Array.from(latestAttempts.keys())
                 
-                console.log('🔍 Latest answered ujian attempts:', {
+                console.log('Latest answered ujian attempts:', {
                     totalAnswers: jawabanData?.length || 0,
                     uniqueUjian: uniqueIds.length,
                     latestAttempts: uniqueIds
@@ -875,7 +875,7 @@ export function useCompletedUjianIds() {
                 
                 return uniqueIds
             } catch (error: unknown) {
-                console.error('❌ Error in useCompletedUjianIds:', error)
+                console.error('Error in useCompletedUjianIds:', error)
                 throw error
             }
         },
@@ -908,7 +908,7 @@ export function useCompletedUjianSiswa() {
                     .order('created_at', { ascending: false })
 
                 if (jawabanError) {
-                    console.error('❌ Error fetching jawaban:', jawabanError)
+                    console.error('Error fetching jawaban:', jawabanError)
                     throw jawabanError
                 }
 
@@ -967,7 +967,7 @@ export function useCompletedUjianSiswa() {
                     `)
                     .in('id', ujianIds)
 
-                console.log('📊 Fetched completed ujian data (latest attempts only):', {
+                console.log('Fetched completed ujian data (latest attempts only):', {
                     totalJawaban: allJawaban.length,
                     latestAttemptJawaban: latestAttemptJawaban.length,
                     uniqueUjianIds: ujianIds.length,
@@ -975,7 +975,7 @@ export function useCompletedUjianSiswa() {
                 })
 
                 if (ujianError) {
-                    console.error('❌ Error fetching ujian data:', ujianError)
+                    console.error('Error fetching ujian data:', ujianError)
                     throw ujianError
                 }
 
@@ -1016,7 +1016,7 @@ export function useCompletedUjianSiswa() {
                 // Sort berdasarkan lastAttempt (terbaru dulu)
                 return completedUjian.sort((a, b) => new Date(b.lastAttempt).getTime() - new Date(a.lastAttempt).getTime())
             } catch (error: unknown) {
-                console.error('❌ Error in useCompletedUjianSiswa:', error)
+                console.error('Error in useCompletedUjianSiswa:', error)
                 throw error
             }
         },
@@ -1063,7 +1063,7 @@ export function useInProgressUjianSiswa() {
                     .in('ujian.status', ['active', 'draft']) // Hanya ujian yang masih aktif atau draft
 
                 if (error) {
-                    console.error('❌ Error fetching in-progress ujian:', error)
+                    console.error('Error fetching in-progress ujian:', error)
                     throw error
                 }
 
@@ -1093,10 +1093,10 @@ export function useInProgressUjianSiswa() {
                 })
 
                 const result = Array.from(ujianMap.values())
-                console.log('📝 In-progress ujian:', result.length)
+                console.log('In-progress ujian:', result.length)
                 return result
             } catch (error: unknown) {
-                console.error('❌ Error in useInProgressUjianSiswa:', error)
+                console.error('Error in useInProgressUjianSiswa:', error)
                 throw error
             }
         },
@@ -1128,7 +1128,7 @@ export function useAvailableUjian() {
                     .order('created_at', { ascending: false })
 
                 if (jawabanError) {
-                    console.error('❌ Error fetching answered ujian:', {
+                    console.error('Error fetching answered ujian:', {
                         error: jawabanError.message,
                         code: jawabanError.code,
                         userId: user.id
@@ -1165,14 +1165,14 @@ export function useAvailableUjian() {
                 }
 
                 const { data, error } = await query
-                console.log('🔍 Fetching available ujian for user:', {
+                console.log('Fetching available ujian for user:', {
                     totalUjian: data?.length || 0,
                     answeredUjian: answeredUjianIds.length,
                     availableUjian: data?.length || 0
                 })
 
                 if (error) {
-                    console.error('❌ Error fetching available ujian:', {
+                    console.error('Error fetching available ujian:', {
                         error: error.message,
                         code: error.code,
                         userId: user.id
@@ -1182,7 +1182,7 @@ export function useAvailableUjian() {
 
                 return data || []
             } catch (error: unknown) {
-                console.error('❌ Error in useAvailableUjian:', {
+                console.error('Error in useAvailableUjian:', {
                     error: error instanceof Error ? error.message : error,
                     userId: user?.id
                 })
@@ -1224,23 +1224,23 @@ export function useUjianForSiswa(ujianId: string) {
         queryFn: async () => {
             // Check circuit breaker
             if (!circuitBreaker.canExecute()) {
-                console.log('🚫 Circuit breaker blocked useUjianForSiswa call')
+                console.log('Circuit breaker blocked useUjianForSiswa call')
                 return null
             }
             
             // Check rate limiter
             if (!rateLimiter.canExecute()) {
-                console.log('🚫 Rate limiter blocked useUjianForSiswa call')
+                console.log('Rate limiter blocked useUjianForSiswa call')
                 return null
             }
 
             if (!user?.id) {
-                console.log('❌ User not authenticated for useUjianForSiswa')
+                console.log('User not authenticated for useUjianForSiswa')
                 return null // Return null instead of throwing
             }
 
             if (!ujianId) {
-                console.log('❌ No ujianId provided for useUjianForSiswa')
+                console.log('No ujianId provided for useUjianForSiswa')
                 return null
             }
 
@@ -1257,7 +1257,7 @@ export function useUjianForSiswa(ujianId: string) {
                     .maybeSingle()
 
                 if (ujianError) {
-                    console.error('❌ Error fetching ujian basic info:', {
+                    console.error('Error fetching ujian basic info:', {
                         error: ujianError.message,
                         code: ujianError.code,
                         ujianId
@@ -1266,7 +1266,7 @@ export function useUjianForSiswa(ujianId: string) {
                 }
 
                 if (!ujianData) {
-                    console.error('❌ Ujian not found:', ujianId)
+                    console.error('Ujian not found:', ujianId)
                     return null // Return null instead of throwing
                 }
 
@@ -1278,7 +1278,7 @@ export function useUjianForSiswa(ujianId: string) {
                     .order('urutan', { ascending: true })
 
                 if (ujianSoalError) {
-                    console.error('❌ Error fetching ujian_soal:', {
+                    console.error('Error fetching ujian_soal:', {
                         error: ujianSoalError.message,
                         code: ujianSoalError.code,
                         ujianId
@@ -1290,7 +1290,7 @@ export function useUjianForSiswa(ujianId: string) {
                 let ujianSoalWithSoal: any[] = []
                 if (ujianSoalData && ujianSoalData.length > 0) {
                     const soalIds = ujianSoalData.map(us => us.soal_id)
-                    console.log('🔍 Fetching soal details for IDs:', soalIds)
+                    console.log('Fetching soal details for IDs:', soalIds)
 
                     const { data: soalData, error: soalError } = await supabase
                         .from('soal')
@@ -1367,7 +1367,7 @@ export function useBatchAIGrading() {
             )
         },
         onError: (error) => {
-            console.error('❌ Batch AI grading failed:', error)
+            console.error(' Batch AI grading failed:', error)
             toast.error('Gagal menjalankan penilaian AI secara batch', {
                 description: error instanceof Error ? error.message : 'Terjadi kesalahan'
             })

@@ -43,7 +43,7 @@ export async function gradeEssayAnswerOptimized(
   const maxRetries = 2 // Maximum retry attempts
 
   try {
-    console.log('🤖 Starting optimized AI grading...', { 
+    console.log('Starting optimized AI grading...', { 
       questionLength: question.length, 
       answerLength: studentAnswer.length,
       questionType,
@@ -95,7 +95,7 @@ export async function gradeEssayAnswerOptimized(
     }
 
     // ENHANCED DEBUG: Log complete prompt being sent to AI
-    console.log('📤 PROMPT DEBUG - Sending to AI:', {
+    console.log('PROMPT DEBUG - Sending to AI:', {
       promptType: questionType === 'multiple_choice' ? 'Multiple Choice' : 'Essay',
       promptMode: config.mode,
       promptLength: prompt.length,
@@ -128,7 +128,7 @@ export async function gradeEssayAnswerOptimized(
     const text = result.choices[0]?.message?.content || ''
 
     // ENHANCED DEBUG: Log complete AI response for debugging
-    console.log('🤖 COMPLETE AI RESPONSE DEBUG:', {
+    console.log('COMPLETE AI RESPONSE DEBUG:', {
       promptLength: prompt.length,
       responseLength: text.length,
       fullResponse: text,
@@ -146,7 +146,7 @@ export async function gradeEssayAnswerOptimized(
       }
     })
 
-    console.log('🤖 Optimized AI response preview:', text.substring(0, 150) + '...')
+    console.log('Optimized AI response preview:', text.substring(0, 150) + '...')
 
     // Parse JSON response
     const aiResponse = parseAIResponse(text)
@@ -155,7 +155,7 @@ export async function gradeEssayAnswerOptimized(
     return validateAndFormatResponse(aiResponse)
 
   } catch (error: unknown) {
-    console.error('❌ Optimized AI grading error:', {
+    console.error(' Optimized AI grading error:', {
       error: error instanceof Error ? error.message : error,
       questionPreview: question.substring(0, 100) + '...',
       answerPreview: studentAnswer.substring(0, 100) + '...',
@@ -169,7 +169,7 @@ export async function gradeEssayAnswerOptimized(
         error instanceof Error && 
         (error.message.includes('Invalid JSON') || error.message.includes('Invalid AI response'))) {
       
-      console.log(`🔄 Retrying AI grading (attempt ${retryCount + 1}/${maxRetries + 1})...`)
+      console.log(`Retrying AI grading (attempt ${retryCount + 1}/${maxRetries + 1})...`)
       
       // Use more conservative config for retry
       const retryConfig: PromptConfig = {
@@ -384,7 +384,7 @@ Pedoman nilai:
  * ENHANCED: Better JSON extraction and error handling
  */
 function parseAIResponse(text: string): AIGradingResponse {
-  console.log('🔍 DETAILED PARSING DEBUG - Starting parseAIResponse:', {
+  console.log('DETAILED PARSING DEBUG - Starting parseAIResponse:', {
     textLength: text.length,
     textPreview: text.substring(0, 200) + '...',
     containsCodeBlock: text.includes('```json'),
@@ -397,60 +397,60 @@ function parseAIResponse(text: string): AIGradingResponse {
   })
   
   // Method 1: Try to find JSON within code blocks first
-  console.log('🔍 METHOD 1: Trying code block extraction...')
+  console.log('METHOD 1: Trying code block extraction...')
   let jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/)
   if (jsonMatch) {
-    console.log('✅ METHOD 1: Found JSON in code block:', {
+    console.log('METHOD 1: Found JSON in code block:', {
       matchLength: jsonMatch[1].length,
       matchPreview: jsonMatch[1].substring(0, 100) + '...',
       fullMatch: jsonMatch[1]
     })
     try {
       const parsed = JSON.parse(jsonMatch[1])
-      console.log('✅ METHOD 1: Parsed JSON from code block successfully:', parsed)
+      console.log('METHOD 1: Parsed JSON from code block successfully:', parsed)
       return parsed
     } catch (error: unknown) {
-      console.log('❌ METHOD 1: Failed to parse JSON from code block:', {
+      console.log('METHOD 1: Failed to parse JSON from code block:', {
         error: error instanceof Error ? error.message : error,
         jsonString: jsonMatch[1]
       })
     }
   } else {
-    console.log('❌ METHOD 1: No code block found')
+    console.log('METHOD 1: No code block found')
   }
 
   // Method 2: Try to find any JSON object in the text
-  console.log('🔍 METHOD 2: Trying general JSON extraction...')
+  console.log('METHOD 2: Trying general JSON extraction...')
   jsonMatch = text.match(/\{[\s\S]*?\}/)
   if (jsonMatch) {
-    console.log('✅ METHOD 2: Found JSON object:', {
+    console.log('METHOD 2: Found JSON object:', {
       matchLength: jsonMatch[0].length,
       matchPreview: jsonMatch[0].substring(0, 100) + '...',
       fullMatch: jsonMatch[0]
     })
     try {
       const parsed = JSON.parse(jsonMatch[0])
-      console.log('✅ METHOD 2: Parsed JSON from text successfully:', parsed)
+      console.log('METHOD 2: Parsed JSON from text successfully:', parsed)
       return parsed
     } catch (error: unknown) {
-      console.log('❌ METHOD 2: Failed to parse JSON from text:', {
+      console.log('METHOD 2: Failed to parse JSON from text:', {
         error: error instanceof Error ? error.message : error,
         jsonString: jsonMatch[0]
       })
     }
   } else {
-    console.log('❌ METHOD 2: No JSON object found')
+    console.log('METHOD 2: No JSON object found')
   }
 
   // Method 3: Clean and try again
-  console.log('🔍 METHOD 3: Trying cleaned text extraction...')
+  console.log('METHOD 3: Trying cleaned text extraction...')
   const cleanedText = text
     .replace(/```json\n?|\n?```/g, '')
     .replace(/^[^{]*/, '') // Remove everything before first {
     .replace(/[^}]*$/, '') // Remove everything after last }
     .trim()
 
-  console.log('🔍 METHOD 3: Cleaned text:', {
+  console.log('METHOD 3: Cleaned text:', {
     originalLength: text.length,
     cleanedLength: cleanedText.length,
     cleanedText: cleanedText,
@@ -461,47 +461,47 @@ function parseAIResponse(text: string): AIGradingResponse {
   if (cleanedText.startsWith('{') && cleanedText.endsWith('}')) {
     try {
       const parsed = JSON.parse(cleanedText)
-      console.log('✅ METHOD 3: Parsed JSON from cleaned text successfully:', parsed)
+      console.log('METHOD 3: Parsed JSON from cleaned text successfully:', parsed)
       return parsed
     } catch (error: unknown) {
-      console.log('❌ METHOD 3: Failed to parse cleaned JSON:', {
+      console.log('METHOD 3: Failed to parse cleaned JSON:', {
         error: error instanceof Error ? error.message : error,
         cleanedText: cleanedText
       })
     }
   } else {
-    console.log('❌ METHOD 3: Cleaned text does not have proper JSON structure')
+    console.log('METHOD 3: Cleaned text does not have proper JSON structure')
   }
 
   // Method 4: Try to extract JSON with more aggressive regex
-  console.log('🔍 METHOD 4: Trying aggressive regex extraction...')
+  console.log('METHOD 4: Trying aggressive regex extraction...')
   const aggressiveMatch = text.match(/\{\s*"score"\s*:\s*\d+[\s\S]*?\}/);
   if (aggressiveMatch) {
-    console.log('✅ METHOD 4: Found JSON with aggressive regex:', {
+    console.log('METHOD 4: Found JSON with aggressive regex:', {
       matchLength: aggressiveMatch[0].length,
       fullMatch: aggressiveMatch[0]
     })
     try {
       const parsed = JSON.parse(aggressiveMatch[0])
-      console.log('✅ METHOD 4: Parsed JSON with aggressive regex successfully:', parsed)
+      console.log('METHOD 4: Parsed JSON with aggressive regex successfully:', parsed)
       return parsed
     } catch (error: unknown) {
-      console.log('❌ METHOD 4: Failed to parse with aggressive regex:', {
+      console.log('METHOD 4: Failed to parse with aggressive regex:', {
         error: error instanceof Error ? error.message : error,
         jsonString: aggressiveMatch[0]
       })
     }
   } else {
-    console.log('❌ METHOD 4: No JSON found with aggressive regex')
+    console.log('METHOD 4: No JSON found with aggressive regex')
   }
 
   // Method 5: Last resort - try to reconstruct basic structure from text
-  console.log('🔍 METHOD 5: Trying to reconstruct from parts...')
+  console.log('METHOD 5: Trying to reconstruct from parts...')
   const scoreMatch = text.match(/"score"\s*:\s*(\d+)/)
   const feedbackMatch = text.match(/"feedback"\s*:\s*"([^"]*)"/)
   const reasoningMatch = text.match(/"reasoning"\s*:\s*"([^"]*)"/)
 
-  console.log('🔍 METHOD 5: Part extraction results:', {
+  console.log('METHOD 5: Part extraction results:', {
     scoreMatch: scoreMatch ? { found: true, value: scoreMatch[1] } : { found: false },
     feedbackMatch: feedbackMatch ? { found: true, value: feedbackMatch[1] } : { found: false },
     reasoningMatch: reasoningMatch ? { found: true, value: reasoningMatch[1] } : { found: false }
@@ -513,14 +513,14 @@ function parseAIResponse(text: string): AIGradingResponse {
       feedback: feedbackMatch[1],
       reasoning: reasoningMatch[1]
     }
-    console.log('⚡ METHOD 5: Reconstructing JSON from extracted parts:', reconstructed)
+    console.log('METHOD 5: Reconstructing JSON from extracted parts:', reconstructed)
     return reconstructed
   } else {
-    console.log('❌ METHOD 5: Could not extract all required parts')
+    console.log('METHOD 5: Could not extract all required parts')
   }
 
   // If all methods fail, log the problematic response
-  console.error('❌ ALL PARSING METHODS FAILED. Complete debug info:', {
+  console.error('ALL PARSING METHODS FAILED. Complete debug info:', {
     originalText: text,
     textLength: text.length,
     hasCodeBlock: text.includes('```json'),
@@ -544,7 +544,7 @@ function parseAIResponse(text: string): AIGradingResponse {
  * ENHANCED: Better validation and error handling
  */
 function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
-  console.log('🔍 VALIDATION DEBUG - Input response:', {
+  console.log('VALIDATION DEBUG - Input response:', {
     responseType: typeof aiResponse,
     isObject: typeof aiResponse === 'object',
     isNull: aiResponse === null,
@@ -554,14 +554,14 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
 
   // Check if response is valid object
   if (!aiResponse || typeof aiResponse !== 'object') {
-    console.error('❌ VALIDATION: Response is not a valid object:', {
+    console.error('VALIDATION: Response is not a valid object:', {
       received: aiResponse,
       type: typeof aiResponse
     })
     throw new Error('AI response is not a valid object')
   }
 
-  console.log('🔍 VALIDATION DEBUG - Field analysis:', {
+  console.log('VALIDATION DEBUG - Field analysis:', {
     score: {
       exists: 'score' in aiResponse,
       value: aiResponse.score,
@@ -591,7 +591,7 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
       isNaN(aiResponse.score) ||
       aiResponse.score < 0 || 
       aiResponse.score > 100) {
-    console.warn('⚠️ VALIDATION: Invalid score, attempting to fix:', {
+    console.warn('VALIDATION: Invalid score, attempting to fix:', {
       originalScore: aiResponse.score,
       type: typeof aiResponse.score
     })
@@ -599,7 +599,7 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
     // Try to extract number from string
     if (typeof aiResponse.score === 'string') {
       const numericScore = parseInt(aiResponse.score.replace(/[^0-9]/g, ''))
-      console.log('🔧 VALIDATION: Trying to extract numeric score:', {
+      console.log('VALIDATION: Trying to extract numeric score:', {
         originalString: aiResponse.score,
         extractedNumber: numericScore,
         isValid: !isNaN(numericScore) && numericScore >= 0 && numericScore <= 100
@@ -607,46 +607,46 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
       
       if (!isNaN(numericScore) && numericScore >= 0 && numericScore <= 100) {
         aiResponse.score = numericScore
-        console.log('✅ VALIDATION: Score fixed successfully:', aiResponse.score)
+        console.log('VALIDATION: Score fixed successfully:', aiResponse.score)
       } else {
-        console.error('❌ VALIDATION: Could not fix score:', {
+        console.error('VALIDATION: Could not fix score:', {
           original: aiResponse.score,
           extracted: numericScore
         })
         throw new Error(`Invalid score value: ${aiResponse.score}`)
       }
     } else {
-      console.error('❌ VALIDATION: Score is not a valid number or string:', {
+      console.error('VALIDATION: Score is not a valid number or string:', {
         value: aiResponse.score,
         type: typeof aiResponse.score
       })
       throw new Error(`Invalid score type or value: ${aiResponse.score}`)
     }
   } else {
-    console.log('✅ VALIDATION: Score is valid:', aiResponse.score)
+    console.log('VALIDATION: Score is valid:', aiResponse.score)
   }
 
   // Validate feedback
   if (!aiResponse.feedback || typeof aiResponse.feedback !== 'string') {
-    console.warn('⚠️ VALIDATION: Invalid feedback, attempting to fix:', {
+    console.warn('VALIDATION: Invalid feedback, attempting to fix:', {
       originalFeedback: aiResponse.feedback,
       type: typeof aiResponse.feedback
     })
     
     if (aiResponse.feedback === null || aiResponse.feedback === undefined) {
       aiResponse.feedback = 'Feedback tidak tersedia'
-      console.log('🔧 VALIDATION: Set default feedback for null/undefined')
+      console.log('VALIDATION: Set default feedback for null/undefined')
     } else {
       aiResponse.feedback = String(aiResponse.feedback)
-      console.log('🔧 VALIDATION: Converted feedback to string:', aiResponse.feedback)
+      console.log('VALIDATION: Converted feedback to string:', aiResponse.feedback)
     }
   } else {
-    console.log('✅ VALIDATION: Feedback is valid string:', aiResponse.feedback.substring(0, 50) + '...')
+    console.log('VALIDATION: Feedback is valid string:', aiResponse.feedback.substring(0, 50) + '...')
   }
 
   // Validate reasoning
   if (!aiResponse.reasoning || typeof aiResponse.reasoning !== 'string') {
-    console.warn('⚠️ VALIDATION: Invalid reasoning, attempting to fix:', {
+    console.warn('VALIDATION: Invalid reasoning, attempting to fix:', {
       originalReasoning: aiResponse.reasoning,
       type: typeof aiResponse.reasoning,
       isObject: typeof aiResponse.reasoning === 'object'
@@ -654,18 +654,18 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
     
     if (aiResponse.reasoning === null || aiResponse.reasoning === undefined) {
       aiResponse.reasoning = 'Reasoning tidak tersedia'
-      console.log('🔧 VALIDATION: Set default reasoning for null/undefined')
+      console.log('VALIDATION: Set default reasoning for null/undefined')
     } else if (typeof aiResponse.reasoning === 'object') {
       // Sometimes AI returns nested object in reasoning
       const stringified = JSON.stringify(aiResponse.reasoning)
       aiResponse.reasoning = stringified
-      console.log('🔧 VALIDATION: Converted object reasoning to string:', stringified)
+      console.log('VALIDATION: Converted object reasoning to string:', stringified)
     } else {
       aiResponse.reasoning = String(aiResponse.reasoning)
-      console.log('🔧 VALIDATION: Converted reasoning to string:', aiResponse.reasoning)
+      console.log('VALIDATION: Converted reasoning to string:', aiResponse.reasoning)
     }
   } else {
-    console.log('✅ VALIDATION: Reasoning is valid string:', aiResponse.reasoning.substring(0, 50) + '...')
+    console.log('VALIDATION: Reasoning is valid string:', aiResponse.reasoning.substring(0, 50) + '...')
   }
 
   const finalResponse = {
@@ -674,7 +674,7 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
     reasoning: String(aiResponse.reasoning).trim().substring(0, 100) // Limit length
   }
 
-  console.log('✅ VALIDATION: Final validated response:', finalResponse)
+  console.log('VALIDATION: Final validated response:', finalResponse)
   
   return finalResponse
 }
@@ -692,7 +692,7 @@ export async function optimizedBatchGradeAnswers(
   }>,
   config: PromptConfig = defaultConfig
 ): Promise<Array<{ id: string; result: AIGradingResponse }>> {
-  console.log('🚀 BATCH GRADING DEBUG - Starting batch AI grading:', {
+  console.log('BATCH GRADING DEBUG - Starting batch AI grading:', {
     totalAnswers: answers.length,
     config: config,
     answers: answers.map((answer, index) => ({
@@ -713,7 +713,7 @@ export async function optimizedBatchGradeAnswers(
   for (const answer of answers) {
     const startTime = Date.now()
     
-    console.log(`🔄 BATCH ITEM ${results.length + 1}/${answers.length} - Processing answer:`, {
+    console.log(`BATCH ITEM ${results.length + 1}/${answers.length} - Processing answer:`, {
       id: answer.id,
       questionType: answer.questionType || 'essay',
       isEmpty: !answer.studentAnswer?.trim()
@@ -727,7 +727,7 @@ export async function optimizedBatchGradeAnswers(
           reasoning: 'Empty answer'
         }
         
-        console.log(`✅ BATCH ITEM ${results.length + 1} - Empty answer handled:`, emptyResult)
+        console.log(`BATCH ITEM ${results.length + 1} - Empty answer handled:`, emptyResult)
         
         results.push({
           id: answer.id,
@@ -736,7 +736,7 @@ export async function optimizedBatchGradeAnswers(
         continue
       }
 
-      console.log(`🤖 BATCH ITEM ${results.length + 1} - Calling AI grading...`)
+      console.log(`BATCH ITEM ${results.length + 1} - Calling AI grading...`)
       
       const result = await gradeEssayAnswerOptimized(
         answer.question,
@@ -748,7 +748,7 @@ export async function optimizedBatchGradeAnswers(
       
       const processingTime = Date.now() - startTime
       
-      console.log(`✅ BATCH ITEM ${results.length + 1} - AI grading completed:`, {
+      console.log(`BATCH ITEM ${results.length + 1} - AI grading completed:`, {
         id: answer.id,
         result: result,
         processingTimeMs: processingTime
@@ -765,7 +765,7 @@ export async function optimizedBatchGradeAnswers(
     } catch (error: unknown) {
       const processingTime = Date.now() - startTime
       
-      console.error(`❌ BATCH ITEM ${results.length + 1} - Error grading answer:`, {
+      console.error(`BATCH ITEM ${results.length + 1} - Error grading answer:`, {
         id: answer.id,
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined,
@@ -780,7 +780,7 @@ export async function optimizedBatchGradeAnswers(
         reasoning: 'AI grading error'
       }
       
-      console.log(`🔧 BATCH ITEM ${results.length + 1} - Using fallback result:`, fallbackResult)
+      console.log(`BATCH ITEM ${results.length + 1} - Using fallback result:`, fallbackResult)
       
       results.push({
         id: answer.id,
@@ -789,7 +789,7 @@ export async function optimizedBatchGradeAnswers(
     }
   }
   
-  console.log('✅ BATCH GRADING COMPLETED - Final summary:', {
+  console.log('BATCH GRADING COMPLETED - Final summary:', {
     totalProcessed: results.length,
     expectedCount: answers.length,
     successfulGrading: results.filter(r => !r.result.reasoning.includes('error')).length,
