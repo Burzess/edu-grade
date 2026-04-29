@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai'
+import { gradeEssayAnswer } from '@/lib/ai-grading'
 
 if (!process.env.OPENROUTER_API_KEY) {
   throw new Error('OPENROUTER_API_KEY is not set in environment variables')
@@ -203,46 +204,15 @@ export async function gradeEssayAnswerOptimized(
       )
     }
     
-    // ENHANCED: Intelligent fallback scoring based on answer content
-    let fallbackScore = 0
-    let fallbackFeedback = 'Sistem penilaian AI mengalami gangguan. Akan dinilai manual oleh guru.'
-    let fallbackReasoning = `AI error: ${error instanceof Error ? error.message : 'Unknown'}`
-    
-    if (studentAnswer.trim().length > 0) {
-      // Basic content-based scoring for fallback
-      const answerLength = studentAnswer.trim().length
-      const questionLength = question.trim().length
-      const hasKeywords = correctAnswer ? 
-        studentAnswer.toLowerCase().includes(correctAnswer.toLowerCase().substring(0, 20)) : false
-      
-      if (questionType === 'multiple_choice' && correctAnswer) {
-        // For MC, try simple string comparison as fallback
-        fallbackScore = studentAnswer.trim().toLowerCase() === correctAnswer.toLowerCase() ? 100 : 0
-        fallbackFeedback = fallbackScore === 100 ? 
-          'Jawaban benar (fallback scoring)' : 
-          'Jawaban salah (fallback scoring)'
-        fallbackReasoning = 'Fallback: Simple string comparison due to AI parsing error'
-      } else {
-        // For essay, basic length and keyword scoring
-        if (answerLength >= questionLength * 0.5 && hasKeywords) {
-          fallbackScore = 70 // Good effort with some keywords
-          fallbackFeedback = 'Jawaban cukup baik berdasarkan panjang dan konten (fallback scoring)'
-        } else if (answerLength >= 20) {
-          fallbackScore = 50 // Some effort
-          fallbackFeedback = 'Jawaban perlu pengembangan lebih lanjut (fallback scoring)'
-        } else {
-          fallbackScore = 25 // Minimal effort
-          fallbackFeedback = 'Jawaban terlalu singkat, perlu diperluas (fallback scoring)'
-        }
-        fallbackReasoning = `Fallback: Content-based scoring (length: ${answerLength}, has keywords: ${hasKeywords})`
-      }
-    }
-    
-    return {
-      score: fallbackScore,
-      feedback: fallbackFeedback,
-      reasoning: fallbackReasoning
-    }
+    // Fallback ke implementasi ai-grading.ts agar feedback tetap berasal dari AI,
+    // bukan dari template hardcoded di optimized mode.
+    console.log('Optimized grading failed, falling back to gradeEssayAnswer from ai-grading.ts')
+    return gradeEssayAnswer(
+      question,
+      studentAnswer,
+      questionType,
+      correctAnswer
+    )
   }
 }
 
@@ -555,17 +525,21 @@ function parseAIResponse(text: string): AIGradingResponse {
  * Validate and format AI response
  * ENHANCED: Better validation and error handling
  */
-function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
+function validateAndFormatResponse(aiResponse: unknown): AIGradingResponse {
+  const candidate = (typeof aiResponse === 'object' && aiResponse !== null)
+    ? (aiResponse as Record<string, unknown>)
+    : null
+
   console.log('VALIDATION DEBUG - Input response:', {
     responseType: typeof aiResponse,
     isObject: typeof aiResponse === 'object',
     isNull: aiResponse === null,
-    keys: aiResponse ? Object.keys(aiResponse) : 'N/A',
+    keys: candidate ? Object.keys(candidate) : 'N/A',
     fullResponse: aiResponse
   })
 
   // Check if response is valid object
-  if (!aiResponse || typeof aiResponse !== 'object') {
+  if (!candidate) {
     console.error('VALIDATION: Response is not a valid object:', {
       received: aiResponse,
       type: typeof aiResponse
@@ -575,115 +549,115 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
 
   console.log('VALIDATION DEBUG - Field analysis:', {
     score: {
-      exists: 'score' in aiResponse,
-      value: aiResponse.score,
-      type: typeof aiResponse.score,
-      isNumber: typeof aiResponse.score === 'number',
-      isNaN: isNaN(aiResponse.score),
-      inRange: aiResponse.score >= 0 && aiResponse.score <= 100
+      exists: 'score' in candidate,
+      value: candidate.score,
+      type: typeof candidate.score,
+      isNumber: typeof candidate.score === 'number',
+      isNaN: typeof candidate.score === 'number' ? Number.isNaN(candidate.score) : false,
+      inRange: typeof candidate.score === 'number' ? candidate.score >= 0 && candidate.score <= 100 : false
     },
     feedback: {
-      exists: 'feedback' in aiResponse,
-      value: aiResponse.feedback,
-      type: typeof aiResponse.feedback,
-      length: aiResponse.feedback ? aiResponse.feedback.length : 0
+      exists: 'feedback' in candidate,
+      value: candidate.feedback,
+      type: typeof candidate.feedback,
+      length: typeof candidate.feedback === 'string' ? candidate.feedback.length : 0
     },
     reasoning: {
-      exists: 'reasoning' in aiResponse,
-      value: aiResponse.reasoning,
-      type: typeof aiResponse.reasoning,
-      isObject: typeof aiResponse.reasoning === 'object',
-      length: aiResponse.reasoning ? 
-        (typeof aiResponse.reasoning === 'string' ? aiResponse.reasoning.length : 'N/A') : 0
+      exists: 'reasoning' in candidate,
+      value: candidate.reasoning,
+      type: typeof candidate.reasoning,
+      isObject: typeof candidate.reasoning === 'object',
+      length: candidate.reasoning ? 
+        (typeof candidate.reasoning === 'string' ? candidate.reasoning.length : 'N/A') : 0
     }
   })
 
   // Validate score
-  if (typeof aiResponse.score !== 'number' || 
-      isNaN(aiResponse.score) ||
-      aiResponse.score < 0 || 
-      aiResponse.score > 100) {
+  if (typeof candidate.score !== 'number' || 
+      Number.isNaN(candidate.score) ||
+      candidate.score < 0 || 
+      candidate.score > 100) {
     console.warn('VALIDATION: Invalid score, attempting to fix:', {
-      originalScore: aiResponse.score,
-      type: typeof aiResponse.score
+      originalScore: candidate.score,
+      type: typeof candidate.score
     })
     
     // Try to extract number from string
-    if (typeof aiResponse.score === 'string') {
-      const numericScore = parseInt(aiResponse.score.replace(/[^0-9]/g, ''))
+    if (typeof candidate.score === 'string') {
+      const numericScore = parseInt(candidate.score.replace(/[^0-9]/g, ''))
       console.log('VALIDATION: Trying to extract numeric score:', {
-        originalString: aiResponse.score,
+        originalString: candidate.score,
         extractedNumber: numericScore,
         isValid: !isNaN(numericScore) && numericScore >= 0 && numericScore <= 100
       })
       
       if (!isNaN(numericScore) && numericScore >= 0 && numericScore <= 100) {
-        aiResponse.score = numericScore
-        console.log('VALIDATION: Score fixed successfully:', aiResponse.score)
+        candidate.score = numericScore
+        console.log('VALIDATION: Score fixed successfully:', candidate.score)
       } else {
         console.error('VALIDATION: Could not fix score:', {
-          original: aiResponse.score,
+          original: candidate.score,
           extracted: numericScore
         })
-        throw new Error(`Invalid score value: ${aiResponse.score}`)
+        throw new Error(`Invalid score value: ${candidate.score}`)
       }
     } else {
       console.error('VALIDATION: Score is not a valid number or string:', {
-        value: aiResponse.score,
-        type: typeof aiResponse.score
+        value: candidate.score,
+        type: typeof candidate.score
       })
-      throw new Error(`Invalid score type or value: ${aiResponse.score}`)
+      throw new Error(`Invalid score type or value: ${candidate.score}`)
     }
   } else {
-    console.log('VALIDATION: Score is valid:', aiResponse.score)
+    console.log('VALIDATION: Score is valid:', candidate.score)
   }
 
   // Validate feedback
-  if (!aiResponse.feedback || typeof aiResponse.feedback !== 'string') {
+  if (!candidate.feedback || typeof candidate.feedback !== 'string') {
     console.warn('VALIDATION: Invalid feedback, attempting to fix:', {
-      originalFeedback: aiResponse.feedback,
-      type: typeof aiResponse.feedback
+      originalFeedback: candidate.feedback,
+      type: typeof candidate.feedback
     })
     
-    if (aiResponse.feedback === null || aiResponse.feedback === undefined) {
-      aiResponse.feedback = 'Feedback tidak tersedia'
+    if (candidate.feedback === null || candidate.feedback === undefined) {
+      candidate.feedback = 'Feedback tidak tersedia'
       console.log('VALIDATION: Set default feedback for null/undefined')
     } else {
-      aiResponse.feedback = String(aiResponse.feedback)
-      console.log('VALIDATION: Converted feedback to string:', aiResponse.feedback)
+      candidate.feedback = String(candidate.feedback)
+      console.log('VALIDATION: Converted feedback to string:', candidate.feedback)
     }
   } else {
-    console.log('VALIDATION: Feedback is valid string:', aiResponse.feedback.substring(0, 50) + '...')
+    console.log('VALIDATION: Feedback is valid string:', candidate.feedback.substring(0, 50) + '...')
   }
 
   // Validate reasoning
-  if (!aiResponse.reasoning || typeof aiResponse.reasoning !== 'string') {
+  if (!candidate.reasoning || typeof candidate.reasoning !== 'string') {
     console.warn('VALIDATION: Invalid reasoning, attempting to fix:', {
-      originalReasoning: aiResponse.reasoning,
-      type: typeof aiResponse.reasoning,
-      isObject: typeof aiResponse.reasoning === 'object'
+      originalReasoning: candidate.reasoning,
+      type: typeof candidate.reasoning,
+      isObject: typeof candidate.reasoning === 'object'
     })
     
-    if (aiResponse.reasoning === null || aiResponse.reasoning === undefined) {
-      aiResponse.reasoning = 'Reasoning tidak tersedia'
+    if (candidate.reasoning === null || candidate.reasoning === undefined) {
+      candidate.reasoning = 'Reasoning tidak tersedia'
       console.log('VALIDATION: Set default reasoning for null/undefined')
-    } else if (typeof aiResponse.reasoning === 'object') {
+    } else if (typeof candidate.reasoning === 'object') {
       // Sometimes AI returns nested object in reasoning
-      const stringified = JSON.stringify(aiResponse.reasoning)
-      aiResponse.reasoning = stringified
+      const stringified = JSON.stringify(candidate.reasoning)
+      candidate.reasoning = stringified
       console.log('VALIDATION: Converted object reasoning to string:', stringified)
     } else {
-      aiResponse.reasoning = String(aiResponse.reasoning)
-      console.log('VALIDATION: Converted reasoning to string:', aiResponse.reasoning)
+      candidate.reasoning = String(candidate.reasoning)
+      console.log('VALIDATION: Converted reasoning to string:', candidate.reasoning)
     }
   } else {
-    console.log('VALIDATION: Reasoning is valid string:', aiResponse.reasoning.substring(0, 50) + '...')
+    console.log('VALIDATION: Reasoning is valid string:', candidate.reasoning.substring(0, 50) + '...')
   }
 
   const finalResponse = {
-    score: Math.round(Number(aiResponse.score)),
-    feedback: String(aiResponse.feedback).trim(),
-    reasoning: String(aiResponse.reasoning).trim()
+    score: Math.round(Number(candidate.score)),
+    feedback: String(candidate.feedback).trim(),
+    reasoning: String(candidate.reasoning).trim()
   }
 
   console.log('VALIDATION: Final validated response:', finalResponse)
