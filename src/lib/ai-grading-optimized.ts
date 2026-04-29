@@ -75,24 +75,31 @@ export async function gradeEssayAnswerOptimized(
       // Note: OpenAI API doesn't support topK, candidateCount, or stopSequences in the same way as Gemini
     }
 
+    if (questionType === 'multiple_choice' && correctAnswer) {
+      // PENILAIAN LANGSUNG: Pilihan ganda tidak perlu AI, bisa dicocokkan langsung untuk menghemat waktu & token
+      const isCorrect = studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()
+      
+      console.log('Deterministic grading for multiple choice:', { isCorrect })
+      return {
+        score: isCorrect ? 100 : 0,
+        feedback: isCorrect 
+          ? 'Jawaban Anda benar.' 
+          : `Jawaban Anda kurang tepat. Jawaban yang benar adalah: ${correctAnswer}`,
+        reasoning: 'Penilaian otomatis sistem untuk soal pilihan ganda.'
+      }
+    }
+
     let prompt = ''
 
-    if (questionType === 'multiple_choice' && correctAnswer) {
-      // OPTIMIZED: Multiple choice prompt - dikurangi ~60% token
-      prompt = config.mode === 'concise' ? 
-        getOptimizedMultipleChoicePrompt(question, correctAnswer, studentAnswer) :
-        getDetailedMultipleChoicePrompt(question, correctAnswer, studentAnswer)
+    // OPTIMIZED: Essay prompt
+    if (correctAnswer?.trim()) {
+      prompt = config.mode === 'concise' ?
+        getOptimizedEssayWithKeyPrompt(question, correctAnswer, studentAnswer) :
+        getDetailedEssayWithKeyPrompt(question, correctAnswer, studentAnswer)
     } else {
-      // OPTIMIZED: Essay prompt - dikurangi ~45% token
-      if (correctAnswer?.trim()) {
-        prompt = config.mode === 'concise' ?
-          getOptimizedEssayWithKeyPrompt(question, correctAnswer, studentAnswer) :
-          getDetailedEssayWithKeyPrompt(question, correctAnswer, studentAnswer)
-      } else {
-        prompt = config.mode === 'concise' ?
-          getOptimizedEssayPrompt(question, studentAnswer) :
-          getDetailedEssayPrompt(question, studentAnswer)
-      }
+      prompt = config.mode === 'concise' ?
+        getOptimizedEssayPrompt(question, studentAnswer) :
+        getDetailedEssayPrompt(question, studentAnswer)
     }
 
     // ENHANCED DEBUG: Log complete prompt being sent to AI

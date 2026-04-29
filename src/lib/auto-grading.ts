@@ -36,14 +36,14 @@ export function gradeMultipleChoice(
   let reasoning: string
   
   if (isCorrect) {
-    feedback = '✅ Jawaban benar! Anda memahami konsep dengan baik.'
+    feedback = 'Jawaban benar! Anda memahami konsep dengan baik.'
     reasoning = 'Jawaban sesuai dengan kunci jawaban yang benar'
   } else {
     if (normalizedStudentAnswer === '') {
-      feedback = '❌ Tidak ada jawaban yang dipilih. Pastikan untuk memilih salah satu opsi yang tersedia.'
+      feedback = 'Tidak ada jawaban yang dipilih. Pastikan untuk memilih salah satu opsi yang tersedia.'
       reasoning = 'Tidak ada jawaban yang diberikan'
     } else {
-      feedback = `❌ Jawaban kurang tepat. Jawaban yang benar adalah: ${correctAnswer}`
+      feedback = `Jawaban kurang tepat. Jawaban yang benar adalah: ${correctAnswer}`
       reasoning = 'Jawaban tidak sesuai dengan kunci jawaban'
     }
   }
@@ -85,11 +85,11 @@ export function gradeTrueFalse(
   
   let feedback: string
   if (isCorrect) {
-    feedback = '✅ Jawaban benar!'
+    feedback = 'Jawaban benar!'
   } else if (!studentIsTrue && !studentIsFalse) {
-    feedback = '❌ Format jawaban tidak valid. Pilih Benar atau Salah.'
+    feedback = 'Format jawaban tidak valid. Pilih Benar atau Salah.'
   } else {
-    feedback = `❌ Jawaban kurang tepat. Jawaban yang benar adalah: ${correctIsTrue ? 'Benar' : 'Salah'}`
+    feedback = `Jawaban kurang tepat. Jawaban yang benar adalah: ${correctIsTrue ? 'Benar' : 'Salah'}`
   }
 
   return {
