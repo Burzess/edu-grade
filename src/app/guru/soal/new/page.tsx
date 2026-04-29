@@ -30,6 +30,7 @@ const soalSchema = z.object({
         text: z.string().min(1, 'Opsi tidak boleh kosong')
     })).optional(),
     correct_answer: z.string().optional(),
+    rubric: z.string().optional(),
 }).refine((data) => {
     // Jika pilihan ganda, harus ada minimal 2 opsi dan jawaban benar
     if (data.question_type === 'multiple_choice') {
@@ -45,12 +46,9 @@ const soalSchema = z.object({
             return false;
         }
     }
-    // Untuk essay, options dan correct_answer harus undefined/null
+    // Untuk essay, correct_answer (kunci jawaban) diperbolehkan
     if (data.question_type === 'essay') {
         if (data.options && data.options.length > 0) {
-            return false;
-        }
-        if (data.correct_answer && data.correct_answer.trim() !== '') {
             return false;
         }
     }
@@ -76,6 +74,7 @@ export default function CreateSoalPage() {
             tags: [],
             options: undefined,
             correct_answer: undefined,
+            rubric: '',
         },
     })
 
@@ -140,10 +139,10 @@ export default function CreateSoalPage() {
                     correct_answer: soalData.correct_answer
                 })
             } else {
-                // Untuk essay, set null/undefined
+                // Untuk essay
                 soalData.options = null
-                soalData.correct_answer = null
-                console.log('Essay data - options and correct_answer set to null')
+                soalData.correct_answer = data.correct_answer || null
+                soalData.rubric = data.rubric || null
             }
 
             console.log('Sending data to server:', soalData)
@@ -234,6 +233,60 @@ export default function CreateSoalPage() {
                                         )}
                                     />
                                 </div>
+
+                                {questionType === 'essay' && (
+                                    <FormField
+                                        control={form.control}
+                                        name="rubric"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Rubrik Penilaian (Opsional)</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Masukkan kriteria atau panduan penilaian untuk soal ini... (Misal: 50% untuk ketepatan teori, 50% untuk contoh relevan)"
+                                                        className="min-h-[100px]"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Rubrik ini akan digunakan oleh AI untuk menilai jawaban essay secara lebih akurat sesuai standar Anda.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+
+                                {/* Kunci Jawaban Essay */}
+                                {questionType === 'essay' && (
+                                    <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
+                                        <h4 className="text-sm font-medium text-foreground">Kunci Jawaban Essay (Opsional)</h4>
+                                        <p className="text-sm text-muted-foreground">
+                                            Berikan kunci jawaban untuk membantu AI melakukan penilaian yang lebih akurat.
+                                        </p>
+                                        <FormField
+                                            control={form.control}
+                                            name="correct_answer"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Kunci Jawaban</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            placeholder="Tuliskan kunci jawaban atau poin-poin utama yang harus ada dalam jawaban siswa..."
+                                                            className="min-h-[100px]"
+                                                            {...field}
+                                                            value={field.value ?? ''}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        Kosongkan jika ingin AI menilai secara bebas tanpa referensi khusus.
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                )}
 
                                 {/* Options untuk Multiple Choice */}
                                 {questionType === 'multiple_choice' && (

@@ -11,8 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react'
-import { CreateSoalModal } from '@/components/soal/create-soal-modal'
-import { EditSoalModal } from '@/components/soal/edit-soal-modal'
+import Link from 'next/link'
 
 function SoalListPageContent() {
     // Filters state
@@ -75,12 +74,12 @@ function SoalListPageContent() {
                         Kelola bank soal untuk ujian
                     </p>
                 </div>
-                <CreateSoalModal>
+                <Link href="/guru/soal/new">
                     <Button>
                         <Plus className="h-4 w-4 mr-2" />
                         Buat Soal Baru
                     </Button>
-                </CreateSoalModal>
+                </Link>
             </div>
 
             {/* Filters */}
@@ -150,11 +149,11 @@ function SoalListPageContent() {
                     ) : soalData?.data.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-gray-500">Belum ada soal yang dibuat</p>
-                            <CreateSoalModal>
+                            <Link href="/guru/soal/new">
                                 <Button className="mt-4">
                                     Buat Soal Pertama
                                 </Button>
-                            </CreateSoalModal>
+                            </Link>
                         </div>
                     ) : (
                         <>
@@ -204,11 +203,11 @@ function SoalListPageContent() {
                                             </TableCell>
                                             <TableCell className="text-right px-2">
                                                 <div className="flex justify-end gap-1">
-                                                    <EditSoalModal soalId={soal.id}>
+                                                    <Link href={`/guru/soal/${soal.id}/edit`}>
                                                         <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Edit soal">
                                                             <Edit className="h-3 w-3" />
                                                         </Button>
-                                                    </EditSoalModal>
+                                                    </Link>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Hapus soal">

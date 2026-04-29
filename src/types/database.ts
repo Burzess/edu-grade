@@ -33,6 +33,7 @@ export interface Database {
                     difficulty_level: 'easy' | 'medium' | 'hard'
                     options: Array<{id: string, text: string}> | null
                     correct_answer: string | null
+                    rubric: string | null
                     created_by: string
                     created_at: string
                     updated_at: string
@@ -45,6 +46,7 @@ export interface Database {
                     difficulty_level?: 'easy' | 'medium' | 'hard'
                     options?: Array<{id: string, text: string}> | null
                     correct_answer?: string | null
+                    rubric?: string | null
                     created_by: string
                     created_at?: string
                     updated_at?: string
@@ -57,6 +59,7 @@ export interface Database {
                     difficulty_level?: 'easy' | 'medium' | 'hard'
                     options?: Array<{id: string, text: string}> | null
                     correct_answer?: string | null
+                    rubric?: string | null
                     created_by?: string
                     created_at?: string
                     updated_at?: string

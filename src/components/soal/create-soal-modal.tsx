@@ -34,6 +34,7 @@ const soalSchema = z.object({
         text: z.string().min(1, 'Opsi tidak boleh kosong')
     })).optional(),
     correct_answer: z.string().optional(),
+    rubric: z.string().optional(),
 }).refine((data) => {
     // Jika pilihan ganda, harus ada minimal 2 opsi dan jawaban benar
     if (data.question_type === 'multiple_choice') {
@@ -75,6 +76,7 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
       tags: [],
       options: [],
       correct_answer: '',
+      rubric: '',
     }
   })
 
@@ -133,6 +135,7 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
         // Untuk essay, gunakan correct_answer sebagai reference answer (opsional)
         soalData.options = null
         soalData.correct_answer = data.correct_answer || null // Bisa kosong untuk essay
+        soalData.rubric = data.rubric || null
       }
 
       console.log('Sending data to server:', soalData)
@@ -322,9 +325,30 @@ export function CreateSoalModal({ children }: CreateSoalModalProps) {
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription>
+                      {/* <FormDescription>
                         Kunci jawaban ini akan digunakan AI sebagai referensi untuk menilai jawaban siswa. 
                         Kosongkan jika ingin AI menilai secara bebas tanpa referensi khusus.
+                      </FormDescription> */}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="rubric"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rubrik Penilaian (Opsional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Masukkan kriteria atau panduan penilaian untuk soal ini... (Misal: 50% untuk ketepatan teori, 50% untuk contoh relevan)"
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Rubrik ini akan digunakan oleh AI untuk menilai jawaban essay secara lebih akurat.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

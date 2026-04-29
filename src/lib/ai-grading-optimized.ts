@@ -23,8 +23,8 @@ export interface PromptConfig {
 }
 
 const defaultConfig: PromptConfig = {
-  mode: 'concise',
-  maxOutputTokens: 500, // Dikurangi dari 1000
+  mode: 'detailed',
+  maxOutputTokens: 1500,
   temperature: 0.3
 }
 
@@ -38,7 +38,8 @@ export async function gradeEssayAnswerOptimized(
   questionType: 'essay' | 'multiple_choice' = 'essay',
   correctAnswer?: string,
   config: PromptConfig = defaultConfig,
-  retryCount: number = 0
+  retryCount: number = 0,
+  rubric?: string
 ): Promise<AIGradingResponse> {
   const maxRetries = 2 // Maximum retry attempts
 
@@ -111,6 +112,10 @@ export async function gradeEssayAnswerOptimized(
         retryAttempt: retryCount
       }
     })
+
+    if (rubric?.trim()) {
+      prompt += `\n\nRUBRIK PENILAIAN DARI GURU:\n${rubric}\nHarap gunakan rubrik ini sebagai dasar UTAMA penilaian Anda.`;
+    }
 
     const result = await openai.chat.completions.create({
       model: openaiConfig.model,
@@ -670,8 +675,8 @@ function validateAndFormatResponse(aiResponse: any): AIGradingResponse {
 
   const finalResponse = {
     score: Math.round(Number(aiResponse.score)),
-    feedback: String(aiResponse.feedback).trim().substring(0, 200), // Limit length
-    reasoning: String(aiResponse.reasoning).trim().substring(0, 100) // Limit length
+    feedback: String(aiResponse.feedback).trim(),
+    reasoning: String(aiResponse.reasoning).trim()
   }
 
   console.log('VALIDATION: Final validated response:', finalResponse)
@@ -689,6 +694,7 @@ export async function optimizedBatchGradeAnswers(
     studentAnswer: string
     questionType?: 'essay' | 'multiple_choice'
     correctAnswer?: string
+    rubric?: string
   }>,
   config: PromptConfig = defaultConfig
 ): Promise<Array<{ id: string; result: AIGradingResponse }>> {
@@ -743,7 +749,9 @@ export async function optimizedBatchGradeAnswers(
         answer.studentAnswer,
         answer.questionType,
         answer.correctAnswer,
-        config
+        config,
+        0,
+        answer.rubric
       )
       
       const processingTime = Date.now() - startTime

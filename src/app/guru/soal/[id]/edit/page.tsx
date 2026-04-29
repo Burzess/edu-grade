@@ -31,9 +31,10 @@ const soalSchema = z.object({
     text: z.string().min(1, 'Opsi tidak boleh kosong')
   })).optional(),
   correct_answer: z.string().optional(),
+  rubric: z.string().optional(),
 }).refine((data) => {
   console.log('Validating edit soalSchema:', data);
-  
+
   // Jika pilihan ganda, harus ada minimal 2 opsi dan jawaban benar
   if (data.question_type === 'multiple_choice') {
     if (!data.options || data.options.length < 2) {
@@ -51,14 +52,10 @@ const soalSchema = z.object({
       return false;
     }
   }
-  // Untuk essay, options dan correct_answer harus undefined/null
+  // Untuk essay, correct_answer diperbolehkan
   if (data.question_type === 'essay') {
     if (data.options && data.options.length > 0) {
       console.log('Validation failed: Essay has options');
-      return false;
-    }
-    if (data.correct_answer && data.correct_answer.trim() !== '') {
-      console.log('Validation failed: Essay has correct_answer');
       return false;
     }
   }
@@ -80,10 +77,10 @@ interface EditSoalPageProps {
 export default function EditSoalPage({ params }: EditSoalPageProps) {
   const resolvedParams = use(params)
   console.log('EditSoalPage: Resolved params:', resolvedParams)
-  
+
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
-  
+
   const { data: soal, isLoading, error: fetchError } = useSoalDetail(resolvedParams.id)
   const updateSoalMutation = useUpdateSoal()
 
@@ -94,7 +91,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
     const timeout = setTimeout(() => {
       if (isLoading) {
         console.warn('EditSoalPage: Still loading after 10 seconds, this might be stuck!')
-        console.log('Debug info:', { 
+        console.log('Debug info:', {
           resolvedParamsId: resolvedParams.id
         })
       }
@@ -111,6 +108,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
       tags: [],
       options: undefined,
       correct_answer: undefined,
+      rubric: '',
     },
   })
 
@@ -119,9 +117,8 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
   // Handle perubahan question_type
   useEffect(() => {
     if (questionType === 'essay') {
-      // Set options dan correct_answer ke undefined untuk essay
+      // Set options ke undefined untuk essay, tapi pertahankan correct_answer jika ada
       form.setValue('options', undefined)
-      form.setValue('correct_answer', undefined)
     } else if (questionType === 'multiple_choice') {
       // Set default options untuk multiple choice jika belum ada
       const currentOptions = form.getValues('options')
@@ -150,7 +147,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
     const newOptions = currentOptions.filter((_, i) => i !== index)
     console.log('EditSoalPage: Removing option at index', index, 'new options:', newOptions)
     form.setValue('options', newOptions)
-    
+
     // Reset correct_answer jika opsi yang dipilih dihapus
     const correctAnswer = form.getValues('correct_answer')
     const removedOptionId = currentOptions[index]?.id
@@ -169,6 +166,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
         tags: soal.tags || [],
         options: undefined as any,
         correct_answer: undefined as any,
+        rubric: (soal as any).rubric || '',
       }
 
       // Set options dan correct_answer berdasarkan tipe soal
@@ -180,6 +178,8 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
           { id: 'D', text: '' },
         ]
         formData.correct_answer = soal.correct_answer || ''
+      } else if (soal.question_type === 'essay') {
+        formData.correct_answer = soal.correct_answer || ''
       }
 
       console.log('EditSoalPage: Setting form data:', formData)
@@ -190,7 +190,7 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
   const onSubmit = async (data: SoalForm) => {
     try {
       setError(null)
-      
+
       const updateData: any = {
         id: resolvedParams.id,
         question_text: data.question_text,
@@ -203,13 +203,14 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
         updateData.options = data.options || []
         updateData.correct_answer = data.correct_answer
       } else {
-        // Hapus options dan correct_answer untuk essay
+        // Hapus options untuk essay, gunakan correct_answer sebagai reference
         updateData.options = null
-        updateData.correct_answer = null
+        updateData.correct_answer = data.correct_answer || null
+        updateData.rubric = data.rubric || null
       }
 
       await updateSoalMutation.mutateAsync(updateData)
-      
+
       router.push('/guru/soal')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengupdate soal')
@@ -221,11 +222,11 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
       <GuruLayout>
         <div className="p-6 space-y-6">
           <div className="flex items-center space-x-4">
-            <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <Link href="/guru/soal" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Kembali ke Daftar Soal
+              Kembali ke Daftar Soalllllll
             </Link>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-foreground">
               Edit Soal
             </h1>
           </div>
@@ -299,215 +300,269 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
         </div>
 
         <Card>
-            <CardHeader>
-              <CardTitle>Edit Soal</CardTitle>
-              <CardDescription>
-                Edit soal yang sudah ada. Perubahan akan mempengaruhi ujian yang menggunakan soal ini.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {error && (
-                <Alert className="mb-6" variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+          <CardHeader>
+            <CardTitle>Edit Soal</CardTitle>
+            <CardDescription>
+              Edit soal yang sudah ada. Perubahan akan mempengaruhi ujian yang menggunakan soal ini.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert className="mb-6" variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="question_text"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pertanyaan *</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Tuliskan pertanyaan atau soal di sini..."
+                          className="min-h-[120px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Tuliskan pertanyaan yang jelas dan mudah dipahami siswa.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 gap-6">
                   <FormField
                     control={form.control}
-                    name="question_text"
+                    name="question_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pertanyaan *</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Tuliskan pertanyaan atau soal di sini..."
-                            className="min-h-[120px]"
-                            {...field}
-                          />
-                        </FormControl>
+                        <FormLabel>Tipe Soal *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih tipe soal" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="essay">Essay</SelectItem>
+                            <SelectItem value="multiple_choice">Pilihan Ganda</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormDescription>
-                          Tuliskan pertanyaan yang jelas dan mudah dipahami siswa.
+                          Pilih tipe soal: Essay untuk jawaban bebas, Pilihan Ganda untuk opsi A, B, C, D.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
 
-                  <div className="grid grid-cols-1 gap-6">
+                {questionType === 'essay' && (
+                  <FormField
+                    control={form.control}
+                    name="rubric"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rubrik Penilaian (Opsional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Masukkan kriteria atau panduan penilaian untuk soal ini... (Misal: 50% untuk ketepatan teori, 50% untuk contoh relevan)"
+                            className="min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Rubrik ini akan digunakan oleh AI untuk menilai jawaban essay secara lebih akurat sesuai standar Anda.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Kunci Jawaban Essay */}
+                {questionType === 'essay' && (
+                  <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
+                    <h4 className="text-sm font-medium text-foreground">Kunci Jawaban Essay (Opsional)</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Berikan kunci jawaban untuk membantu AI melakukan penilaian yang lebih akurat.
+                    </p>
                     <FormField
                       control={form.control}
-                      name="question_type"
+                      name="correct_answer"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tipe Soal *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pilih tipe soal" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="essay">Essay</SelectItem>
-                              <SelectItem value="multiple_choice">Pilihan Ganda</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Kunci Jawaban</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Tuliskan kunci jawaban atau poin-poin utama yang harus ada dalam jawaban siswa..."
+                              className="min-h-[100px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
                           <FormDescription>
-                            Pilih tipe soal: Essay untuk jawaban bebas, Pilihan Ganda untuk opsi A, B, C, D.
+                            Kosongkan jika ingin AI menilai secara bebas tanpa referensi khusus.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
+                )}
 
-                  {/* Options untuk Multiple Choice */}
-                  {questionType === 'multiple_choice' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Opsi Jawaban *</FormLabel>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addOption}
-                          disabled={(form.getValues('options')?.length || 0) >= 6}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Tambah Opsi
-                        </Button>
-                      </div>
-                      
-                      <FormField
-                        control={form.control}
-                        name="options"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <div className="space-y-3">
-                                {(field.value || []).map((option, index) => (
-                                  <div key={index} className="flex items-center space-x-3">
-                                    <div className="flex-1">
-                                      <div className="flex items-center space-x-2">
-                                        <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium">
-                                          {option.id}
-                                        </span>
-                                        <Input
-                                          placeholder={`Opsi ${option.id}`}
-                                          value={option.text}
-                                          onChange={(e) => {
-                                            const newOptions = [...(field.value || [])]
-                                            newOptions[index] = { ...option, text: e.target.value }
-                                            field.onChange(newOptions)
-                                          }}
-                                        />
-                                        {(field.value || []).length > 2 && (
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeOption(index)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="correct_answer"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Jawaban Benar *</FormLabel>
-                            <FormControl>
-                              <RadioGroup
-                                value={field.value}
-                                onValueChange={field.onChange}
-                                className="flex flex-wrap gap-4"
-                              >
-                                {(form.getValues('options') || []).map((option) => (
-                                  <div key={option.id} className="flex items-center space-x-2">
-                                    <RadioGroupItem value={option.id} id={`correct-${option.id}`} />
-                                    <Label htmlFor={`correct-${option.id}`} className="cursor-pointer">
-                                      Opsi {option.id}
-                                    </Label>
-                                  </div>
-                                ))}
-                              </RadioGroup>
-                            </FormControl>
-                            <FormDescription>
-                              Pilih opsi mana yang merupakan jawaban benar.
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  <FormField
-                    control={form.control}
-                    name="tags"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tags</FormLabel>
-                        <FormControl>
-                          <TagInput
-                            value={field.value || []}
-                            onChange={field.onChange}
-                            placeholder="Tambah tag untuk kategori soal..."
-                            maxTags={10}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Tag membantu mengorganisir dan mencari soal. Contoh: "matematika", "aljabar", "kelas-10"
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="pt-6 border-t">
-                    <div className="flex justify-end space-x-4">
+                {/* Options untuk Multiple Choice */}
+                {questionType === 'multiple_choice' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Opsi Jawaban *</FormLabel>
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => router.push('/guru/soal')}
+                        size="sm"
+                        onClick={addOption}
+                        disabled={(form.getValues('options')?.length || 0) >= 6}
                       >
-                        Batal
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={updateSoalMutation.isPending}
-                      >
-                        {updateSoalMutation.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Menyimpan...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Simpan Perubahan
-                          </>
-                        )}
+                        <Plus className="h-4 w-4 mr-1" />
+                        Tambah Opsi
                       </Button>
                     </div>
+
+                    <FormField
+                      control={form.control}
+                      name="options"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <div className="space-y-3">
+                              {(field.value || []).map((option, index) => (
+                                <div key={index} className="flex items-center space-x-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium">
+                                        {option.id}
+                                      </span>
+                                      <Input
+                                        placeholder={`Opsi ${option.id}`}
+                                        value={option.text}
+                                        onChange={(e) => {
+                                          const newOptions = [...(field.value || [])]
+                                          newOptions[index] = { ...option, text: e.target.value }
+                                          field.onChange(newOptions)
+                                        }}
+                                      />
+                                      {(field.value || []).length > 2 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => removeOption(index)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="correct_answer"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Jawaban Benar *</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              className="flex flex-wrap gap-4"
+                            >
+                              {(form.getValues('options') || []).map((option) => (
+                                <div key={option.id} className="flex items-center space-x-2">
+                                  <RadioGroupItem value={option.id} id={`correct-${option.id}`} />
+                                  <Label htmlFor={`correct-${option.id}`} className="cursor-pointer">
+                                    Opsi {option.id}
+                                  </Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </FormControl>
+                          <FormDescription>
+                            Pilih opsi mana yang merupakan jawaban benar.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags</FormLabel>
+                      <FormControl>
+                        <TagInput
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          placeholder="Tambah tag untuk kategori soal..."
+                          maxTags={10}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Tag membantu mengorganisir dan mencari soal. Contoh: "matematika", "aljabar", "kelas-10"
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="pt-6 border-t">
+                  <div className="flex justify-end space-x-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push('/guru/soal')}
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={updateSoalMutation.isPending}
+                    >
+                      {updateSoalMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Menyimpan...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Simpan Perubahan
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       </div>
     </GuruLayout>
   )

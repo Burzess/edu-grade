@@ -185,9 +185,9 @@ export async function POST(request: NextRequest) {
         name: 'essay/grade.requested',
         data: {
           jawabanId,
-          question: jawaban.soal.question_text,
-          answer: jawaban.answer_text,
-          correctAnswer
+          question: jawaban.soal.question_text || '',
+          correctAnswer: jawaban.soal.correct_answer || undefined,
+          rubric: jawaban.soal.rubric || undefined
         }
       })
 
@@ -279,7 +279,8 @@ export async function PUT(request: NextRequest) {
           question_text,
           question_type,
           correct_answer,
-          options
+          options,
+          rubric
         )
       `)
       .eq('ujian_id', ujianId)
@@ -314,6 +315,7 @@ export async function PUT(request: NextRequest) {
         studentAnswer: any
         question: any
         correctAnswer?: string
+        rubric?: string
       } = {
         id: jawaban.id,
         questionType: jawaban.soal.question_type,
@@ -397,8 +399,8 @@ export async function PUT(request: NextRequest) {
             console.log(' Using OPTIMIZED batch grading for essays')
             
             const promptConfig: PromptConfig = {
-              mode: 'concise',
-              maxOutputTokens: 500,
+              mode: 'detailed',
+              maxOutputTokens: 1500,
               temperature: 0.3
             }
             
@@ -407,7 +409,8 @@ export async function PUT(request: NextRequest) {
               question: ans.question,
               studentAnswer: ans.studentAnswer,
               questionType: ans.questionType as 'essay' | 'multiple_choice',
-              correctAnswer: ans.correctAnswer
+              correctAnswer: ans.correctAnswer,
+              rubric: ans.rubric
             }))
             
             const batchResults = await optimizedBatchGradeAnswers(essayAnswers, promptConfig)
@@ -499,8 +502,8 @@ export async function PUT(request: NextRequest) {
               let gradingResult
               if (useOptimized) {
                 const promptConfig: PromptConfig = {
-                  mode: 'concise',
-                  maxOutputTokens: 500,
+                  mode: 'detailed',
+                  maxOutputTokens: 1500,
                   temperature: 0.3
                 }
                 
@@ -509,7 +512,9 @@ export async function PUT(request: NextRequest) {
                   answerData.studentAnswer,
                   answerData.questionType,
                   answerData.correctAnswer,
-                  promptConfig
+                  promptConfig,
+                  0,
+                  answerData.rubric
                 )
               } else {
                 gradingResult = await gradeEssayAnswer(

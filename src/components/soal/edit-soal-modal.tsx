@@ -35,6 +35,7 @@ const soalSchema = z.object({
     text: z.string().min(1, 'Opsi tidak boleh kosong'),
   })).optional(),
   correct_answer: z.string().optional(),
+  rubric: z.string().optional(),
 }).refine((data) => {
   if (data.question_type === 'multiple_choice') {
     if (!data.options || data.options.length < 2) return false
@@ -71,6 +72,7 @@ export function EditSoalModal({ soalId, children }: EditSoalModalProps) {
       tags: [],
       options: undefined,
       correct_answer: undefined,
+      rubric: '',
     },
   })
 
@@ -104,6 +106,7 @@ export function EditSoalModal({ soalId, children }: EditSoalModalProps) {
         tags: soal.tags || [],
         options: undefined,
         correct_answer: undefined,
+        rubric: (soal as any).rubric || '',
       }
       if (soal.question_type === 'multiple_choice') {
         formData.options = soal.options || [
@@ -160,6 +163,7 @@ export function EditSoalModal({ soalId, children }: EditSoalModalProps) {
       } else {
         updateData.options = null
         updateData.correct_answer = data.correct_answer || null
+        updateData.rubric = data.rubric || null
       }
       await updateSoalMutation.mutateAsync(updateData)
       setOpen(false)
@@ -364,6 +368,27 @@ export function EditSoalModal({ soalId, children }: EditSoalModalProps) {
                         </FormControl>
                         <FormDescription>
                           Kosongkan jika ingin AI menilai secara bebas tanpa referensi khusus.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="rubric"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rubrik Penilaian (Opsional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Masukkan kriteria atau panduan penilaian untuk soal ini... (Misal: 50% untuk ketepatan teori, 50% untuk contoh relevan)"
+                            className="min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Rubrik ini akan digunakan oleh AI untuk menilai jawaban essay secara lebih akurat.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

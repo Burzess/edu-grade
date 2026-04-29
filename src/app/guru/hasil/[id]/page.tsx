@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useHasilUjianDetail, useUpdateScore } from '@/hooks/use-hasil-ujian'
 import { GuruLayout } from '@/components/layout/guru-layout'
+import { useBatchAIGrading } from '@/hooks/use-jawaban'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -24,7 +25,8 @@ import {
   Clock,
   User,
   Award,
-  Download
+  Download,
+  Bot
 } from 'lucide-react'
 import { exportHasilUjianToExcel } from '@/lib/export-excel'
 import { format } from 'date-fns'
@@ -326,8 +328,9 @@ export default function HasilUjianDetail() {
   const router = useRouter()
   const ujianId = params.id as string
   
-  const { data: hasilData, isLoading } = useHasilUjianDetail(ujianId)
+  const { data: hasilData, isLoading, refetch } = useHasilUjianDetail(ujianId)
   const updateScoreMutation = useUpdateScore()
+  const batchAIGrading = useBatchAIGrading()
 
   // Add debug function to window in development
   useEffect(() => {
@@ -356,6 +359,23 @@ export default function HasilUjianDetail() {
       const errorMessage = error?.message || 'Gagal memperbarui nilai'
       console.error('Showing error toast:', errorMessage)
       toast.error(errorMessage)
+    }
+  }
+
+  const handleBatchAIGrading = async () => {
+    try {
+      await batchAIGrading.mutateAsync({
+        ujianId,
+        options: {
+          useOptimized: true,
+          useBatching: true,
+          forceAI: false
+        }
+      })
+      // Refetch data setelah grading selesai
+      refetch()
+    } catch (error) {
+      console.error('Error during batch AI grading:', error)
     }
   }
 
@@ -406,13 +426,24 @@ export default function HasilUjianDetail() {
               <p className="text-muted-foreground">{ujian.description || 'Tidak ada deskripsi'}</p>
             </div>
           </div>
-          <Button
-            onClick={() => exportHasilUjianToExcel(ujian.name, siswaResults)}
-            disabled={siswaResults.length === 0}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleBatchAIGrading}
+              disabled={siswaResults.length === 0 || batchAIGrading.isPending}
+              className="bg-brand-600 hover:bg-brand-700 text-white"
+            >
+              <Bot className="h-4 w-4 mr-2" />
+              {batchAIGrading.isPending ? 'Menilai...' : 'Nilai dengan AI'}
+            </Button>
+            <Button
+              onClick={() => exportHasilUjianToExcel(ujian.name, siswaResults)}
+              disabled={siswaResults.length === 0}
+              variant="outline"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
