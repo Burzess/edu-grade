@@ -30,20 +30,21 @@ export const gradeEssayJob = inngest.createFunction(
     triggers: [{ event: 'essay/grade.requested' }]
   },
   async ({ event, step }) => {
-    const { jawabanId, question, answer, correctAnswer } = event.data
+    const { jawabanId, question, answer, correctAnswer, rubric } = event.data
 
     // Step 1: Validate data
     const validatedData = await step.run('validate-data', async () => {
       if (!jawabanId || !question || !answer) {
         throw new Error('Missing required data')
       }
-      return { jawabanId, question, answer, correctAnswer }
+      return { jawabanId, question, answer, correctAnswer, rubric }
     })
 
     // Step 2: Call AI with generateObject (Tahap 3: Structured JSON output)
     const gradingResult = await step.run('call-ai-grading', async () => {
       try {
-        const prompt = correctAnswer 
+        // Build base prompt
+        let prompt = correctAnswer 
           ? `Sebagai sistem penilaian otomatis, nilai essay berikut dengan menggunakan kunci jawaban sebagai referensi:
 
 PERTANYAAN:
@@ -53,7 +54,27 @@ KUNCI JAWABAN:
 ${correctAnswer}
 
 JAWABAN SISWA:
-${answer}
+${answer}`
+          : `Sebagai sistem penilaian otomatis, nilai essay berikut:
+
+PERTANYAAN:
+${question}
+
+JAWABAN SISWA:
+${answer}`
+
+        // Use teacher's rubric as primary criteria if available,
+        // otherwise fall back to default criteria
+        if (validatedData.rubric?.trim()) {
+          prompt += `
+
+RUBRIK PENILAIAN DARI GURU:
+${validatedData.rubric}
+
+Harap gunakan rubrik ini sebagai dasar UTAMA penilaian Anda.
+Berikan penilaian objektif dengan skor 0-100.`
+        } else if (correctAnswer) {
+          prompt += `
 
 Kriteria penilaian:
 1. Kesesuaian dengan kunci jawaban (50%)
@@ -62,13 +83,8 @@ Kriteria penilaian:
 4. Penggunaan bahasa (10%)
 
 Berikan penilaian objektif dengan skor 0-100.`
-          : `Sebagai sistem penilaian otomatis, nilai essay berikut:
-
-PERTANYAAN:
-${question}
-
-JAWABAN SISWA:
-${answer}
+        } else {
+          prompt += `
 
 Kriteria penilaian:
 1. Keakuratan dan relevansi (40%)
@@ -77,10 +93,11 @@ Kriteria penilaian:
 4. Penggunaan bahasa (10%)
 
 Berikan penilaian objektif dengan skor 0-100.`
+        }
 
         // TAHAP 3: Gunakan generateObject untuk structured output
         const { object } = await generateObject({
-          model: google('gemini-2.0-flash-exp'),
+          model: google('gemini-3-flash-preview'),
           schema: GradingResultSchema,
           prompt,
           temperature: 0.3

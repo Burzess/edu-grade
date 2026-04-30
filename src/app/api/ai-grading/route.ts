@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
           question_text,
           question_type,
           correct_answer,
-          options
+          options,
+          rubric
         )
       `)
       .eq('id', jawabanId)
@@ -333,6 +334,11 @@ export async function PUT(request: NextRequest) {
         answerData.correctAnswer = jawaban.soal.correct_answer
       }
 
+      // Attach teacher's rubric if available
+      if (jawaban.soal.rubric) {
+        answerData.rubric = jawaban.soal.rubric
+      }
+
       // Decide grading method
       if (!forceAI && !needsAIGrading(jawaban.soal.question_type)) {
         autoGradableAnswers.push(answerData)
@@ -576,8 +582,8 @@ export async function PUT(request: NextRequest) {
             let gradingResult
             if (useOptimized) {
               const promptConfig: PromptConfig = {
-                mode: 'concise',
-                maxOutputTokens: 500,
+                mode: 'detailed',
+                maxOutputTokens: 1500,
                 temperature: 0.3
               }
               
@@ -586,7 +592,9 @@ export async function PUT(request: NextRequest) {
                 answerData.studentAnswer,
                 answerData.questionType,
                 answerData.correctAnswer,
-                promptConfig
+                promptConfig,
+                0,
+                answerData.rubric
               )
             } else {
               gradingResult = await gradeEssayAnswer(

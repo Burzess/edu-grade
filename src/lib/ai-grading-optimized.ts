@@ -69,7 +69,7 @@ export async function gradeEssayAnswerOptimized(
 
     // OpenAI configuration - using Google Gemini through OpenRouter for consistency
     const openaiConfig = {
-      model: "google/gemini-2.0-flash-exp:free",
+      model: "google/gemini-3-flash-preview",
       temperature: config.temperature,
       max_tokens: config.maxOutputTokens,
       top_p: 0.95, // ENHANCED: More focused responses
@@ -114,7 +114,7 @@ export async function gradeEssayAnswerOptimized(
       referenceAnswerPreview: correctAnswer ? correctAnswer.substring(0, 100) + '...' : 'N/A',
       fullPrompt: prompt,
       modelConfig: {
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'google/gemini-3-flash-preview',
         temperature: config.temperature,
         maxOutputTokens: config.maxOutputTokens,
         retryAttempt: retryCount

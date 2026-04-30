@@ -160,7 +160,7 @@ export async function gradeEssayAnswer(
     }
 
     const result = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp:free",
+      model: "google/gemini-3-flash-preview",
       messages: [
         {
           role: "user",
@@ -466,7 +466,7 @@ async function gradeMultipleEssaysInOneRequest(
     `
 
   const result = await openai.chat.completions.create({
-    model: "google/gemini-2.0-flash-exp:free",
+    model: "google/gemini-3-flash-preview",
     messages: [
       {
         role: "user",
