@@ -1,177 +1,94 @@
-# Edu-Grade - Sistem Penilaian Otomatis
+# EduGrade - Sistem Penilaian Otomatis
 
-Platform pembelajaran modern dengan sistem penilaian otomatis menggunakan AI untuk membantu guru dan siswa dalam proses belajar mengajar.
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![License](https://img.shields.io/badge/license-Private-red)
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
-## 🚀 Fitur Utama
+## Deskripsi
 
-### Untuk Guru:
-- ✅ Autentikasi dengan role-based access
-- ✅ Dashboard guru dengan statistik
-- 🔄 Kelola bank soal essay (CRUD)
-- 🔄 Buat dan kelola ujian
-- 🔄 Penilaian otomatis dengan AI
-- 🔄 Lihat hasil dan berikan feedback manual
+EduGrade adalah Sistem Penilaian Otomatis berbasis web yang dirancang untuk membantu proses evaluasi pembelajaran di lingkungan pendidikan. Sistem ini memanfaatkan teknologi kecerdasan buatan (AI) dari Google Gemini dan OpenAI untuk melakukan penilaian otomatis terhadap jawaban siswa, sehingga mengurangi beban kerja guru dan meningkatkan konsistensi penilaian.
 
-### Untuk Siswa:
-- ✅ Autentikasi dengan role-based access  
-- ✅ Dashboard siswa
-- 🔄 Mengerjakan ujian yang tersedia
-- 🔄 Lihat hasil dan feedback
+Dibangun menggunakan Next.js 15 dengan TypeScript dan Supabase sebagai backend, EduGrade menyediakan antarmuka yang responsif dan modern untuk tiga peran pengguna utama: Admin, Guru, dan Siswa.
 
-## 🛠️ Tech Stack
+## Fitur Utama
 
-- **Framework**: Next.js 15 (App Router)
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **UI Components**: ShadCN UI
-- **Styling**: Tailwind CSS
-- **Form Handling**: React Hook Form + Zod
-- **State Management**: Zustand
-- **Data Fetching**: TanStack Query
-- **Language**: TypeScript
+### Admin
 
-## 📦 Setup Development
+- Manajemen pengguna (guru dan siswa)
+- Monitoring aktivitas sistem
+- Konfigurasi pengaturan global
+- Dashboard statistik keseluruhan
+- Manajemen survei kepuasan
 
-### 1. Clone dan Install Dependencies
+### Guru
+
+- Manajemen kelas dan anggota kelas
+- Pembuatan dan pengelolaan bank soal
+- Pembuatan ujian dengan berbagai tipe soal
+- Penilaian otomatis menggunakan AI (Gemini/OpenAI)
+- Monitoring progres siswa dan hasil ujian
+- Export hasil penilaian
+
+### Siswa
+
+- Mengikuti kelas yang tersedia
+- Mengerjakan ujian secara online
+- Melihat hasil dan feedback penilaian AI
+- Dashboard progres pembelajaran pribadi
+- Mengisi survei kepuasan
+
+## Tech Stack
+
+| Teknologi | Versi | Kategori |
+|-----------|-------|----------|
+| Next.js | 15.5.12 | Framework |
+| TypeScript | 5.9.2 | Bahasa |
+| Supabase | 2.52.1 | Database & Auth |
+| Google Gemini (AI SDK) | 3.0.60 | AI Provider |
+| OpenAI | 5.23.0 | AI Provider |
+| Vercel AI SDK | 6.0.153 | AI Integration |
+| Zustand | 5.0.6 | State Management |
+| TanStack Query | 5.83.0 | Data Fetching |
+| Tailwind CSS | 4.1.13 | Styling |
+| Radix UI | various | UI Components |
+| HeroUI | 2.8.3 | UI Components |
+| Inngest | 4.2.0 | Background Jobs |
+| Vitest | 1.5.9 | Testing |
+| fast-check | 4.8.0 | Property Testing |
+| Zod | 3.23.8 | Validasi |
+
+## Quick Start
 
 ```bash
+# Clone repository
 git clone <repository-url>
 cd edu-grade
+
+# Install dependencies
 npm install
-```
 
-### 2. Setup Supabase
-
-1. Buat project baru di [Supabase](https://supabase.com)
-2. Dapatkan URL dan anon key dari Settings > API
-3. Copy `.env.local.example` ke `.env.local`:
-
-```bash
+# Salin file environment
 cp .env.local.example .env.local
-```
 
-4. Update file `.env.local`:
+# Isi konfigurasi environment variables (lihat docs/setup-guide.md)
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-NEXTAUTH_SECRET=your_random_secret_key
-NEXTAUTH_URL=http://localhost:3000
-```
-
-### 3. Setup Database Schema
-
-1. Buka Supabase Dashboard
-2. Masuk ke SQL Editor
-3. Copy dan jalankan script dari `supabase/schema.sql`
-
-Script ini akan membuat:
-- Table `profiles` dengan role (siswa/guru)
-- Table `soal` untuk bank soal
-- Table `ujian` untuk ujian
-- Table `ujian_soal` untuk relasi ujian-soal
-- Table `jawaban` untuk jawaban siswa
-- Row Level Security (RLS) policies
-- Indexes untuk performa
-- Trigger untuk auto-create profile
-
-### 4. Setup Authentication
-
-Di Supabase Dashboard:
-1. Masuk ke Authentication > Settings
-2. Pastikan "Enable email confirmations" diaktifkan sesuai kebutuhan
-3. Atur redirect URLs jika diperlukan
-
-### 5. Jalankan Development Server
-
-```bash
+# Jalankan development server
 npm run dev
 ```
 
-Aplikasi akan berjalan di [http://localhost:3000](http://localhost:3000)
+Untuk panduan instalasi lengkap termasuk setup database, konfigurasi API keys, dan troubleshooting, lihat **[Panduan Setup](docs/setup-guide.md)**.
 
-## 📁 Struktur Project
+## Dokumentasi
 
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── guru/              # Protected routes for guru
-│   │   └── dashboard/     # Guru dashboard
-│   ├── siswa/             # Protected routes for siswa  
-│   │   └── dashboard/     # Siswa dashboard
-│   ├── login/             # Login page
-│   ├── register/          # Register page
-│   └── layout.tsx         # Root layout with providers
-├── components/
-│   ├── providers/         # React providers
-│   └── ui/               # ShadCN UI components
-├── lib/
-│   └── supabase/         # Supabase client configurations
-├── store/                # Zustand stores
-├── types/                # TypeScript type definitions
-└── middleware.ts         # Route protection middleware
-```
-
-## 🔐 Authentication & Authorization
-
-### Role-based Access Control:
-- **Siswa**: Akses ke `/siswa/*` routes
-- **Guru**: Akses ke `/guru/*` routes
-- **Public**: `/`, `/login`, `/register`
-
-### Row Level Security (RLS):
-- Users hanya bisa akses data mereka sendiri
-- Guru hanya bisa kelola soal/ujian yang mereka buat
-- Siswa hanya bisa lihat ujian aktif & jawaban mereka sendiri
-
-## 🚧 Development Roadmap
-
-### ✅ Phase 1 - Foundation (COMPLETED)
-- [x] Next.js project setup dengan TypeScript
-- [x] ShadCN UI configuration
-- [x] Supabase client setup
-- [x] Authentication system
-- [x] Database schema dengan RLS
-- [x] Route protection middleware
-- [x] Basic dashboard untuk guru & siswa
-
-### 🔄 Phase 2 - Guru: CRUD Soal (IN PROGRESS)
-- [ ] Halaman daftar soal dengan pagination
-- [ ] Form create/edit soal
-- [ ] Delete soal dengan confirmation
-- [ ] Filter dan search soal
-- [ ] Tag management system
-
-### 📋 Phase 3 - Guru: Kelola Ujian (PLANNED)
-- [ ] Halaman daftar ujian
-- [ ] Form create ujian dengan pilih soal
-- [ ] Edit ujian dan soal yang dipilih
-- [ ] Validasi waktu ujian
-- [ ] Preview ujian sebelum publish
-
-### 👨‍🎓 Phase 4 - Siswa: Mengerjakan Ujian (PLANNED)
-- [ ] Daftar ujian yang tersedia
-- [ ] Interface mengerjakan ujian
-- [ ] Submit jawaban
-- [ ] Integration dengan AI untuk scoring
-- [ ] Timer dan validasi waktu ujian
-
-### 📊 Phase 5 - Hasil & Feedback (PLANNED)
-- [ ] Dashboard hasil untuk guru
-- [ ] Manual override scoring
-- [ ] Feedback system
-- [ ] Export hasil ke CSV/PDF
-- [ ] Dashboard hasil untuk siswa
-
-## 🤝 Contributing
-
-1. Fork the project
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License.
+| No | Dokumen | Deskripsi |
+|----|---------|-----------|
+| 1 | [Arsitektur Sistem](docs/architecture.md) | Penjelasan arsitektur keseluruhan sistem, pola desain, dan hubungan antar layer |
+| 2 | [Entity Relationship Diagram](docs/erd.md) | Diagram dan dokumentasi relasi antar tabel database |
+| 3 | [Dokumentasi Use Case](docs/use-cases.md) | Use case diagram dan narasi interaksi aktor dengan sistem |
+| 4 | [Desain Sistem](docs/system-design.md) | Sequence diagram, activity diagram, dan design patterns |
+| 5 | [Tech Stack](docs/tech-stack.md) | Penjelasan mendalam pemilihan teknologi dan perbandingan alternatif |
+| 6 | [Dokumentasi API](docs/api-documentation.md) | Dokumentasi lengkap seluruh API endpoint dengan contoh request/response |
+| 7 | [Panduan Setup](docs/setup-guide.md) | Panduan instalasi dan konfigurasi lingkungan pengembangan |
+| 8 | [Struktur Folder](docs/folder-structure.md) | Penjelasan organisasi kode dan konvensi penamaan |
+| 9 | [Coding Conventions](docs/coding-conventions.md) | Panduan konvensi penulisan kode dan standar proyek |
+| 10 | [Panduan Deployment](docs/deployment-guide.md) | Panduan deployment ke Vercel dan konfigurasi produksi |
