@@ -14,24 +14,11 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Unauthorized' 
+        error: 'Tidak terautentikasi' 
       }, { status: 401 })
     }
 
-    // Check if user is siswa
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (userProfile?.role !== 'siswa') {
-      return NextResponse.json({
-        success: false,
-        error: 'Only siswa can access this endpoint'
-      }, { status: 403 })
-    }
-
+    // Build ujian query
     let query = supabase
       .from('ujian')
       .select(`
@@ -53,24 +40,43 @@ export async function GET(request: NextRequest) {
       query = query.eq('kelas_id', kelasId)
     }
 
-    const { data: ujianData, error: ujianError } = await query
-      .order('created_at', { ascending: false })
+    // Parallelize all independent queries
+    const [profileResult, ujianResult, ujianSiswaResult, jawabanResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single(),
+      query.order('created_at', { ascending: false }),
+      supabase
+        .from('ujian_siswa')
+        .select('ujian_id, status, attempt_number')
+        .eq('siswa_id', user.id),
+      supabase
+        .from('jawaban_siswa')
+        .select('ujian_id')
+        .eq('siswa_id', user.id),
+    ])
 
-    if (ujianError) {
-      console.error('Error fetching ujian:', ujianError)
+    // Check if user is siswa
+    if (profileResult.data?.role !== 'siswa') {
       return NextResponse.json({
         success: false,
-        error: 'Failed to fetch ujian'
+        error: 'Hanya siswa yang dapat mengakses endpoint ini'
+      }, { status: 403 })
+    }
+
+    const { data: ujianData, error: ujianError } = ujianResult
+
+    if (ujianError) {
+      return NextResponse.json({
+        success: false,
+        error: 'Gagal mengambil data ujian'
       }, { status: 500 })
     }
 
-    // Get ujian_siswa records for this siswa to check attempt status
-    const { data: ujianSiswaRecords } = await supabase
-      .from('ujian_siswa')
-      .select('ujian_id, status, attempt_number')
-      .eq('siswa_id', user.id)
-
     // Group by ujian_id to get attempt counts
+    const { data: ujianSiswaRecords } = ujianSiswaResult
     const ujianAttemptMap = new Map<string, { completedCount: number; hasInProgress: boolean }>()
     ujianSiswaRecords?.forEach(record => {
       const existing = ujianAttemptMap.get(record.ujian_id) || { completedCount: 0, hasInProgress: false }
@@ -79,15 +85,11 @@ export async function GET(request: NextRequest) {
       ujianAttemptMap.set(record.ujian_id, existing)
     })
 
-    // Also get jawaban for backward compatibility
-    const { data: completedUjian } = await supabase
-      .from('jawaban_siswa')
-      .select('ujian_id')
-      .eq('siswa_id', user.id)
+    // Jawaban for backward compatibility
+    const { data: completedUjian } = jawabanResult
+    const ujianWithJawaban = new Set(completedUjian?.map(j => j.ujian_id) || []);
 
-    const ujianWithJawaban = new Set(completedUjian?.map(j => j.ujian_id) || [])
-
-    // Get guru names for ujian
+    // Get guru names for ujian (depends on ujianData, so cannot be parallelized above)
     const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
     let guruData: { id: string; full_name: string | null }[] = []
     
@@ -106,7 +108,7 @@ export async function GET(request: NextRequest) {
         const attemptInfo = ujianAttemptMap.get(ujian.id)
         const hasJawaban = ujianWithJawaban.has(ujian.id)
         
-        // If student has an in_progress attempt, don't show as "available" (they're already in)
+        // If student has an in_progress attempt, don't show as "available"
         if (attemptInfo?.hasInProgress) return false
         
         // If no attempts and no jawaban, it's available
@@ -146,12 +148,11 @@ export async function GET(request: NextRequest) {
       data: availableUjian
     })
 
-  } catch (error: unknown) {
-    console.error('Error in GET /api/ujian/available:', error)
+  } catch (_error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Internal server error' 
+        error: 'Terjadi kesalahan pada server' 
       },
       { status: 500 }
     )

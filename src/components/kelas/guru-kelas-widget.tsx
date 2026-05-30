@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Users, Copy, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,97 +14,20 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { CreateKelasModal } from './create-kelas-modal';
-import { KelasWithMemberCount } from '@/types/kelas';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-
-// Helper untuk mendapatkan valid access token dengan validasi user
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
+import { useKelasGuru, useCreateKelas } from '@/hooks/use-kelas';
 
 export function GuruKelasWidget() {
-  const [kelasList, setKelasList] = useState<KelasWithMemberCount[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
-  
-
-
-  const fetchKelas = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      
-      if (!accessToken) {
-        console.warn('Session tidak valid untuk fetch kelas');
-        return;
-      }
-
-      const response = await fetch('/api/kelas', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch kelas');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setKelasList(result.data || []);
-      } else {
-        throw new Error(result.error || 'Failed to fetch kelas');
-      }
-    } catch (error: unknown) {
-      console.error('Error fetching kelas:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchKelas();
-  }, []);
+  const { data: kelasList = [], isLoading } = useKelasGuru();
+  const createKelas = useCreateKelas();
 
   const handleCreateKelas = async (data: { nama_kelas: string }) => {
     try {
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      
-      if (!accessToken) {
-        console.warn('Session tidak valid untuk create kelas');
-        toastError('Error', 'Session expired, silakan login ulang');
-        router.push('/login');
-        return;
-      }
-
-      const response = await fetch('/api/kelas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toastSuccess('Berhasil!', result.message);
-        setShowCreateModal(false);
-        fetchKelas(); // Refresh data
-      } else {
-        throw new Error(result.error || 'Failed to create kelas');
-      }
+      await createKelas.mutateAsync(data);
+      toastSuccess('Berhasil!', 'Kelas berhasil dibuat');
+      setShowCreateModal(false);
     } catch (error: unknown) {
       console.error('Error creating kelas:', error);
       toastError('Error', 'Gagal membuat kelas');
@@ -237,7 +160,6 @@ export function GuruKelasWidget() {
         </CardContent>
       </Card>
 
-      {/* Create Kelas Modal */}
       <CreateKelasModal 
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}

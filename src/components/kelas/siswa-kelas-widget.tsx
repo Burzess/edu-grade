@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, BookOpen, Calendar, AlertCircle } from 'lucide-react';
+import { Plus, Users, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,17 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { JoinKelasModal } from './join-kelas-modal-widget';
 import { useRouter } from 'next/navigation';
 import { useKelasSiswa, useJoinKelas } from '@/hooks/use-kelas';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
 import { toastSuccess, toastError } from '@/lib/toast';
-
-// Helper untuk mendapatkan valid access token dengan validasi user
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
 
 export function SiswaKelasWidget() {
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -27,7 +18,6 @@ export function SiswaKelasWidget() {
   
   // Use hooks untuk consistent data management
   const { user } = useAuthStore();
-  const supabase = createClient();
   const { data: kelasList = [], isLoading, refetch } = useKelasSiswa();
   const joinKelasMutation = useJoinKelas();
   
@@ -35,104 +25,32 @@ export function SiswaKelasWidget() {
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
-      console.log('Widget: Joining kelas with code:', kodeKelas);
-      console.log('Widget: Current user from auth store:', user?.id);
-      
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      console.log('Widget: Token validation:', { 
-        hasToken: !!accessToken
-      });
-      
-      if (!user?.id || !accessToken) {
-        console.warn('Widget: Session tidak valid - redirecting to login');
+      if (!user?.id) {
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         return;
       }
 
-      // Try dengan hook pertama
-      console.log('Widget: Using hook mutation...');
-      const result = await joinKelasMutation.mutateAsync(kodeKelas);
-      console.log('Widget: Hook result received:', result);
-
-      // Check if result indicates success or failure
-      if (result && typeof result === 'object' && 'success' in result) {
-        if (result.success === false) {
-          console.log('Widget: Hook returned failure:', result);
-          
-          // Throw error to be caught by catch block
-          const errorMsg = result.message || 'Join kelas gagal';
-          throw new Error(errorMsg);
-        }
-      }
-
-      console.log('Widget: Join kelas successful via hook:', result);
-      
+      await joinKelasMutation.mutateAsync(kodeKelas);
       toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
       setShowJoinModal(false);
-      
-      // Refresh data
       await refetch();
-      
     } catch (error: any) {
-      console.error('Widget: Hook join failed, trying API fallback:', error);
-      
-      // Fallback ke API endpoint jika hook gagal
-      try {
-        // Validasi ulang dan ambil token dengan aman
-        const accessToken = await getValidAccessToken(supabase);
-        
-        if (!accessToken) {
-          throw new Error('Session tidak valid untuk API call');
-        }
-        
-        console.log('Widget: Trying API endpoint fallback...');
-        console.log(kodeKelas);
-        const response = await fetch('/api/kelas/join', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ kode_kelas: kodeKelas }),
-        });
+      const errorMsg = error?.message || '';
+      let errorMessage = 'Gagal bergabung ke kelas';
 
-        const result = await response.json();
-        
-        if (result.success) {
-          console.log('Widget: Join successful via API fallback:', result);
-          toastSuccess('Berhasil!', result.message);
-          setShowJoinModal(false);
-          await refetch();
-          return;
-        } else {
-          throw new Error(result.message || 'API join failed');
-        }
-      } catch (apiError: any) {
-        console.error('Widget: Both hook and API failed:', apiError);
-        
-        let errorMessage = 'Gagal bergabung ke kelas';
-        
-        // Handle error dari hook atau API
-        const errorMsg = error?.message || apiError?.message || '';
-        
-        if (errorMsg.includes('KELAS_NOT_FOUND') || errorMsg.includes('tidak ditemukan')) {
-          errorMessage = 'Kode kelas tidak ditemukan. Periksa kembali kode yang Anda masukkan.';
-        } else if (errorMsg.includes('ALREADY_JOINED') || errorMsg.includes('sudah terdaftar')) {
-          errorMessage = 'Anda sudah terdaftar di kelas ini.';
-        } else if (errorMsg.includes('session') || errorMsg.includes('authentication')) {
-          errorMessage = 'Session expired, silakan login ulang';
-          router.push('/login');
-        } else if (errorMsg.includes('tidak terautentikasi')) {
-          errorMessage = 'Session expired, silakan login ulang';
-          router.push('/login');
-        } else {
-          errorMessage = errorMsg || 'Gagal bergabung ke kelas';
-        }
-
-        toastError('Error', errorMessage);
+      if (errorMsg.includes('KELAS_NOT_FOUND') || errorMsg.includes('tidak ditemukan')) {
+        errorMessage = 'Kode kelas tidak ditemukan. Periksa kembali kode yang Anda masukkan.';
+      } else if (errorMsg.includes('ALREADY_JOINED') || errorMsg.includes('sudah terdaftar')) {
+        errorMessage = 'Anda sudah terdaftar di kelas ini.';
+      } else if (errorMsg.includes('session') || errorMsg.includes('authentication') || errorMsg.includes('tidak terautentikasi')) {
+        errorMessage = 'Session expired, silakan login ulang';
+        router.push('/login');
+      } else if (errorMsg) {
+        errorMessage = errorMsg;
       }
+
+      toastError('Error', errorMessage);
     }
   };
 

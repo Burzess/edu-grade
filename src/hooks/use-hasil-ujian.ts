@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth'
 const supabase = createClient()
 
 // Hook untuk mendapatkan daftar ujian guru dengan statistik
+// Uses single-query aggregation to avoid N+1 client-side queries (bug 1.24)
 export function useUjianGuru() {
     const { user } = useAuthStore()
 
@@ -15,8 +16,7 @@ export function useUjianGuru() {
                 return []
             }
 
-            try {
-                // Ambil ujian yang dibuat oleh guru
+            // Ambil ujian yang dibuat oleh guru
                 const { data: ujianData, error: ujianError } = await supabase
                     .from('ujian')
                     .select(`
@@ -33,7 +33,6 @@ export function useUjianGuru() {
                     .order('created_at', { ascending: false })
 
                 if (ujianError) {
-                    console.error('Error fetching ujian guru:', ujianError)
                     throw ujianError
                 }
 
@@ -41,93 +40,91 @@ export function useUjianGuru() {
                     return []
                 }
 
-                // Untuk setiap ujian, hitung statistik
-                const ujianWithStats = await Promise.all(
-                    ujianData.map(async (ujian) => {
-                        // Hitung total soal
-                        const { data: soalCount } = await supabase
-                            .from('ujian_soal')
-                            .select('id', { count: 'exact' })
-                            .eq('ujian_id', ujian.id)
+                const ujianIds = ujianData.map(u => u.id)
 
-                        // Hitung siswa yang sudah mengerjakan (berdasarkan attempt terakhir)
-                        const { data: jawabanData } = await supabase
-                            .from('jawaban_siswa')
-                            .select('siswa_id, created_at')
-                            .eq('ujian_id', ujian.id)
-                            .order('created_at', { ascending: false })
+                // Single query: fetch all soal counts for all ujian at once
+                const { data: allSoalData } = await supabase
+                    .from('ujian_soal')
+                    .select('ujian_id')
+                    .in('ujian_id', ujianIds)
 
-                        // Group by siswa_id untuk menghitung unique siswa
-                        const siswaMap = new Map()
-                        jawabanData?.forEach((jawaban: any) => {
-                            const siswaId = jawaban.siswa_id
-                            const currentDate = new Date(jawaban.created_at)
-                            
-                            if (!siswaMap.has(siswaId) || 
-                                new Date(siswaMap.get(siswaId).created_at) < currentDate) {
-                                siswaMap.set(siswaId, jawaban)
-                            }
+                // Single query: fetch all jawaban for all ujian at once (with scores)
+                const { data: allJawabanData } = await supabase
+                    .from('jawaban_siswa')
+                    .select('ujian_id, siswa_id, score, created_at')
+                    .in('ujian_id', ujianIds)
+                    .order('created_at', { ascending: false })
+
+                // Client-side aggregation: count soal per ujian
+                const soalCountByUjian = new Map<string, number>()
+                allSoalData?.forEach((soal: { ujian_id: string }) => {
+                    soalCountByUjian.set(soal.ujian_id, (soalCountByUjian.get(soal.ujian_id) || 0) + 1)
+                })
+
+                // Client-side aggregation: group jawaban by ujian_id
+                const jawabanByUjian = new Map<string, Array<{ siswa_id: string; score: number | null; created_at: string }>>()
+                allJawabanData?.forEach((jawaban: { ujian_id: string; siswa_id: string; score: number | null; created_at: string }) => {
+                    if (!jawabanByUjian.has(jawaban.ujian_id)) {
+                        jawabanByUjian.set(jawaban.ujian_id, [])
+                    }
+                    jawabanByUjian.get(jawaban.ujian_id)!.push(jawaban)
+                })
+
+                // Compute statistics per ujian from the aggregated data
+                const ujianWithStats = ujianData.map((ujian) => {
+                    const totalSoal = soalCountByUjian.get(ujian.id) || 0
+                    const jawabanForUjian = jawabanByUjian.get(ujian.id) || []
+
+                    // Count unique siswa
+                    const siswaSet = new Set<string>()
+                    jawabanForUjian.forEach(j => siswaSet.add(j.siswa_id))
+                    const totalSiswa = siswaSet.size
+
+                    // Compute average score from latest attempt per siswa
+                    const siswaScoreMap = new Map<string, Array<{ score: number | null; created_at: string }>>()
+                    jawabanForUjian.forEach(jawaban => {
+                        if (!siswaScoreMap.has(jawaban.siswa_id)) {
+                            siswaScoreMap.set(jawaban.siswa_id, [])
+                        }
+                        siswaScoreMap.get(jawaban.siswa_id)!.push(jawaban)
+                    })
+
+                    let totalAverage = 0
+                    let siswaWithScores = 0
+
+                    siswaScoreMap.forEach((scores) => {
+                        // Sort by created_at descending and filter to latest attempt window
+                        const sorted = scores
+                            .filter(s => s.score !== null)
+                            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+                        if (sorted.length === 0) return
+
+                        // Ambil jawaban dalam rentang 1 menit dari attempt terakhir
+                        const latestDate = new Date(sorted[0].created_at)
+                        const latestScores = sorted.filter(s => {
+                            const currentDate = new Date(s.created_at)
+                            return Math.abs(latestDate.getTime() - currentDate.getTime()) < 60000
                         })
 
-                        const uniqueSiswa = siswaMap.size
-
-                        // Hitung rata-rata nilai
-                        const { data: scoreData } = await supabase
-                            .from('jawaban_siswa')
-                            .select('score, siswa_id, created_at')
-                            .eq('ujian_id', ujian.id)
-                            .not('score', 'is', null)
-
-                        // Group by siswa untuk ambil score dari attempt terakhir
-                        const siswaScoreMap = new Map()
-                        scoreData?.forEach((jawaban: any) => {
-                            const siswaId = jawaban.siswa_id
-                            const currentDate = new Date(jawaban.created_at)
-                            
-                            if (!siswaScoreMap.has(siswaId)) {
-                                siswaScoreMap.set(siswaId, [])
-                            }
-                            siswaScoreMap.get(siswaId).push(jawaban)
-                        })
-
-                        // Hitung rata-rata per siswa dari attempt terakhir
-                        let totalAverage = 0
-                        let siswaWithScores = 0
-
-                        siswaScoreMap.forEach((scores, siswaId) => {
-                            // Sort by created_at dan ambil yang terbaru
-                            const latestScores = scores
-                                .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                                .filter((s: any, index: number, arr: any[]) => {
-                                    // Ambil jawaban dalam rentang 1 menit dari attempt terakhir
-                                    const latestDate = new Date(arr[0].created_at)
-                                    const currentDate = new Date(s.created_at)
-                                    return Math.abs(latestDate.getTime() - currentDate.getTime()) < 60000
-                                })
-
-                            if (latestScores.length > 0) {
-                                const siswaAverage = latestScores.reduce((sum: number, s: any) => sum + s.score, 0) / latestScores.length
-                                totalAverage += siswaAverage
-                                siswaWithScores++
-                            }
-                        })
-
-                        const overallAverage = siswaWithScores > 0 ? Math.round(totalAverage / siswaWithScores) : null
-
-                        return {
-                            ...ujian,
-                            totalSoal: soalCount?.length || 0,
-                            totalSiswa: uniqueSiswa,
-                            averageScore: overallAverage
+                        if (latestScores.length > 0) {
+                            const siswaAverage = latestScores.reduce((sum, s) => sum + (s.score as number), 0) / latestScores.length
+                            totalAverage += siswaAverage
+                            siswaWithScores++
                         }
                     })
-                )
+
+                    const averageScore = siswaWithScores > 0 ? Math.round(totalAverage / siswaWithScores) : null
+
+                    return {
+                        ...ujian,
+                        totalSoal,
+                        totalSiswa,
+                        averageScore
+                    }
+                })
 
                 return ujianWithStats
-            } catch (error: unknown) {
-                console.error('Error in useUjianGuru:', error)
-                throw error
-            }
         },
         enabled: !!user?.id,
         staleTime: 60000, // 1 menit
@@ -146,8 +143,7 @@ export function useHasilUjianDetail(ujianId: string) {
                 return null
             }
 
-            try {
-                // SECURITY FIX: Pastikan ujian ini milik guru yang sedang login
+            // SECURITY FIX: Pastikan ujian ini milik guru yang sedang login
                 const { data: ujianData, error: ujianError } = await supabase
                     .from('ujian')
                     .select(`
@@ -166,7 +162,6 @@ export function useHasilUjianDetail(ujianId: string) {
                     .maybeSingle()
 
                 if (ujianError || !ujianData) {
-                    console.error('Error fetching ujian detail atau ujian bukan milik guru ini:', ujianError)
                     throw new Error('Ujian tidak ditemukan atau Anda tidak memiliki akses')
                 }
 
@@ -198,7 +193,6 @@ export function useHasilUjianDetail(ujianId: string) {
                     .order('created_at', { ascending: false })
 
                 if (jawabanError) {
-                    console.error('Error fetching jawaban detail:', jawabanError)
                     throw jawabanError
                 }
 
@@ -277,10 +271,6 @@ export function useHasilUjianDetail(ujianId: string) {
                     ujian: ujianData,
                     siswaResults
                 }
-            } catch (error: unknown) {
-                console.error('Error in useHasilUjianDetail:', error)
-                throw error
-            }
         },
         enabled: !!user?.id && !!ujianId,
         staleTime: 30000,
@@ -298,8 +288,6 @@ export function useUpdateScore() {
             score: number
             feedback?: string 
         }) => {
-            console.log('Updating score:', { jawabanId, score, feedback })
-
             // Validasi input
             if (!jawabanId) {
                 throw new Error('ID jawaban tidak boleh kosong')
@@ -317,16 +305,12 @@ export function useUpdateScore() {
                 .maybeSingle()
 
             if (checkError) {
-                console.error('Error checking jawaban:', checkError)
                 throw new Error(`Error saat cek jawaban: ${checkError.message}`)
             }
 
             if (!existingData) {
-                console.error('Jawaban tidak ditemukan dengan ID:', jawabanId)
                 throw new Error(`Jawaban dengan ID ${jawabanId} tidak ditemukan`)
             }
-
-            console.log('Jawaban ditemukan:', existingData)
 
             // Update score
             const { data, error } = await supabase
@@ -340,27 +324,20 @@ export function useUpdateScore() {
                 .select()
 
             if (error) {
-                console.error('Error updating score:', error)
                 throw new Error(`Gagal update score: ${error.message}`)
             }
 
             if (!data || data.length === 0) {
-                console.error('Update tidak menghasilkan data:', data)
                 throw new Error('Update score tidak berhasil - tidak ada data yang berubah')
             }
 
-            console.log('Score updated successfully:', data[0])
             return data[0]
         },
-        onSuccess: (data) => {
-            console.log('Invalidating related queries after score update')
+        onSuccess: () => {
             // Invalidate related queries untuk refresh UI
             queryClient.invalidateQueries({ queryKey: ['hasil'] })
             queryClient.invalidateQueries({ queryKey: ['jawaban'] })
             queryClient.invalidateQueries({ queryKey: ['ujian'] })
         },
-        onError: (error) => {
-            console.error('Mutation error:', error)
-        }
     })
 }

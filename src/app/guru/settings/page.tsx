@@ -12,7 +12,6 @@ import {
   Lock,
   Palette,
   Database,
-  Shield,
   Save
 } from 'lucide-react'
 

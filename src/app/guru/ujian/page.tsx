@@ -35,8 +35,8 @@ import {
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Plus, Search, MoreVertical, Edit, Trash2, Clock, Users, FileText, Bug } from 'lucide-react'
-import { formatDistanceToNow, format, isAfter, isBefore } from 'date-fns'
+import { Plus, Search, MoreVertical, Edit, Trash2, Clock, Users, FileText, Eye } from 'lucide-react'
+import { formatDistanceToNow, format } from 'date-fns'
 import { id } from 'date-fns/locale'
 
 interface UjianCardProps {
@@ -109,6 +109,12 @@ function UjianCard({ ujian, onDelete, onStartUjian }: UjianCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/guru/ujian/${ujian.id}`}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Detail
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href={`/guru/ujian/${ujian.id}/edit`}>
                       <Edit className="h-4 w-4 mr-2" />
@@ -253,34 +259,28 @@ function UjianPageContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterKelas, setFilterKelas] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [useDebugQuery, setUseDebugQuery] = useState(false)
+
   const pageSize = 12
 
   const { data: ujianData, isLoading, error } = useUjian(currentPage, pageSize)
-  const { data: kelasData, isLoading: isLoadingKelas } = useKelasGuru()
+  const { data: kelasData } = useKelasGuru()
   const deleteUjianMutation = useDeleteUjian()
   const startUjianMutation = useStartUjian()
 
   const handleDelete = async (id: string) => {
-    console.log('Deleting ujian:', { id })
-    
     try {
       await deleteUjianMutation.mutateAsync(id)
       toast.success('Ujian berhasil dihapus')
-    } catch (error: unknown) {
-      console.error('Error deleting ujian:', error)
+    } catch (_error: unknown) {
       toast.error('Gagal menghapus ujian')
     }
   }
 
   const handleStartUjian = async (id: string) => {
-    console.log('Starting ujian:', { id })
-    
     try {
       await startUjianMutation.mutateAsync(id)
       toast.success('Ujian berhasil dimulai')
-    } catch (error: unknown) {
-      console.error('Error starting ujian:', error)
+    } catch (_error: unknown) {
       toast.error('Gagal memulai ujian')
     }
   }

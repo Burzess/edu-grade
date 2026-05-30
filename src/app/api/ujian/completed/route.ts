@@ -14,38 +14,38 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Unauthorized' 
+        error: 'Tidak terautentikasi' 
       }, { status: 401 })
     }
 
-    // Check if user is siswa
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Parallelize independent queries
+    const [profileResult, completedResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('jawaban_siswa')
+        .select('ujian_id, created_at')
+        .eq('siswa_id', user.id)
+        .order('created_at', { ascending: false }),
+    ])
 
-    if (userProfile?.role !== 'siswa') {
+    // Check if user is siswa
+    if (profileResult.data?.role !== 'siswa') {
       return NextResponse.json({
         success: false,
-        error: 'Only siswa can access this endpoint'
+        error: 'Hanya siswa yang dapat mengakses endpoint ini'
       }, { status: 403 })
     }
 
-    // Get completed ujian for this siswa
-    let query = supabase
-      .from('jawaban_siswa')
-      .select('ujian_id, created_at')
-      .eq('siswa_id', user.id)
-
-    const { data: completedData, error: completedError } = await query
-      .order('created_at', { ascending: false })
+    const { data: completedData, error: completedError } = completedResult
 
     if (completedError) {
-      console.error('Error fetching completed ujian:', completedError)
       return NextResponse.json({
         success: false,
-        error: 'Failed to fetch completed ujian'
+        error: 'Gagal mengambil data ujian yang telah selesai'
       }, { status: 500 })
     }
 
@@ -58,59 +58,51 @@ export async function GET(request: NextRequest) {
 
     // Get ujian details
     const ujianIds = [...new Set(completedData.map(j => j.ujian_id))]
+
+    // Build ujian query with optional kelas filter
     let ujianQuery = supabase
       .from('ujian')
       .select('id, name, description, created_by, kelas_id, allow_remidi, max_attempts')
       .in('id', ujianIds)
 
-    // Filter by kelas_id if provided
     if (kelasId) {
       ujianQuery = ujianQuery.eq('kelas_id', kelasId)
     }
 
-    const { data: ujianData, error: ujianError } = await ujianQuery
+    // Parallelize independent queries
+    const [ujianResult, scoresResult, ujianSiswaResult] = await Promise.all([
+      ujianQuery,
+      ujianIds.length > 0
+        ? supabase
+            .from('jawaban_siswa')
+            .select('ujian_id, score, ai_feedback, attempt_number')
+            .eq('siswa_id', user.id)
+            .in('ujian_id', ujianIds)
+        : Promise.resolve({ data: null }),
+      ujianIds.length > 0
+        ? supabase
+            .from('ujian_siswa')
+            .select('ujian_id, attempt_number, status, submitted_at')
+            .eq('siswa_id', user.id)
+            .in('ujian_id', ujianIds)
+            .eq('status', 'completed')
+            .order('attempt_number', { ascending: true })
+        : Promise.resolve({ data: null }),
+    ])
+
+    const { data: ujianData, error: ujianError } = ujianResult
 
     if (ujianError) {
-      console.error('Error fetching ujian details:', ujianError)
       return NextResponse.json({
         success: false,
-        error: 'Failed to fetch ujian details'
+        error: 'Gagal mengambil data detail ujian'
       }, { status: 500 })
     }
 
-    // Get scores for completed ujian (include attempt_number)
-    let scoresData: { ujian_id: string; score: number | null; ai_feedback: string | null; attempt_number: number | null }[] = []
+    const scoresData: { ujian_id: string; score: number | null; ai_feedback: string | null; attempt_number: number | null }[] = scoresResult.data || []
+    const ujianSiswaData: { ujian_id: string; attempt_number: number; status: string; submitted_at: string }[] = ujianSiswaResult.data || []
 
-    if (ujianIds.length > 0) {
-      const { data: scores } = await supabase
-        .from('jawaban_siswa')
-        .select(`
-          ujian_id,
-          score,
-          ai_feedback,
-          attempt_number
-        `)
-        .eq('siswa_id', user.id)
-        .in('ujian_id', ujianIds)
-    
-      scoresData = scores || []
-    }
-
-    // Get ujian_siswa records for attempt info
-    let ujianSiswaData: { ujian_id: string; attempt_number: number; status: string; submitted_at: string }[] = []
-    if (ujianIds.length > 0) {
-      const { data: ujianSiswa } = await supabase
-        .from('ujian_siswa')
-        .select('ujian_id, attempt_number, status, submitted_at')
-        .eq('siswa_id', user.id)
-        .in('ujian_id', ujianIds)
-        .eq('status', 'completed')
-        .order('attempt_number', { ascending: true })
-      
-      ujianSiswaData = ujianSiswa || []
-    }
-
-    // Get guru names for ujian
+    // Get guru names for ujian (depends on ujianData)
     const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
     let guruData: { id: string; full_name: string | null }[] = []
     
@@ -159,8 +151,8 @@ export async function GET(request: NextRequest) {
         const totalAnswers = ujianScores.length
 
         // For remidi exams, take the best score across attempts
-        let bestScore: number | null = null
-        let averageScore: number | null = null
+        let bestScore: number | null
+        let averageScore: number | null
 
         if (attemptScores.length > 0) {
           const validScores = attemptScores.filter(a => a.score !== null)
@@ -208,12 +200,11 @@ export async function GET(request: NextRequest) {
       data: completedUjian
     })
 
-  } catch (error: unknown) {
-    console.error('Error in GET /api/ujian/completed:', error)
+  } catch (_error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Internal server error' 
+        error: 'Terjadi kesalahan pada server' 
       },
       { status: 500 }
     )

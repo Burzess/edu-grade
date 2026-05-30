@@ -158,7 +158,6 @@ export default function GuruHasilDashboard() {
   // Hitung statistik keseluruhan
   const totalUjian = ujianList.length
   const activeUjian = ujianList.filter(u => u.status === 'active').length
-  const totalSiswaUnik = new Set(ujianList.flatMap(u => Array(u.totalSiswa).fill(0).map((_, i) => `${u.id}_${i}`))).size
   const overallAverage = ujianList.length > 0 
     ? Math.round(ujianList.reduce((sum, u) => sum + (u.averageScore || 0), 0) / ujianList.filter(u => u.averageScore !== null).length) || null
     : null

@@ -9,7 +9,6 @@ import {
   BookOpen,
   Bot,
   ShieldCheck,
-  Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react"

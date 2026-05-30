@@ -4,10 +4,10 @@ import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
-const uuidSchema = z.string().uuid('Invalid kelas ID format')
+const uuidSchema = z.string().uuid('Format ID kelas tidak valid')
 
 export async function GET(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: Promise<{ kelasId: string }> }
 ) {
     try {
@@ -18,7 +18,7 @@ export async function GET(
         if (authError || !user) {
             return NextResponse.json({
                 success: false,
-                error: 'Unauthorized'
+                error: 'Tidak terautentikasi'
             }, { status: 401 })
         }
 
@@ -32,7 +32,7 @@ export async function GET(
         if (userProfile?.role !== 'siswa') {
             return NextResponse.json({
                 success: false,
-                error: 'Only siswa can access this endpoint'
+                error: 'Hanya siswa yang dapat mengakses endpoint ini'
             }, { status: 403 })
         }
 
@@ -43,7 +43,7 @@ export async function GET(
         if (!kelasIdParsed.success) {
             return NextResponse.json({
                 success: false,
-                error: 'Invalid kelas ID'
+                error: 'ID kelas tidak valid'
             }, { status: 400 })
         }
 
@@ -58,7 +58,7 @@ export async function GET(
         if (membershipError || !membershipData) {
             return NextResponse.json({
                 success: false,
-                error: 'Kelas not found or you are not a member of this kelas'
+                error: 'Kelas tidak ditemukan atau Anda bukan anggota kelas ini'
             }, { status: 404 })
         }
 
@@ -77,7 +77,7 @@ export async function GET(
         if (kelasError || !kelasData) {
             return NextResponse.json({
                 success: false,
-                error: 'Kelas not found'
+                error: 'Kelas tidak ditemukan'
             }, { status: 404 })
         }
 
@@ -107,12 +107,11 @@ export async function GET(
             data: kelasDetail
         })
 
-    } catch (error: unknown) {
-        console.error('Error in GET /api/kelas/[kelasId]:', error)
+    } catch (_error: unknown) {
         return NextResponse.json(
             {
                 success: false,
-                error: 'Internal server error'
+                error: 'Terjadi kesalahan pada server'
             },
             { status: 500 }
         )

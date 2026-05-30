@@ -11,24 +11,13 @@ import { JoinKelasModal } from '@/components/kelas/join-kelas-modal-widget'
 import { toastSuccess, toastError } from '@/lib/toast'
 import {
   BookOpen,
-  Users,
   Plus,
   ChevronRight,
   GraduationCap,
   Calendar,
-  Clock,
   School,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
-
-// Helper untuk mendapatkan valid access token dengan validasi user
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
 
 interface KelasCardProps {
   kelas: any
@@ -121,31 +110,15 @@ export default function SiswaDashboardClient() {
   const [showJoinModal, setShowJoinModal] = useState(false)
   const router = useRouter()
   const { user } = useAuthStore()
-  const supabase = createClient()
   
   const { data: rawKelasList = [], isLoading, refetch } = useKelasSiswa()
   const joinKelasMutation = useJoinKelas()
 
   // Filter hanya kelas aktif sebagai double-check (API sudah filter tapi ini untuk safety)
   const kelasList = rawKelasList.filter((kelas: any) => {
-    // Debug log untuk setiap kelas
-    console.log('Kelas filter check:', {
-      id: kelas.id,
-      nama: kelas.nama_kelas,
-      is_active: kelas.is_active,
-      typeof_active: typeof kelas.is_active,
-      included: kelas.is_active === true // Hanya terima yang eksplisit true
-    });
-    
     // STRICT: Hanya include kelas yang eksplisit is_active = true
     return kelas.is_active === true;
   })
-
-  console.log('Dashboard: Filtered kelas count:', {
-    raw: rawKelasList.length,
-    filtered: kelasList.length,
-    isLoading
-  });
 
   const handleViewKelas = (kelasId: string) => {
     router.push(`/siswa/kelas/${kelasId}`)
@@ -153,13 +126,7 @@ export default function SiswaDashboardClient() {
 
   const handleJoinKelas = async (kodeKelas: string) => {
     try {
-      console.log('Dashboard: Joining kelas with code:', kodeKelas);
-      
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      
-      if (!user?.id || !accessToken) {
-        console.warn('Dashboard: Session tidak valid');
+      if (!user?.id) {
         toastError('Error', 'Session expired, silakan login ulang');
         router.push('/login');
         return;
@@ -172,8 +139,6 @@ export default function SiswaDashboardClient() {
           throw new Error(result.message || 'Join kelas gagal');
         }
       }
-
-      console.log('Dashboard: Join kelas successful:', result);
       
       toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
       setShowJoinModal(false);
@@ -182,8 +147,6 @@ export default function SiswaDashboardClient() {
       await refetch();
       
     } catch (error: any) {
-      console.error('Dashboard: Join failed:', error);
-      
       let errorMessage = 'Gagal bergabung ke kelas';
       const errorMsg = error?.message || '';
       
@@ -199,15 +162,6 @@ export default function SiswaDashboardClient() {
       toastError('Error', errorMessage);
     }
   };
-
-  // Debug: Log semua data yang diterima
-  console.log('Dashboard Render:', {
-    isLoading,
-    rawCount: rawKelasList.length,
-    filteredCount: kelasList.length,
-    rawData: rawKelasList,
-    filteredData: kelasList
-  });
 
   return (
     <>

@@ -17,18 +17,9 @@ import { CreateKelasModal } from './create-kelas-modal';
 import { EditKelasModal } from './edit-kelas-modal';
 import { KelasStatusToggle } from './kelas-status-toggle';
 import { useKelasGuru, useCreateKelas, useUpdateKelasName, useToggleKelasStatus } from '@/hooks/use-kelas';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
 import { KelasWithMemberCount } from '@/types/kelas';
 import { useRouter } from 'next/navigation';
-
-// Helper untuk mendapatkan valid access token dengan validasi user
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
 
 export function KelolaKelasPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -36,8 +27,7 @@ export function KelolaKelasPage() {
   const [selectedKelas, setSelectedKelas] = useState<any>(null);
   const router = useRouter();
   
-  // Initialize clients and auth
-  const supabase = createClient();
+  // Initialize auth
   const { user } = useAuthStore();
   
   // Use hooks dengan mutation untuk real-time updates
@@ -48,48 +38,14 @@ export function KelolaKelasPage() {
 
 
 
-  // Handle create kelas via API endpoint untuk bypass RLS issue
+  // Handle create kelas via hook
   const handleCreateKelas = async (data: { nama_kelas: string; }) => {
     try {
-      console.log('Creating kelas via API endpoint:', data);
-      
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      if (!accessToken) {
-        throw new Error('Session tidak valid atau expired');
-      }
-      
-      // Call API endpoint yang akan handle RLS bypass
-      const response = await fetch('/api/kelas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          nama_kelas: data.nama_kelas.trim()
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API response error:', errorData);
-        throw new Error(errorData.error || errorData.message || 'Failed to create kelas');
-      }
-      
-      const result = await response.json();
-      console.log('Kelas created via API:', result);
-      
-      toastSuccess('Berhasil!', result.message || 'Kelas berhasil dibuat');
+      await createKelasMutation.mutateAsync(data);
+      toastSuccess('Berhasil!', 'Kelas berhasil dibuat');
       setShowCreateModal(false);
-      
-      // No need to reload - createKelasMutation will handle cache invalidation
-      
     } catch (error: unknown) {
-      console.error('API create error:', error);
-      
       let errorMessage = 'Gagal membuat kelas';
-      
       if (error instanceof Error) {
         if (error.message.includes('42P17') || error.message.includes('infinite recursion')) {
           errorMessage = 'Masalah konfigurasi database. Admin sedang memperbaiki, coba lagi nanti.';
@@ -103,7 +59,6 @@ export function KelolaKelasPage() {
           errorMessage = error.message;
         }
       }
-      
       toastError('Error', errorMessage);
     }
   };

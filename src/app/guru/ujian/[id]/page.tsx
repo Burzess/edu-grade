@@ -18,7 +18,8 @@ import {
     Calendar,
     Eye,
     AlertTriangle,
-    CheckCircle2
+    CheckCircle2,
+    Settings
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -36,6 +37,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { GradeVisibilityToggle } from '@/components/ujian/grade-visibility-toggle'
+import { useVisibilitySetting } from '@/features/ujian/hooks/use-visibility-setting'
 
 interface UjianDetailPageProps {
     params: Promise<{
@@ -119,18 +122,16 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
 
     const { data: ujian, isLoading, error } = useUjianDetail(resolvedParams.id)
     const deleteUjianMutation = useDeleteUjian()
+    const { setting: visibilitySetting, isLoading: isVisibilityLoading } = useVisibilitySetting(resolvedParams.id)
 
     const handleDelete = async () => {
         try {
             setIsDeleting(true)
-            console.log('Deleting ujian...', resolvedParams.id)
 
             await deleteUjianMutation.mutateAsync(resolvedParams.id)
 
-            console.log('Ujian deleted successfully')
             router.push('/guru/ujian')
-        } catch (err: unknown) {
-            console.error('Error deleting ujian:', err)
+        } catch (_err: unknown) {
             setIsDeleting(false)
         }
     }
@@ -265,7 +266,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Hapus Ujian</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Apakah Anda yakin ingin menghapus ujian "{ujian.name}"?
+                                        Apakah Anda yakin ingin menghapus ujian &quot;{ujian.name}&quot;?
                                         Tindakan ini tidak dapat dibatalkan dan akan menghapus semua data terkait ujian.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
@@ -389,6 +390,29 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                                     <span className="text-sm text-muted-foreground">Rata-rata</span>
                                     <span className="text-sm font-medium">-</span>
                                 </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pengaturan Visibilitas Nilai */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Settings className="h-5 w-5" />
+                                    Pengaturan Nilai
+                                </CardTitle>
+                                <CardDescription>
+                                    Kontrol visibilitas nilai untuk siswa
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {isVisibilityLoading ? (
+                                    <Skeleton className="h-6 w-full" />
+                                ) : (
+                                    <GradeVisibilityToggle
+                                        ujianId={resolvedParams.id}
+                                        currentSetting={visibilitySetting ?? 'visible'}
+                                    />
+                                )}
                             </CardContent>
                         </Card>
                     </div>

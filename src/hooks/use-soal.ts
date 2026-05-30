@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
 import { useAuthStore } from '@/store/auth'
 
-type Soal = Database['public']['Tables']['soal']['Row']
 type SoalInsert = Database['public']['Tables']['soal']['Insert']
 type SoalUpdate = Database['public']['Tables']['soal']['Update']
 
@@ -13,7 +12,7 @@ const supabase = createClient()
 export const soalKeys = {
   all: ['soal'] as const,
   lists: () => [...soalKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...soalKeys.lists(), filters] as const,
+  list: (filters: Record<string, unknown>) => [...soalKeys.lists(), filters] as const,
   details: () => [...soalKeys.all, 'detail'] as const,
   detail: (id: string) => [...soalKeys.details(), id] as const,
 }
@@ -39,22 +38,18 @@ export function useSoalList(params?: {
         .eq('created_by', user.id)
         .order('created_at', { ascending: false })
 
-      // Search filter
       if (params?.search) {
         query = query.ilike('question_text', `%${params.search}%`)
       }
 
-      // Tags filter
       if (params?.tags && params.tags.length > 0) {
         query = query.overlaps('tags', params.tags)
       }
 
-      // Difficulty filter
       if (params?.difficulty && params.difficulty !== 'all') {
         query = query.eq('difficulty_level', params.difficulty)
       }
 
-      // Pagination
       const page = params?.page || 1
       const limit = params?.limit || 10
       const from = (page - 1) * limit
@@ -81,21 +76,14 @@ export function useSoalList(params?: {
 // Get single soal by ID
 export function useSoal(id: string) {
   const { user } = useAuthStore()
-  
-  console.log('useSoal: Called with id:', id, 'user:', user?.email)
 
   return useQuery({
     queryKey: soalKeys.detail(id),
     queryFn: async () => {
-      console.log('useSoal: QueryFn executing for id:', id)
-      
       if (!user) {
-        console.error('useSoal: User not authenticated')
         throw new Error('User not authenticated')
       }
 
-      console.log('useSoal: Fetching soal from database...')
-      
       const { data, error } = await supabase
         .from('soal')
         .select('*')
@@ -103,14 +91,10 @@ export function useSoal(id: string) {
         .eq('created_by', user.id)
         .single()
 
-      console.log('useSoal: Database response:', { data, error })
-
       if (error) {
-        console.error('useSoal: Database error:', error)
         throw error
       }
-      
-      console.log('useSoal: Success, returning data:', data)
+
       return data
     },
     enabled: !!user && !!id,
@@ -129,65 +113,40 @@ export function useCreateSoal() {
     mutationFn: async (soal: Omit<SoalInsert, 'created_by'>) => {
       if (!user) throw new Error('User not authenticated')
 
-      console.log('useCreateSoal: Starting mutation...', { soal, user: user.id })
-
-      // Buat copy data tanpa kolom yang mungkin belum ada di database
-      const { options, correct_answer, ...baseData } = soal
+      const { ...baseData } = soal
 
       const insertData = {
         ...baseData,
         created_by: user.id,
       }
 
-      console.log('useCreateSoal: Insert data (without options/correct_answer):', insertData)
+      const { data, error } = await supabase
+        .from('soal')
+        .insert({
+          ...soal,
+          created_by: user.id,
+        })
+        .select()
+        .single()
 
-      try {
-        // Coba insert dengan semua kolom dulu
-        const { data, error } = await supabase
+      if (error) {
+        const { data: fallbackData, error: fallbackError } = await supabase
           .from('soal')
-          .insert({
-            ...soal,
-            created_by: user.id,
-          })
+          .insert(insertData)
           .select()
           .single()
 
-        console.log('useCreateSoal: Full insert response:', { data, error })
-
-        if (error) {
-          console.error('Full insert failed, trying without options/correct_answer:', error)
-
-          // Jika gagal, coba tanpa options dan correct_answer
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('soal')
-            .insert(insertData)
-            .select()
-            .single()
-
-          console.log('useCreateSoal: Fallback insert response:', { data: fallbackData, error: fallbackError })
-
-          if (fallbackError) {
-            console.error('useCreateSoal: Fallback also failed:', fallbackError)
-            throw fallbackError
-          }
-
-          console.log('useCreateSoal: Fallback success!')
-          return fallbackData
+        if (fallbackError) {
+          throw fallbackError
         }
 
-        console.log('useCreateSoal: Full insert success!')
-        return data
-      } catch (err: unknown) {
-        console.error('useCreateSoal: Unexpected error:', err)
-        throw err
+        return fallbackData
       }
+
+      return data
     },
     onSuccess: () => {
-      console.log('useCreateSoal: Invalidating queries...')
       queryClient.invalidateQueries({ queryKey: soalKeys.lists() })
-    },
-    onError: (error) => {
-      console.error('useCreateSoal: Mutation error:', error)
     },
   })
 }
@@ -216,9 +175,6 @@ export function useUpdateSoal() {
       queryClient.invalidateQueries({ queryKey: soalKeys.lists() })
       queryClient.invalidateQueries({ queryKey: soalKeys.detail(data.id) })
     },
-    onError: (error: Error) => {
-      console.error('Failed to update soal:', error)
-    },
   })
 }
 
@@ -243,9 +199,6 @@ export function useDeleteSoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: soalKeys.lists() })
     },
-    onError: (error: Error) => {
-      console.error('Failed to delete soal:', error)
-    },
   })
 }
 
@@ -266,7 +219,6 @@ export function useSoalTags() {
 
       if (error) throw error
 
-      // Flatten and deduplicate tags
       const allTags = data
         .flatMap(item => item.tags || [])
         .filter((tag, index, array) => array.indexOf(tag) === index)

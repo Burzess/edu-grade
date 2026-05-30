@@ -18,9 +18,7 @@ export default function Error({
 
   useEffect(() => {
     setMounted(true);
-    // Log error untuk debugging
-    console.error('Application Error:', error);
-  }, [error]);
+  }, []);
 
   if (!mounted) {
     return (

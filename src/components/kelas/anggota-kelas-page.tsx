@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, UserMinus, Users, Calendar, Mail, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,171 +25,29 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-// import { useToast } from '@/hooks/use-toast';
-import { GetMembersResponse, KelasMemberDetail } from '@/types/kelas';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/auth';
-
-// Helper untuk mendapatkan valid access token dengan validasi user
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
+import { useKelasMembers, useRemoveKelasMember } from '@/hooks/use-kelas';
 
 interface AnggotaKelasPageProps {
   kelasId: string;
 }
 
 export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
-  const [kelasData, setKelasData] = useState<{
-    kelas: { id: string; nama_kelas: string };
-    members: KelasMemberDetail[];
-    total_members: number;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Use consistent auth pattern
   const { user } = useAuthStore();
-  const supabase = createClient();
   const router = useRouter();
+  const { data: kelasData, isLoading } = useKelasMembers(kelasId);
+  const removeMember = useRemoveKelasMember(kelasId);
 
-
-
-  const fetchMembers = async () => {
-    try {
-      setIsLoading(true);
-
-      console.log('AnggotaKelas: Fetching members for kelas:', kelasId);
-      console.log('AnggotaKelas: Current user from auth store:', user?.id);
-
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      console.log('AnggotaKelas: Token validation:', {
-        hasToken: !!accessToken
-      });
-
-      if (!accessToken) {
-        console.warn('AnggotaKelas: Session tidak valid - redirecting to login');
-        toastError('Error', 'Session expired, silakan login ulang');
-        router.push('/login');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('AnggotaKelas: Making API call to fetch members...');
-
-      const response = await fetch(`/api/kelas/${kelasId}/members`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      console.log('AnggotaKelas: API response status:', response.status);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.warn('AnggotaKelas: Kelas not found or access denied');
-          toastError('Error', 'Kelas tidak ditemukan atau Anda tidak memiliki akses');
-          router.back();
-          return;
-        } else if (response.status === 401) {
-          console.warn('AnggotaKelas: Unauthorized - redirecting to login');
-          toastError('Error', 'Session expired, silakan login ulang');
-          router.push('/login');
-          return;
-        }
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const result: GetMembersResponse = await response.json();
-      console.log('AnggotaKelas: Members fetched successfully:', result);
-
-      if (result.success) {
-        setKelasData(result.data);
-      } else {
-        throw new Error('Failed to fetch members from API');
-      }
-    } catch (error: unknown) {
-      console.error('AnggotaKelas: Error fetching members:', error);
-      toastError('Error', 'Gagal memuat data anggota kelas');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    console.log('AnggotaKelas: Component mounted with:', { kelasId, userId: user?.id });
-
-    if (!user?.id) {
-      console.warn('AnggotaKelas: No user in auth store - redirecting to login');
-      router.push('/login');
-      return;
-    }
-
-    if (kelasId) {
-      fetchMembers();
-    }
-  }, [kelasId, user?.id]);
 
   const handleRemoveMember = async (siswaId: string, namaSiswa: string) => {
     try {
       setRemovingMemberId(siswaId);
-
-      console.log('AnggotaKelas: Removing member:', { siswaId, namaSiswa, kelasId });
-      console.log('AnggotaKelas: Current user:', user?.id);
-
-      // Validasi user terlebih dahulu dengan getUser(), lalu ambil token
-      const accessToken = await getValidAccessToken(supabase);
-      console.log('AnggotaKelas: Token for remove:', {
-        hasToken: !!accessToken
-      });
-
-      if (!accessToken) {
-        console.warn('AnggotaKelas: Session tidak valid - redirecting to login');
-        toastError('Error', 'Session expired, silakan login ulang');
-        router.push('/login');
-        setRemovingMemberId(null);
-        return;
-      }
-
-      console.log('AnggotaKelas: Making DELETE API call...');
-
-      const response = await fetch(`/api/kelas/${kelasId}/members`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ siswa_id: siswaId }),
-      });
-
-      console.log('AnggotaKelas: Remove API response status:', response.status);
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.warn('AnggotaKelas: Unauthorized for remove - redirecting to login');
-          toastError('Error', 'Session expired, silakan login ulang');
-          router.push('/login');
-          return;
-        }
-        throw new Error(`Remove API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('AnggotaKelas: Remove result:', result);
-
-      if (result.success) {
-        toastSuccess('Berhasil!', result.message || `${namaSiswa} berhasil dikeluarkan dari kelas`);
-        fetchMembers(); // Refresh data
-      } else {
-        throw new Error(result.error || 'Failed to remove member');
-      }
+      await removeMember.mutateAsync(siswaId);
+      toastSuccess('Berhasil!', `${namaSiswa} berhasil dikeluarkan dari kelas`);
     } catch (error: unknown) {
-      console.error('AnggotaKelas: Error removing member:', error);
+      console.error('Error removing member:', error);
       toastError('Error', 'Gagal mengeluarkan siswa dari kelas');
     } finally {
       setRemovingMemberId(null);
@@ -366,7 +224,7 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
                         <div className="flex items-center gap-2">
                           {/* <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-400" /> */}
                           <span className="text-gray-600 dark:text-gray-300">
-                            {formatDate(member.tanggal_bergabung)}
+                            {formatDate(member.tanggal_bergabung || member.joined_at)}
                           </span>
                         </div>
                       </TableCell>

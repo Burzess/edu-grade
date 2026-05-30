@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useHasilUjianDetail, useUpdateScore } from '@/hooks/use-hasil-ujian'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { useBatchAIGrading } from '@/hooks/use-jawaban'
@@ -56,7 +56,7 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
       await onScoreUpdate(jawaban.id, numScore, feedback.trim() || undefined)
       setIsOpen(false)
     } catch (error: unknown) {
-      // Error sudah ditangani di parent component
+      // Error handled by parent component
     } finally {
       setIsSubmitting(false)
     }
@@ -332,32 +332,12 @@ export default function HasilUjianDetail() {
   const updateScoreMutation = useUpdateScore()
   const batchAIGrading = useBatchAIGrading()
 
-  // Add debug function to window in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Debug mode enabled. Use window.debugScoreUpdate(jawabanId) to troubleshoot')
-    }
-  }, [])
-
   const handleScoreUpdate = async (jawabanId: string, score: number, feedback?: string) => {
     try {
-      console.log('Starting score update:', { jawabanId, score, feedback })
-      console.log('Update mutation state:', {
-        isLoading: updateScoreMutation.isPending,
-        isError: updateScoreMutation.isError,
-        error: updateScoreMutation.error
-      })
-      
       await updateScoreMutation.mutateAsync({ jawabanId, score, feedback })
-      console.log('Score update completed successfully')
       toast.success('Nilai berhasil diperbarui')
     } catch (error: any) {
-      console.error('Error updating score:', error)
-      console.error('Error type:', typeof error)
-      console.error('Error properties:', Object.keys(error || {}))
-      
       const errorMessage = error?.message || 'Gagal memperbarui nilai'
-      console.error('Showing error toast:', errorMessage)
       toast.error(errorMessage)
     }
   }
@@ -374,8 +354,8 @@ export default function HasilUjianDetail() {
       })
       // Refetch data setelah grading selesai
       refetch()
-    } catch (error) {
-      console.error('Error during batch AI grading:', error)
+    } catch (_error) {
+      // Error handled by mutation
     }
   }
 
@@ -436,7 +416,7 @@ export default function HasilUjianDetail() {
               {batchAIGrading.isPending ? 'Menilai...' : 'Nilai dengan AI'}
             </Button>
             <Button
-              onClick={() => exportHasilUjianToExcel(ujian.name, siswaResults)}
+              onClick={async () => exportHasilUjianToExcel(ujian.name, siswaResults)}
               disabled={siswaResults.length === 0}
               variant="outline"
             >

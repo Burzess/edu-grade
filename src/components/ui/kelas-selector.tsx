@@ -25,15 +25,6 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-
-// Helper untuk mendapatkan valid access token
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
 
 interface Kelas {
   id: string
@@ -63,8 +54,6 @@ export function KelasSelector({
   const [error, setError] = useState<string | null>(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [selectedKelas, setSelectedKelas] = useState<Kelas | null>(null)
-  
-  const supabase = createClient()
 
   useEffect(() => {
     fetchKelasList()
@@ -75,17 +64,9 @@ export function KelasSelector({
       setIsLoading(true)
       setError(null)
       
-      // Validasi user terlebih dahulu, lalu ambil token
-      const accessToken = await getValidAccessToken(supabase)
-      if (!accessToken) {
-        setError('Session tidak valid atau expired')
-        return
-      }
-
+      // SSR cookies handle authentication for same-origin calls
       const response = await fetch('/api/kelas/list', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
+        credentials: 'include',
       })
 
       if (!response.ok) {

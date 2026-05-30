@@ -19,8 +19,7 @@ export default function SiswaLogoutButton() {
         signOut(),
         new Promise(resolve => setTimeout(resolve, 800))
       ])
-    } catch (error: unknown) {
-      console.error('Logout error:', error)
+    } catch (_error: unknown) {
       // Jika ada error, tetap redirect ke login
       window.location.href = '/login'
     } finally {

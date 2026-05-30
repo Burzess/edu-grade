@@ -3,18 +3,18 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Auth check — only guru can trigger auto-complete
     const supabaseAuth = await createClient()
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Tidak terautentikasi' }, { status: 401 })
     }
 
     const { data: profile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single()
     if (profile?.role !== 'guru') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
 
     const supabase = await createAdminClient()
@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
       .lt('end_time', now)
 
     if (findError) {
-      console.error('Error finding expired ujian:', findError)
       return NextResponse.json({ 
         success: false, 
         error: findError.message 
@@ -39,13 +38,10 @@ export async function POST(request: NextRequest) {
     if (!expiredUjian || expiredUjian.length === 0) {
       return NextResponse.json({ 
         success: true, 
-        message: 'No expired ujian found',
+        message: 'Tidak ditemukan ujian yang kedaluwarsa',
         completed: []
       })
     }
-
-    expiredUjian.forEach(ujian => {
-    })
 
     // Update status menjadi completed
     const ujianIds = expiredUjian.map(u => u.id)
@@ -59,41 +55,39 @@ export async function POST(request: NextRequest) {
       .select('id, name, status, end_time')
 
     if (updateError) {
-      console.error('Error updating ujian status:', updateError)
       return NextResponse.json({ 
         success: false, 
-        error: 'Failed to update ujian status' 
+        error: 'Gagal memperbarui status ujian' 
       }, { status: 500 })
     }
 
     return NextResponse.json({ 
       success: true,
-      message: `Successfully completed ${updatedUjian?.length || 0} expired ujian`,
+      message: `Berhasil menyelesaikan ${updatedUjian?.length || 0} ujian yang kedaluwarsa`,
       completed: updatedUjian || []
     })
 
-  } catch (error: unknown) {
-    console.error('Unexpected error in auto-complete API:', error)
+  } catch (_error: unknown) {
     return NextResponse.json({ 
       success: false, 
-      error: 'Internal server error' 
+      error: 'Terjadi kesalahan pada server' 
     }, { status: 500 })
   }
 }
 
 // GET method untuk status check
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Auth check
     const supabaseAuth = await createClient()
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Tidak terautentikasi' }, { status: 401 })
     }
 
     const { data: profile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single()
     if (profile?.role !== 'guru') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
 
     const supabase = await createAdminClient()
@@ -113,7 +107,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Failed to check status' 
+        error: 'Gagal memeriksa status' 
       }, { status: 500 })
     }
 
@@ -124,11 +118,10 @@ export async function GET(request: NextRequest) {
       ujian_details: soonExpired || []
     })
 
-  } catch (error: unknown) {
-    console.error('Error in status check:', error)
+  } catch (_error: unknown) {
     return NextResponse.json({ 
       success: false, 
-      error: 'Internal server error' 
+      error: 'Terjadi kesalahan pada server' 
     }, { status: 500 })
   }
 }

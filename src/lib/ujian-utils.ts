@@ -17,16 +17,38 @@ export const seededRandom = (seed: string) => {
     return Math.abs(hash) / 2147483647
 }
 
+/** A single ujian_soal row with its nested soal data. */
+interface UjianSoalItem {
+    id: string
+    soal_id: string
+    urutan: number
+    soal: {
+        id: string
+        question_text: string
+        question_type: string
+        options?: unknown[] | null
+        correct_answer?: string | null
+        tags?: string[] | null
+    } | null
+}
+
+/** Grouped question sections. */
+interface QuestionSections {
+    multipleChoice: UjianSoalItem[]
+    essay: UjianSoalItem[]
+    all: UjianSoalItem[]
+}
+
 // Organize and shuffle questions based on question_type (both MC and Essay are shuffled)
-export const organizeQuestions = (ujianSoal: any[], ujianId: string) => {
+export const organizeQuestions = (ujianSoal: UjianSoalItem[], ujianId: string): UjianSoalItem[] => {
     if (!ujianSoal?.length) return []
 
-    const sortedUjianSoal = ujianSoal.sort((a: any, b: any) => a.urutan - b.urutan)
-    const validQuestions = sortedUjianSoal.filter((us: any) => us.soal)
+    const sortedUjianSoal = ujianSoal.sort((a, b) => a.urutan - b.urutan)
+    const validQuestions = sortedUjianSoal.filter((us) => us.soal)
 
     // Kelompokkan soal berdasarkan question_type
-    const multipleChoice = validQuestions.filter((us: any) => us.soal.question_type === 'multiple_choice')
-    const essay = validQuestions.filter((us: any) => us.soal.question_type === 'essay')
+    const multipleChoice = validQuestions.filter((us) => us.soal!.question_type === 'multiple_choice')
+    const essay = validQuestions.filter((us) => us.soal!.question_type === 'essay')
 
     // Acak soal untuk setiap siswa (seed berdasarkan user ID + ujian ID)
     const userId = (typeof window !== 'undefined' ? (() => { try { return localStorage.getItem('current_user_id') } catch { return null } })() : null) || Math.random().toString()
@@ -51,9 +73,9 @@ export const organizeQuestions = (ujianSoal: any[], ujianId: string) => {
 }
 
 // Group questions for navigator
-export const groupQuestions = (organizedQuestions: any[]) => {
-    const mcQuestions = organizedQuestions.filter((q: any) => q.soal.question_type === 'multiple_choice')
-    const essayQuestions = organizedQuestions.filter((q: any) => q.soal.question_type === 'essay')
+export const groupQuestions = (organizedQuestions: UjianSoalItem[]): QuestionSections => {
+    const mcQuestions = organizedQuestions.filter((q) => q.soal?.question_type === 'multiple_choice')
+    const essayQuestions = organizedQuestions.filter((q) => q.soal?.question_type === 'essay')
 
     return {
         multipleChoice: mcQuestions,
@@ -63,19 +85,19 @@ export const groupQuestions = (organizedQuestions: any[]) => {
 }
 
 // Calculate section index and total for proper navigation
-export const getSectionInfo = (currentQuestion: any, questionSections: any) => {
+export const getSectionInfo = (currentQuestion: UjianSoalItem | null, questionSections: QuestionSections) => {
     if (!currentQuestion) return { sectionIndex: 0, sectionTotal: 0 }
 
     const currentSectionType = currentQuestion?.soal?.question_type || 'multiple_choice'
 
     if (currentSectionType === 'multiple_choice') {
-        const mcIndex = questionSections.multipleChoice.findIndex((q: any) => q.soal.id === currentQuestion.soal.id)
+        const mcIndex = questionSections.multipleChoice.findIndex((q) => q.soal?.id === currentQuestion.soal?.id)
         return {
             sectionIndex: mcIndex,
             sectionTotal: questionSections.multipleChoice.length
         }
     } else {
-        const essayIndex = questionSections.essay.findIndex((q: any) => q.soal.id === currentQuestion.soal.id)
+        const essayIndex = questionSections.essay.findIndex((q) => q.soal?.id === currentQuestion.soal?.id)
         return {
             sectionIndex: essayIndex,
             sectionTotal: questionSections.essay.length
@@ -84,9 +106,9 @@ export const getSectionInfo = (currentQuestion: any, questionSections: any) => {
 }
 
 // Calculate progress for each section
-export const calculateSectionProgress = (questionSections: any, answers: { [key: string]: string }) => {
-    const mcAnswered = questionSections.multipleChoice.filter((q: any) => answers[q.soal?.id]?.trim()).length
-    const essayAnswered = questionSections.essay.filter((q: any) => answers[q.soal?.id]?.trim()).length
+export const calculateSectionProgress = (questionSections: QuestionSections, answers: { [key: string]: string }) => {
+    const mcAnswered = questionSections.multipleChoice.filter((q) => answers[q.soal?.id ?? '']?.trim()).length
+    const essayAnswered = questionSections.essay.filter((q) => answers[q.soal?.id ?? '']?.trim()).length
 
     return {
         multipleChoice: {

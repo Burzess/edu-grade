@@ -14,7 +14,6 @@ import { AuthGuard } from '@/components/auth/auth-guards'
 import { useMiddlewareAuth } from '@/hooks/use-middleware-auth'
 import {
   User,
-  LogOut,
 } from 'lucide-react'
 import SiswaDashboardClient from './siswa-dashboard-client'
 import SiswaLogoutButton from './siswa-logout-button'

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useJawabanByUjian, useUjianForSiswa } from '@/hooks/use-jawaban'
+import { useHasilSiswa } from '@/features/ujian/hooks/use-hasil-siswa'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 import { SiswaOnlyGuard } from '@/components/auth/role-guard'
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
 import { 
   ArrowLeft,
@@ -23,10 +25,13 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
-  RotateCcw
+  RotateCcw,
+  EyeOff,
+  Loader2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import type { HasilSiswaFiltered } from '@/lib/visibility-filter'
 
 // Component untuk text yang dapat diperluas
 function ExpandableText({ 
@@ -70,6 +75,72 @@ function ExpandableText({
         )}
       </Button>
     </div>
+  )
+}
+
+// Component for rendering a single answer when visibility is hidden
+function HiddenResultCard({ jawaban, index }: { jawaban: { id: string; soal_id: string; answer_text: string; score: null; ai_feedback: string | null; soal: { question_text: string; question_type: 'essay' | 'multiple_choice' } }; index: number }) {
+  const isEssay = jawaban.soal.question_type === 'essay'
+  const hasFeedback = jawaban.ai_feedback && jawaban.ai_feedback.trim() !== ''
+
+  return (
+    <Card className="mb-3">
+      <CardHeader className="px-3 sm:px-6 py-2.5 sm:pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm sm:text-lg">Soal {index + 1}</CardTitle>
+          <Badge variant="outline" className="text-[11px] sm:text-xs">
+            {isEssay ? 'Essay' : 'Pilihan Ganda'}
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 space-y-2.5 sm:space-y-4">
+        {/* Question */}
+        <div className="p-2.5 sm:p-3 bg-muted/50 rounded-lg">
+          <div className="font-medium text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">Pertanyaan:</div>
+          <ExpandableText
+            text={jawaban.soal.question_text}
+            maxLength={150}
+            className="text-xs sm:text-sm text-foreground"
+          />
+        </div>
+
+        {/* Answer */}
+        <div className="p-2.5 sm:p-3 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+          <div className="font-medium text-xs sm:text-sm text-brand-500 dark:text-brand-300 mb-1 sm:mb-2">Jawaban Anda:</div>
+          <ExpandableText
+            text={jawaban.answer_text || 'Tidak ada jawaban'}
+            maxLength={200}
+            className="text-brand-800 dark:text-brand-200"
+          />
+        </div>
+
+        {/* AI Feedback for essay - always shown regardless of visibility */}
+        {isEssay && hasFeedback && (
+          <div className="p-2.5 sm:p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div className="font-medium text-xs sm:text-sm text-purple-600 dark:text-purple-300 mb-1 sm:mb-2 flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5" />
+              Feedback AI:
+            </div>
+            <ExpandableText
+              text={jawaban.ai_feedback!}
+              maxLength={150}
+              className="text-xs sm:text-sm text-purple-800 dark:text-purple-200"
+            />
+          </div>
+        )}
+
+        {/* Feedback sedang diproses indicator for essay without feedback */}
+        {isEssay && !hasFeedback && (
+          <div className="p-2.5 sm:p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-amber-700 dark:text-amber-300">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Feedback sedang diproses</span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -286,6 +357,10 @@ function HasilUjianPageContent() {
 
   const { data: ujian, isLoading: ujianLoading } = useUjianForSiswa(ujianId)
   const { data: jawaban = [], isLoading: jawabanLoading } = useJawabanByUjian(ujianId)
+  const { data: hasilSiswa, isLoading: hasilLoading } = useHasilSiswa(ujianId)
+
+  // Determine visibility state from the filtered hasil data
+  const isHidden = hasilSiswa ? 'message' in hasilSiswa : false
 
   // State for remidi info
   const [remidiInfo, setRemidiInfo] = useState<{
@@ -322,7 +397,7 @@ function HasilUjianPageContent() {
     fetchRemidiInfo()
   }, [ujian, ujianId, user?.id])
 
-  const isLoading = ujianLoading || jawabanLoading
+  const isLoading = ujianLoading || jawabanLoading || hasilLoading
 
   if (isLoading) {
     return (
@@ -420,7 +495,7 @@ function HasilUjianPageContent() {
     )
   }
 
-  // Calculate statistics
+  // Calculate statistics (only meaningful when visible)
   const totalQuestions = jawaban.length
   const scoredAnswers = jawaban.filter(j => j.score !== null)
   const averageScore = scoredAnswers.length > 0 
@@ -428,6 +503,73 @@ function HasilUjianPageContent() {
     : null
   const correctAnswers = scoredAnswers.filter(j => j.score >= 70).length
   const answeredQuestions = jawaban.filter(j => j.answer_text && j.answer_text.trim() !== '').length
+
+  // When visibility is hidden, render the restricted view
+  if (isHidden && hasilSiswa) {
+    const hiddenData = hasilSiswa as HasilSiswaFiltered
+
+    return (
+      <div className="container mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-8">
+        {/* Back button */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {ujian?.kelas_id ? (
+            <>
+              <Button variant="default" size="sm" onClick={() => router.push(`/siswa/kelas/${ujian.kelas_id}`)}>
+                <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+                <span className="text-xs sm:text-sm">Kembali</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/siswa/dashboard')} className="text-xs sm:text-sm">
+                Dashboard
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => router.push('/siswa/dashboard')}>
+              <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+              <span className="text-xs sm:text-sm">Dashboard</span>
+            </Button>
+          )}
+        </div>
+
+        {/* Header - without scores */}
+        <Card>
+          <CardHeader className="px-3 sm:px-6 py-3 sm:py-6">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle className="text-base sm:text-2xl truncate">{hiddenData.ujian.name}</CardTitle>
+                <CardDescription className="text-xs sm:text-base mt-0.5 sm:mt-1">
+                  Hasil Ujian
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Visibility hidden alert banner */}
+        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800">
+          <EyeOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">
+            Nilai belum dipublikasikan oleh guru
+          </AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            Guru belum menampilkan nilai untuk ujian ini. Anda tetap dapat melihat feedback AI untuk soal essay.
+          </AlertDescription>
+        </Alert>
+
+        {/* Results - hidden mode */}
+        <div className="space-y-3 sm:space-y-4">
+          <h2 className="text-base sm:text-xl font-semibold">Detail Jawaban</h2>
+
+          {hiddenData.jawaban.map((item, index) => (
+            <HiddenResultCard
+              key={item.id}
+              jawaban={item}
+              index={index}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-8">

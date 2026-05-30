@@ -1,20 +1,21 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 
 export const dynamic = 'force-dynamic'
 
-const uuidSchema = z.string().uuid('Invalid kelas ID format');
+const uuidSchema = z.string().uuid('Format ID kelas tidak valid');
 
 const deleteMemberSchema = z.object({
-  siswa_id: z.string().uuid('Invalid siswa ID format'),
+  siswa_id: z.string().uuid('Format ID siswa tidak valid'),
 });
 
 /**
  * GET /api/kelas/[kelasId]/members - Mendapatkan daftar anggota kelas (guru only)
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ kelasId: string }> }
 ) {
   try {
@@ -24,13 +25,13 @@ export async function GET(
 
     const kelasIdParsed = uuidSchema.safeParse(kelasId);
     if (!kelasIdParsed.success) {
-      return NextResponse.json({ error: 'Invalid kelas ID' }, { status: 400 });
+      return NextResponse.json({ error: 'ID kelas tidak valid' }, { status: 400 });
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Tidak terautentikasi' },
         { status: 401 }
       );
     }
@@ -45,7 +46,7 @@ export async function GET(
 
     if (kelasError || !kelas) {
       return NextResponse.json(
-        { error: 'Kelas not found or access denied' },
+        { error: 'Kelas tidak ditemukan atau akses ditolak' },
         { status: 404 }
       );
     }
@@ -67,7 +68,7 @@ export async function GET(
 
     if (membersError) {
       return NextResponse.json(
-        { error: 'Failed to fetch members' },
+        { error: 'Gagal mengambil data anggota' },
         { status: 400 }
       );
     }
@@ -97,10 +98,9 @@ export async function GET(
       }
     });
 
-  } catch (error: unknown) {
-    console.error('Error in GET /api/kelas/[kelasId]/members:', error);
+  } catch (_error: unknown) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Terjadi kesalahan pada server' },
       { status: 500 }
     );
   }
@@ -120,26 +120,19 @@ export async function DELETE(
 
     const kelasIdParsed = uuidSchema.safeParse(kelasId);
     if (!kelasIdParsed.success) {
-      return NextResponse.json({ error: 'Invalid kelas ID' }, { status: 400 });
+      return NextResponse.json({ error: 'ID kelas tidak valid' }, { status: 400 });
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Tidak terautentikasi' },
         { status: 401 }
       );
     }
 
-    const body: unknown = await request.json();
-    const parsed = deleteMemberSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'siswa_id is required and must be a valid UUID' },
-        { status: 400 }
-      );
-    }
-
+    const parsed = await parseJsonBody(request, deleteMemberSchema);
+    if ('response' in parsed) return parsed.response;
     const { siswa_id } = parsed.data;
 
     // Use database function untuk remove siswa
@@ -152,7 +145,7 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: 'Failed to remove siswa from kelas' },
+        { error: 'Gagal mengeluarkan siswa dari kelas' },
         { status: 400 }
       );
     }
@@ -187,10 +180,9 @@ export async function DELETE(
       message: result.message
     });
 
-  } catch (error: unknown) {
-    console.error('Error in DELETE /api/kelas/[kelasId]/members:', error);
+  } catch (_error: unknown) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Terjadi kesalahan pada server' },
       { status: 500 }
     );
   }

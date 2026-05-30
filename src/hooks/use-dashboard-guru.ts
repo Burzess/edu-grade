@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 
+const supabase = createClient()
+
 export interface ActivityItem {
   id: string
   type: string
@@ -20,10 +22,8 @@ export const useDashboardStats = () => {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      const supabase = createClient()
-
       // Gunakan RPC function untuk statistik ujian guru
-      const { data: stats, error: rpcError } = await supabase.rpc('ambil_statistik_ujian_guru')
+      const { data: stats, error: _rpcError } = await supabase.rpc('ambil_statistik_ujian_guru')
       
       // Query untuk mendapatkan statistik ujian
       const { data: ujianStats, error: ujianError } = await supabase
@@ -34,7 +34,7 @@ export const useDashboardStats = () => {
       if (ujianError) throw ujianError
 
       // Query untuk mendapatkan total siswa yang pernah mengikuti ujian guru ini dari ujian_siswa
-      const { data: ujianSiswaStats, error: ujianSiswaError } = await supabase
+      const { data: ujianSiswaStats, error: _ujianSiswaError } = await supabase
         .from('ujian_siswa')
         .select(`
           siswa_id,
@@ -46,7 +46,7 @@ export const useDashboardStats = () => {
       // Jangan throw error jika tabel ujian_siswa belum ada data
 
       // Query untuk mendapatkan rata-rata nilai dari jawaban_siswa
-      const { data: nilaiStats, error: nilaiError } = await supabase
+      const { data: nilaiStats, error: _nilaiError } = await supabase
         .from('jawaban_siswa')
         .select(`
           score,
@@ -115,8 +115,6 @@ export const useRecentActivity = () => {
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
 
-      const supabase = createClient()
-
       // Query untuk ujian terbaru yang dibuat
       const { data: recentUjian, error: ujianError } = await supabase
         .from('ujian')
@@ -128,7 +126,7 @@ export const useRecentActivity = () => {
       if (ujianError) throw ujianError
 
       // Query untuk aktivitas siswa terbaru dari ujian_siswa
-      const { data: recentUjianSiswa, error: ujianSiswaError } = await supabase
+      const { data: recentUjianSiswa } = await supabase
         .from('ujian_siswa')
         .select(`
           id,
@@ -269,8 +267,6 @@ export const useRecentActivity = () => {
       return sortedActivities
     },
     enabled: !!user?.id,
-    staleTime: 1 * 60 * 1000, // 1 minute untuk aktivitas yang lebih real-time
-    refetchInterval: false, // REALTIME REMOVED: Auto-refetch disabled to prevent excessive requests
+    staleTime: 1 * 60 * 1000, // 1 minute
   })
 }
-

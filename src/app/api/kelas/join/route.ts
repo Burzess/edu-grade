@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Tidak terautentikasi' },
         { status: 401 }
       );
     }
@@ -32,20 +33,13 @@ export async function POST(request: NextRequest) {
 
     if (profile?.role !== 'siswa') {
       return NextResponse.json(
-        { error: 'Only students can join classes' },
+        { error: 'Hanya siswa yang dapat bergabung ke kelas' },
         { status: 403 }
       );
     }
 
-    const body: unknown = await request.json();
-    const parsed = joinKelasSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
-
+    const parsed = await parseJsonBody(request, joinKelasSchema);
+    if ('response' in parsed) return parsed.response;
     const { kode_kelas } = parsed.data;
 
     // Clean dan normalize kode kelas
@@ -69,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: 'Failed to join kelas' },
+        { error: 'Gagal bergabung ke kelas' },
         { status: 400 }
       );
     }
@@ -116,10 +110,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: unknown) {
-    console.error('Error in POST /api/kelas/join:', error);
+  } catch (_error: unknown) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Terjadi kesalahan pada server' },
       { status: 500 }
     );
   }

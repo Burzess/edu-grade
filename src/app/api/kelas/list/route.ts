@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient()
     
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Unauthorized' 
+        error: 'Tidak terautentikasi' 
       }, { status: 401 })
     }
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (userProfile?.role !== 'guru') {
       return NextResponse.json({
         success: false,
-        error: 'Only guru can access this endpoint'
+        error: 'Hanya guru yang dapat mengakses endpoint ini'
       }, { status: 403 })
     }
 
@@ -43,16 +43,15 @@ export async function GET(request: NextRequest) {
       .order('nama_kelas', { ascending: true })
 
     if (kelasError) {
-      console.error('Error fetching kelas:', kelasError)
       return NextResponse.json({
         success: false,
-        error: 'Failed to fetch kelas'
+        error: 'Gagal mengambil data kelas'
       }, { status: 500 })
     }
 
     // Get member count for each kelas
     const kelasIds = kelasList?.map(k => k.id) || []
-    let memberCounts: { [key: string]: number } = {}
+    const memberCounts: { [key: string]: number } = {}
 
     if (kelasIds.length > 0) {
       const { data: memberData } = await supabase
@@ -77,12 +76,11 @@ export async function GET(request: NextRequest) {
       data: kelasWithCount
     })
 
-  } catch (error: unknown) {
-    console.error('Error in GET /api/kelas/list:', error)
+  } catch (_error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Internal server error' 
+        error: 'Terjadi kesalahan pada server' 
       },
       { status: 500 }
     )

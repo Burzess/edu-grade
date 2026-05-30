@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useSoalDetail, useUpdateSoal } from '@/hooks/use-soal'
-import { GuruOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -33,33 +32,26 @@ const soalSchema = z.object({
   correct_answer: z.string().optional(),
   rubric: z.string().optional(),
 }).refine((data) => {
-  console.log('Validating edit soalSchema:', data);
-
   // Jika pilihan ganda, harus ada minimal 2 opsi dan jawaban benar
   if (data.question_type === 'multiple_choice') {
     if (!data.options || data.options.length < 2) {
-      console.log('Validation failed: Not enough options');
       return false;
     }
     if (!data.correct_answer) {
-      console.log('Validation failed: No correct answer');
       return false;
     }
     // Cek apakah correct_answer ada dalam options
     const optionIds = data.options.map(opt => opt.id);
     if (!optionIds.includes(data.correct_answer)) {
-      console.log('Validation failed: Correct answer not in options');
       return false;
     }
   }
   // Untuk essay, correct_answer diperbolehkan
   if (data.question_type === 'essay') {
     if (data.options && data.options.length > 0) {
-      console.log('Validation failed: Essay has options');
       return false;
     }
   }
-  console.log('Validation passed');
   return true;
 }, {
   message: "Untuk soal pilihan ganda, harus ada minimal 2 opsi dan jawaban yang benar harus dipilih",
@@ -76,7 +68,6 @@ interface EditSoalPageProps {
 
 export default function EditSoalPage({ params }: EditSoalPageProps) {
   const resolvedParams = use(params)
-  console.log('EditSoalPage: Resolved params:', resolvedParams)
 
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
@@ -84,16 +75,11 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
   const { data: soal, isLoading, error: fetchError } = useSoalDetail(resolvedParams.id)
   const updateSoalMutation = useUpdateSoal()
 
-  console.log('EditSoalPage: Query state:', { soal, isLoading, fetchError })
-
   // Debug timeout untuk memastikan tidak stuck selamanya
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isLoading) {
-        console.warn('EditSoalPage: Still loading after 10 seconds, this might be stuck!')
-        console.log('Debug info:', {
-          resolvedParamsId: resolvedParams.id
-        })
+        // Still loading after 10 seconds - might be stuck
       }
     }, 10000)
 
@@ -138,21 +124,18 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
     const currentOptions = form.getValues('options') || []
     const nextId = String.fromCharCode(65 + currentOptions.length) // A, B, C, D, E, etc.
     const newOptions = [...currentOptions, { id: nextId, text: '' }]
-    console.log('EditSoalPage: Adding option, new options:', newOptions)
     form.setValue('options', newOptions)
   }
 
   const removeOption = (index: number) => {
     const currentOptions = form.getValues('options') || []
     const newOptions = currentOptions.filter((_, i) => i !== index)
-    console.log('EditSoalPage: Removing option at index', index, 'new options:', newOptions)
     form.setValue('options', newOptions)
 
     // Reset correct_answer jika opsi yang dipilih dihapus
     const correctAnswer = form.getValues('correct_answer')
     const removedOptionId = currentOptions[index]?.id
     if (correctAnswer === removedOptionId) {
-      console.log('EditSoalPage: Resetting correct_answer because removed option was selected')
       form.setValue('correct_answer', '')
     }
   }
@@ -182,7 +165,6 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
         formData.correct_answer = soal.correct_answer || ''
       }
 
-      console.log('EditSoalPage: Setting form data:', formData)
       form.reset(formData)
     }
   }, [soal, form])

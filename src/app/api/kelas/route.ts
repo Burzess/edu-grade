@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+
+import { createClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/auth/require-role';
+import { ROLES } from '@/types/auth';
+import { generateKodeKelas } from '@/lib/kelas/generate-kode';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 
 export const dynamic = 'force-dynamic'
 
@@ -16,29 +21,24 @@ const kelasCreateSchema = z.object({
 
 /**
  * GET /api/kelas - Mendapatkan daftar kelas berdasarkan role user
+ *
+ * Auth: any authenticated user (guru / siswa / admin). Per-role payload
+ * shape is preserved from the unfixed code — admin sees `{ data: [] }`
+ * because there is no admin-specific branch yet.
  */
 export async function GET(request: NextRequest) {
   try {
+    // _Bug_Condition (1.12): inline auth + role-check block replaced.
+    // _Expected_Behavior (2.12): single canonical guard.
+    const auth = await requireRole(request, [ROLES.GURU, ROLES.SISWA, ROLES.ADMIN]);
+    if (auth instanceof NextResponse) return auth;
+    const { user, role } = auth;
+
     const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: 'Failed to get user profile' }, { status: 400 });
-    }
 
     let kelasData: Record<string, unknown>[] = [];
 
-    if (profile.role === 'guru') {
+    if (role === ROLES.GURU) {
       // Try to get from view with is_active field
       let { data, error } = await supabase
         .from('kelas_with_member_count')
@@ -47,38 +47,35 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false });
 
       // If view doesn't have is_active field, fallback to direct table query
+      // _Bug_Condition (1.23): N+1 per-row count replaced with single grouped query.
+      // _Expected_Behavior (2.23): single query using PostgREST embedded count.
       if (error && error.message?.includes('is_active')) {
         const { data: kelasRaw, error: kelasError } = await supabase
           .from('kelas')
-          .select('id, nama_kelas, kode_kelas, created_by, is_active, created_at, updated_at')
+          .select('id, nama_kelas, kode_kelas, created_by, is_active, created_at, updated_at, kelas_members(count)')
           .eq('created_by', user.id)
           .order('created_at', { ascending: false });
 
         if (kelasError) {
-          return NextResponse.json({ error: 'Failed to fetch kelas data' }, { status: 400 });
+          return NextResponse.json({ error: 'Gagal mengambil data kelas' }, { status: 400 });
         }
 
-        // Get member count for each kelas manually
-        const kelasWithCount = await Promise.all(
-          (kelasRaw || []).map(async (kelas) => {
-            const { count } = await supabase
-              .from('kelas_members')
-              .select('*', { count: 'exact', head: true })
-              .eq('kelas_id', kelas.id);
-            return { ...kelas, jumlah_siswa: count || 0 };
-          })
-        );
+        // Transform embedded count into the expected jumlah_siswa field
+        const kelasWithCount = (kelasRaw || []).map((kelas) => {
+          const { kelas_members, ...rest } = kelas as Record<string, unknown> & { kelas_members: { count: number }[] };
+          return { ...rest, jumlah_siswa: kelas_members?.[0]?.count ?? 0 };
+        });
 
         data = kelasWithCount;
         error = null;
       }
 
       if (error) {
-        return NextResponse.json({ error: 'Failed to fetch kelas data' }, { status: 400 });
+        return NextResponse.json({ error: 'Gagal mengambil data kelas' }, { status: 400 });
       }
 
       kelasData = (data || []) as Record<string, unknown>[];
-    } else if (profile.role === 'siswa') {
+    } else if (role === ROLES.SISWA) {
       const { data, error } = await supabase
         .from('kelas_members')
         .select(`
@@ -94,7 +91,7 @@ export async function GET(request: NextRequest) {
         .order('joined_at', { ascending: false });
 
       if (error) {
-        return NextResponse.json({ error: 'Failed to fetch kelas data' }, { status: 400 });
+        return NextResponse.json({ error: 'Gagal mengambil data kelas' }, { status: 400 });
       }
 
       // Transform data untuk siswa
@@ -118,44 +115,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: kelasData,
-      role: profile.role
+      role
     });
 
-  } catch (error: unknown) {
-    console.error('Error in GET /api/kelas:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (_error: unknown) {
+    return NextResponse.json({ error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }
 
 /**
- * PATCH /api/kelas - Update kelas (nama dan status aktif)
+ * PATCH /api/kelas - Update kelas (nama dan status aktif). Guru only.
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const auth = await requireRole(request, [ROLES.GURU]);
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
+
     const supabase = await createClient();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'guru') {
-      return NextResponse.json({ error: 'Only teachers can update classes' }, { status: 403 });
-    }
-
-    const body: unknown = await request.json();
-    const parsed = kelasUpdateSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
-    }
-
-    const { kelas_id, nama_kelas, is_active } = parsed.data;
+    const body = await parseJsonBody(request, kelasUpdateSchema);
+    if ('response' in body) return body.response;
+    const { kelas_id, nama_kelas, is_active } = body.data;
 
     // Check ownership
     const { data: existingKelas, error: checkError } = await supabase
@@ -182,8 +163,7 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Database error updating kelas:', error);
-      return NextResponse.json({ error: 'Failed to update kelas' }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal memperbarui kelas' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -197,54 +177,25 @@ export async function PATCH(request: NextRequest) {
       }
     });
 
-  } catch (error: unknown) {
-    console.error('Error in PATCH /api/kelas:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (_error: unknown) {
+    return NextResponse.json({ error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }
 
 /**
- * POST /api/kelas - Membuat kelas baru (hanya guru)
+ * POST /api/kelas - Membuat kelas baru. Guru only.
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireRole(request, [ROLES.GURU]);
+    if (auth instanceof NextResponse) return auth;
+    const { user } = auth;
+
     const supabase = await createClient();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'guru') {
-      return NextResponse.json({ error: 'Only teachers can create classes' }, { status: 403 });
-    }
-
-    const body: unknown = await request.json();
-    const parsed = kelasCreateSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
-    }
-
-    const { nama_kelas } = parsed.data;
-
-    const generateKodeKelas = () => {
-      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      const segments = [];
-      for (let i = 0; i < 3; i++) {
-        let segment = '';
-        for (let j = 0; j < 3; j++) {
-          segment += chars[Math.floor(Math.random() * chars.length)];
-        }
-        segments.push(segment);
-      }
-      return segments.join('-');
-    };
+    const body = await parseJsonBody(request, kelasCreateSchema);
+    if ('response' in body) return body.response;
+    const { nama_kelas } = body.data;
 
     const kodeKelas = generateKodeKelas();
 
@@ -260,8 +211,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Database error creating kelas:', error);
-      return NextResponse.json({ error: 'Failed to create kelas' }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal membuat kelas' }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -274,8 +224,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: unknown) {
-    console.error('Error in POST /api/kelas:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (_error: unknown) {
+    return NextResponse.json({ error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }

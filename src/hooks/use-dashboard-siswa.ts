@@ -1,6 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
+
+const supabase = createClient()
 
 interface ActivityItem {
   id: string
@@ -19,8 +21,6 @@ export const useDashboardStatsSiswa = () => {
     queryKey: ['dashboard-stats-siswa', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
-
-      const supabase = createClient()
 
       // Query untuk mendapatkan statistik ujian siswa
       const { data: ujianSiswaStats, error: ujianSiswaError } = await supabase
@@ -65,7 +65,7 @@ export const useDashboardStatsSiswa = () => {
 
       // Calculate average per ujian, then overall average
       const ujianAverages: number[] = []
-      for (const [ujianId, scores] of ujianScores) {
+      for (const [, scores] of ujianScores) {
         const ujianAvg = scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length
         ujianAverages.push(ujianAvg)
       }
@@ -108,8 +108,6 @@ export const useRecentActivitySiswa = () => {
     queryKey: ['recent-activity-siswa', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
-
-      const supabase = createClient()
 
       // Query untuk aktivitas ujian siswa terbaru
       const { data: recentUjianSiswa, error: ujianSiswaError } = await supabase
@@ -225,21 +223,17 @@ export const useRecentActivitySiswa = () => {
     },
     enabled: !!user?.id,
     staleTime: 1 * 60 * 1000, // 1 minute
-    refetchInterval: false, // REALTIME REMOVED: Auto-refetch disabled to prevent excessive requests
   })
 }
 
 // Hook untuk mendapatkan ujian yang tersedia untuk siswa
 export const useAvailableUjianForSiswaDashboard = () => {
   const { user } = useAuthStore()
-  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: ['available-ujian-dashboard', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated')
-
-      const supabase = createClient()
 
       // Get ujian yang statusnya active dan belum diikuti siswa ini
       const { data, error } = await supabase
@@ -288,8 +282,6 @@ export const useAvailableUjianForSiswaDashboard = () => {
     enabled: !!user?.id,
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
-
-  // REALTIME REMOVED: Subscription untuk ujian table dihapus untuk mencegah infinite requests
 
   return query
 }

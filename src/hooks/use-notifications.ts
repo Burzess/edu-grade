@@ -19,8 +19,7 @@ export function useNotifications() {
         const result = await Notification.requestPermission()
         setPermission(result)
         return result
-      } catch (error: unknown) {
-        console.error('Error requesting notification permission:', error)
+      } catch (_error: unknown) {
         return 'denied'
       }
     }

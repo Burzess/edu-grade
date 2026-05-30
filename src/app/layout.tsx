@@ -9,7 +9,6 @@ import { FloatingThemeToggle } from "@/components/ui/floating-theme-toggle";
 import { getCurrentUser } from "@/lib/auth-server";
 import ErrorBoundary from "@/components/ui/error-boundary";
 import { Toaster } from "react-hot-toast";
-import { icons } from "lucide-react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,8 +34,7 @@ export default async function RootLayout({
   let user = null;
   try {
     user = await getCurrentUser();
-  } catch (error: unknown) {
-    console.error('Layout auth check failed:', error);
+  } catch (_error: unknown) {
     // Tidak throw error, biarkan client handle auth
   }
 

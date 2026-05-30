@@ -20,31 +20,11 @@ import {
   Trophy,
   School,
   GraduationCap,
-  Users,
   Play,
   RotateCcw,
 } from 'lucide-react'
 import { formatDistanceToNow, format, isAfter, isBefore } from 'date-fns'
 import { id } from 'date-fns/locale'
-import { createClient } from '@/lib/supabase/client'
-import { useAuthStore } from '@/store/auth'
-
-/**
- * Helper untuk mendapatkan access token dengan validasi user terlebih dahulu.
- * Pattern ini memastikan user benar-benar terautentikasi sebelum menggunakan token.
- * 
- * KEAMANAN: getSession() hanya membaca dari storage lokal dan bisa dipalsukan.
- * Selalu validasi dengan getUser() terlebih dahulu yang memverifikasi dengan server.
- */
-async function getValidAccessToken(supabase: ReturnType<typeof createClient>): Promise<string | null> {
-  // Validasi user dengan server terlebih dahulu (ini yang aman)
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return null
-  
-  // Setelah user tervalidasi, ambil token dari session
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
 
 interface UjianCardProps {
   ujian: any
@@ -392,8 +372,6 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingUjian, setIsLoadingUjian] = useState(true)
   const router = useRouter()
-  const { user } = useAuthStore()
-  const supabase = createClient()
 
 
 
@@ -401,17 +379,9 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
     try {
       setIsLoading(true)
       
-      // Gunakan getValidAccessToken untuk validasi yang aman
-      const accessToken = await getValidAccessToken(supabase)
-      if (!accessToken) {
-        router.push('/login')
-        return
-      }
-
+      // SSR cookies handle authentication for same-origin calls
       const response = await fetch(`/api/kelas/${kelasId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
+        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -427,8 +397,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
       if (result.success) {
         setKelasDetail(result.data)
       }
-    } catch (error: unknown) {
-      console.error('Error fetching kelas detail:', error)
+    } catch (_error: unknown) {
       toastError('Error', 'Gagal memuat detail kelas')
     } finally {
       setIsLoading(false)
@@ -439,17 +408,10 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
     try {
       setIsLoadingUjian(true)
       
-      // Gunakan getValidAccessToken untuk validasi yang aman
-      const accessToken = await getValidAccessToken(supabase)
-      if (!accessToken) {
-        return
-      }
-
+      // SSR cookies handle authentication for same-origin calls
       // Fetch available ujian for this kelas
       const availableResponse = await fetch(`/api/ujian/available?kelasId=${kelasId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
+        credentials: 'include',
       })
 
       if (availableResponse.ok) {
@@ -461,9 +423,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
 
       // Fetch completed ujian for this kelas
       const completedResponse = await fetch(`/api/ujian/completed?kelasId=${kelasId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
+        credentials: 'include',
       })
 
       if (completedResponse.ok) {
@@ -473,8 +433,8 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
         }
       }
 
-    } catch (error: unknown) {
-      console.error('Error fetching ujian:', error)
+    } catch (_error: unknown) {
+      // Error handled silently
     } finally {
       setIsLoadingUjian(false)
     }
@@ -485,15 +445,7 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
       fetchKelasDetail()
       fetchUjianByKelas()
     }
-  }, [kelasId])
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-  }
+  }, [kelasId])  
 
   if (isLoading) {
     return (

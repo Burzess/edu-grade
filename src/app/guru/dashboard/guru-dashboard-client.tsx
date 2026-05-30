@@ -3,19 +3,16 @@
 import Link from 'next/link'
 import { useDashboardStats, useRecentActivity, type ActivityItem } from '@/hooks/use-dashboard-guru'
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   BookOpen,
   Users,
   BarChart3,
   FileText,
   PlusCircle,
-  TrendingUp,
   Clock,
   CheckCircle,
   AlertCircle,
-  Calendar,
   Activity
 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -79,9 +76,9 @@ export default function GuruDashboardClient() {
   } = useDashboardStats()
   
   const { 
-    data: recentActivity = [], 
-    isLoading: isActivityLoading, 
-    error: activityError 
+    data: _recentActivity = [], 
+    isLoading: _isActivityLoading, 
+    error: _activityError 
   } = useRecentActivity()
 
   return (

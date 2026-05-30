@@ -14,7 +14,7 @@ export default function GuruError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Guru Error:", error);
+    // Error tracked by error boundary
   }, [error]);
 
   return (

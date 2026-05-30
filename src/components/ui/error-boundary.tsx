@@ -1,5 +1,6 @@
 'use client';
 import React, { Component, ErrorInfo, PropsWithChildren } from 'react';
+import { logger } from '@/lib/logger';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -21,15 +22,17 @@ class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-    
+    logger.error('Error caught by boundary:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
+
     this.setState({
       error,
       errorInfo
     });
-
-    // TODO: Log error ke service monitoring (misal: Sentry)
-    // logErrorToService(error, errorInfo);
   }
 
   private handleRefresh = () => {

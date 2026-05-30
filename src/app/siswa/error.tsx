@@ -14,7 +14,7 @@ export default function SiswaError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Siswa Error:", error);
+    // Error tracked by error boundary
   }, [error]);
 
   return (

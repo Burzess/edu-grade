@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCreateSoal } from '@/hooks/use-soal'
-import { GuruOnlyGuard } from '@/components/auth/role-guard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -122,7 +121,6 @@ export default function CreateSoalPage() {
     const onSubmit = async (data: SoalForm) => {
         try {
             setError(null)
-            console.log('Starting soal creation...', data)
 
             const soalData: any = {
                 question_text: data.question_text,
@@ -134,10 +132,6 @@ export default function CreateSoalPage() {
             if (data.question_type === 'multiple_choice') {
                 soalData.options = data.options || []
                 soalData.correct_answer = data.correct_answer
-                console.log('Multiple choice data:', {
-                    options: soalData.options,
-                    correct_answer: soalData.correct_answer
-                })
             } else {
                 // Untuk essay
                 soalData.options = null
@@ -145,14 +139,10 @@ export default function CreateSoalPage() {
                 soalData.rubric = data.rubric || null
             }
 
-            console.log('Sending data to server:', soalData)
-
-            const result = await createSoalMutation.mutateAsync(soalData)
-            console.log('Soal created successfully:', result)
+            await createSoalMutation.mutateAsync(soalData)
 
             router.push('/guru/soal')
         } catch (err: unknown) {
-            console.error('Error creating soal:', err)
             setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat soal')
         }
     }

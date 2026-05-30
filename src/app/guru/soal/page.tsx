@@ -33,8 +33,8 @@ function SoalListPageContent() {
     const handleDelete = async (id: string) => {
         try {
             await deletesoalMutation.mutateAsync(id)
-        } catch (error: unknown) {
-            console.error('Error deleting soal:', error)
+        } catch (_error: unknown) {
+            // Error handled by mutation
         }
     }
 
@@ -161,6 +161,7 @@ function SoalListPageContent() {
                                 <Table className="min-w-full">
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-[50px] text-center">No</TableHead>
                                             <TableHead className="w-[55%] min-w-[300px]">Soal</TableHead>
                                             <TableHead className="w-[20%] min-w-[120px]">Tags</TableHead>
                                             <TableHead className="w-[10%] min-w-[90px]">Tanggal Dibuat</TableHead>
@@ -168,8 +169,9 @@ function SoalListPageContent() {
                                         </TableRow>
                                     </TableHeader>
                                 <TableBody>
-                                    {soalData?.data.map((soal) => (
+                                    {soalData?.data.map((soal, index) => (
                                         <TableRow key={soal.id}>
+                                            <TableCell className="text-center">{(page - 1) * 10 + index + 1}</TableCell>
                                             <TableCell className="max-w-0 px-4">
                                                 <div className="font-medium truncate pr-2 max-w-[350px]" title={soal.question_text}>
                                                     {soal.question_text}

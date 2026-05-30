@@ -63,7 +63,7 @@ export interface RemoveSiswaRequest {
 }
 
 // API Response Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
@@ -73,7 +73,7 @@ export interface ApiResponse<T = any> {
 export interface GetKelasResponse {
   success: boolean;
   data: KelasWithMemberCount[] | KelasForSiswa[];
-  role: 'guru' | 'siswa';
+  role: 'guru' | 'siswa' | 'admin';
 }
 
 export interface GetMembersResponse {

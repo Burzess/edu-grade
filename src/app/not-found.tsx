@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, ArrowLeft, BookOpen, Users, GraduationCap, Search, RefreshCw } from "lucide-react";
+import { Home, ArrowLeft, BookOpen, Users, GraduationCap, RefreshCw } from "lucide-react";
 import { AnimatedNotFoundIllustration } from "@/components/ui/animated-not-found";
 import { motion } from "framer-motion";
 
