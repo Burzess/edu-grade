@@ -17,13 +17,8 @@ export interface AutoGradingResponse {
 export function gradeMultipleChoice(
   studentAnswer: string,
   correctAnswer: string,
-  question?: string
+  _question?: string
 ): AutoGradingResponse {
-  console.log('Auto-grading multiple choice (no AI needed)', {
-    studentAnswer: studentAnswer?.substring(0, 50),
-    correctAnswer: correctAnswer?.substring(0, 50)
-  })
-
   // Normalize answers untuk perbandingan
   const normalizedStudentAnswer = studentAnswer?.trim().toLowerCase() || ''
   const normalizedCorrectAnswer = correctAnswer?.trim().toLowerCase() || ''
@@ -63,7 +58,6 @@ export function gradeTrueFalse(
   studentAnswer: string,
   correctAnswer: string
 ): AutoGradingResponse {
-  console.log('Auto-grading true/false (no AI needed)')
 
   const normalizedStudentAnswer = studentAnswer?.trim().toLowerCase()
   const normalizedCorrectAnswer = correctAnswer?.trim().toLowerCase()
@@ -76,12 +70,7 @@ export function gradeTrueFalse(
   const studentIsFalse = falseVariants.includes(normalizedStudentAnswer)
   const correctIsTrue = trueVariants.includes(normalizedCorrectAnswer)
   
-  let isCorrect = false
-  if (correctIsTrue) {
-    isCorrect = studentIsTrue
-  } else {
-    isCorrect = studentIsFalse
-  }
+  const isCorrect = correctIsTrue ? studentIsTrue : studentIsFalse
   
   let feedback: string
   if (isCorrect) {
@@ -184,12 +173,6 @@ export function batchAutoGrade(
       })
     }
   }
-  
-  console.log('Batch auto-grading summary:', {
-    autoGraded: autoGraded.length,
-    needsAI: needsAI.length,
-    totalProcessed: answers.length
-  })
   
   return { autoGraded, needsAI }
 }

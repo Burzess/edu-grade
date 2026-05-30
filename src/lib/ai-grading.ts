@@ -1,15 +1,13 @@
-// import { GoogleGenerativeAI } from '@google/generative-ai'
 import { OpenAI } from 'openai'
+import { logger } from '@/lib/logger'
+import { createSemaphore } from '@/lib/concurrency'
 
-// if (!process.env.GEMINI_API_KEY) {
-//   throw new Error('GEMINI_API_KEY is not set in environment variables')
-// }
+const isDebug = process.env.AI_GRADING_DEBUG === 'true'
 
 if (!process.env.OPENROUTER_API_KEY) {
   throw new Error('OPENROUTER_API_KEY is not set in environment variables')
 }
 
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -28,12 +26,14 @@ export async function gradeEssayAnswer(
   correctAnswer?: string
 ): Promise<AIGradingResponse> {
   try {
-    console.log('Starting AI grading...', { 
-      questionLength: question.length, 
-      answerLength: studentAnswer.length,
-      questionType,
-      hasReferenceAnswer: !!correctAnswer
-    })
+    if (isDebug) {
+      logger.debug('Starting AI grading...', { 
+        questionLength: question.length, 
+        answerLength: studentAnswer.length,
+        questionType,
+        hasReferenceAnswer: !!correctAnswer
+      })
+    }
 
     // Validasi input
     if (!question || question.trim().length === 0) {
@@ -47,14 +47,6 @@ export async function gradeEssayAnswer(
         reasoning: 'Empty answer provided'
       }
     }
-
-    // const model = genAI.getGenerativeModel({ 
-    //   model: 'gemini-1.5-flash',
-    //   generationConfig: {
-    //     temperature: 0.3,
-    //     maxOutputTokens: 1000,
-    //   }
-    // })
 
     let prompt = ''
 
@@ -173,7 +165,9 @@ export async function gradeEssayAnswer(
 
     const text = result.choices[0]?.message?.content || ''
 
-    console.log('Raw AI response:', text.substring(0, 200) + '...')
+    if (isDebug) {
+      logger.debug('Raw AI response:', text.substring(0, 200) + '...')
+    }
 
     // Cari JSON dalam response dengan lebih fleksibel
     let jsonMatch = text.match(/\{[\s\S]*?\}/)
@@ -185,7 +179,7 @@ export async function gradeEssayAnswer(
     }
 
     if (!jsonMatch) {
-      console.error('No valid JSON found in AI response:', text)
+      logger.error('No valid JSON found in AI response', { code: 'AI_PARSE_NO_JSON', responseLength: text.length })
       throw new Error('Invalid AI response format - no JSON found')
     }
 
@@ -193,8 +187,8 @@ export async function gradeEssayAnswer(
     try {
       aiResponse = JSON.parse(jsonMatch[0])
     } catch (parseError) {
-      console.error('Failed to parse JSON:', parseError, 'Raw JSON:', jsonMatch[0])
-      throw new Error('Invalid JSON in AI response')
+      logger.error('Failed to parse JSON from AI response', { code: 'AI_PARSE_INVALID_JSON', message: parseError instanceof Error ? parseError.message : 'Unknown parse error' })
+      throw new Error('Invalid JSON in AI response', { cause: parseError })
     }
     
     // Validate response structure
@@ -206,27 +200,27 @@ export async function gradeEssayAnswer(
         !aiResponse.reasoning ||
         typeof aiResponse.reasoning !== 'string') {
       
-      console.error('Invalid AI response structure:', aiResponse)
+      logger.error('Invalid AI response structure', { code: 'AI_RESPONSE_INVALID_STRUCTURE' })
       throw new Error('Invalid AI response structure')
     }
 
     // Ensure score is integer
     aiResponse.score = Math.round(aiResponse.score)
 
-    console.log('AI grading completed:', {
-      score: aiResponse.score,
-      feedbackLength: aiResponse.feedback.length,
-      reasoningLength: aiResponse.reasoning.length
-    })
+    if (isDebug) {
+      logger.debug('AI grading completed:', {
+        score: aiResponse.score,
+        feedbackLength: aiResponse.feedback.length,
+        reasoningLength: aiResponse.reasoning.length
+      })
+    }
 
     return aiResponse
 
   } catch (error: unknown) {
-    console.error('AI grading error:', {
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
-      question: question.substring(0, 100) + '...',
-      answer: studentAnswer.substring(0, 100) + '...'
+    logger.error('AI grading error', {
+      code: 'AI_GRADING_FAILED',
+      message: error instanceof Error ? error.message : 'Unknown error'
     })
     
     // Fallback scoring
@@ -239,6 +233,9 @@ export async function gradeEssayAnswer(
   }
 }
 
+/** Concurrency limit sized to OpenRouter/Gemini provider rate limits */
+export const AI_CONCURRENCY_LIMIT = 3
+
 // HYBRID BATCH GRADING: Optimasi untuk mengurangi biaya dengan batching cerdas
 export async function batchGradeAnswers(
   answers: Array<{
@@ -249,57 +246,54 @@ export async function batchGradeAnswers(
     correctAnswer?: string
   }>
 ): Promise<Array<{ id: string; result: AIGradingResponse }>> {
-  console.log('Starting batch AI grading for', answers.length, 'answers')
-  
-  const results = []
-  
-  // Process answers sequentially to avoid rate limits
-  for (const answer of answers) {
-    try {
-      // Skip empty answers
+  if (isDebug) {
+    logger.debug('Starting batch AI grading for', answers.length, 'answers')
+  }
+
+  const semaphore = createSemaphore(AI_CONCURRENCY_LIMIT)
+
+  const results = await Promise.all(
+    answers.map(async (answer) => {
+      // Skip empty answers without acquiring a slot
       if (!answer.studentAnswer || answer.studentAnswer.trim().length === 0) {
-        results.push({
+        return {
           id: answer.id,
           result: {
             score: 0,
             feedback: 'Tidak ada jawaban yang diberikan.',
             reasoning: 'Empty answer'
           }
-        })
-        continue
+        }
       }
 
-      const result = await gradeEssayAnswer(
-        answer.question,
-        answer.studentAnswer,
-        answer.questionType,
-        answer.correctAnswer
-      )
-      
-      results.push({
-        id: answer.id,
-        result
-      })
-      
-      // Small delay between requests to respect rate limits
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-    } catch (error: unknown) {
-      console.error(`Error grading answer ${answer.id}:`, error)
-      
-      // Add fallback result
-      results.push({
-        id: answer.id,
-        result: {
-          score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
-          feedback: 'Terjadi kesalahan dalam penilaian otomatis. Jawaban akan dinilai manual.',
-          reasoning: 'AI grading error'
+      await semaphore.acquire()
+      try {
+        const result = await gradeEssayAnswer(
+          answer.question,
+          answer.studentAnswer,
+          answer.questionType,
+          answer.correctAnswer
+        )
+        return { id: answer.id, result }
+      } catch (error: unknown) {
+        logger.error('Error grading answer in batch', { code: 'AI_BATCH_ITEM_FAILED', answerId: answer.id, message: error instanceof Error ? error.message : 'Unknown error' })
+        return {
+          id: answer.id,
+          result: {
+            score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
+            feedback: 'Terjadi kesalahan dalam penilaian otomatis. Jawaban akan dinilai manual.',
+            reasoning: 'AI grading error'
+          }
         }
-      })
-    }
+      } finally {
+        semaphore.release()
+      }
+    })
+  )
+
+  if (isDebug) {
+    logger.debug('Batch AI grading completed:', results.length, 'results')
   }
-  
-  console.log('Batch AI grading completed:', results.length, 'results')
   return results
 }
 
@@ -314,7 +308,9 @@ export async function smartBatchGradeAnswers(
   }>,
   batchSize: number = 3 // Jumlah jawaban per request (untuk essay serupa)
 ): Promise<Array<{ id: string; result: AIGradingResponse }>> {
-  console.log('Starting SMART batch AI grading for', answers.length, 'answers with batch size:', batchSize)
+  if (isDebug) {
+    logger.debug('Starting SMART batch AI grading for', answers.length, 'answers with batch size:', batchSize)
+  }
   
   // Group answers by similar questions to optimize batching
   const questionGroups = new Map<string, typeof answers>()
@@ -327,81 +323,96 @@ export async function smartBatchGradeAnswers(
     questionGroups.get(key)!.push(answer)
   }
   
-  const results: Array<{ id: string; result: AIGradingResponse }> = []
-  
+  const semaphore = createSemaphore(AI_CONCURRENCY_LIMIT)
+  const allTasks: Array<Promise<Array<{ id: string; result: AIGradingResponse }>>> = []
+
   // Process each question group
-  for (const [questionKey, groupAnswers] of questionGroups) {
-    console.log(`Processing ${groupAnswers.length} answers for question group:`, questionKey.substring(0, 50) + '...')
+  for (const [, groupAnswers] of questionGroups) {
+    if (isDebug) {
+      logger.debug(`Processing ${groupAnswers.length} answers for question group`)
+    }
     
-    // For essay questions, try smart batching
+    // For essay questions with multiple answers, try smart batching
     if (groupAnswers[0].questionType === 'essay' && groupAnswers.length >= 2) {
-      
       // Process in smart batches
       for (let i = 0; i < groupAnswers.length; i += batchSize) {
         const batch = groupAnswers.slice(i, i + batchSize)
         
-        try {
-          const batchResults = await gradeMultipleEssaysInOneRequest(batch)
-          results.push(...batchResults)
-        } catch (error: unknown) {
-          console.error('Smart batch failed, falling back to individual grading:', error)
-          
-          // Fallback to individual grading
-          for (const answer of batch) {
-            try {
-              const result = await gradeEssayAnswer(
-                answer.question,
-                answer.studentAnswer,
-                answer.questionType,
-                answer.correctAnswer
-              )
-              results.push({ id: answer.id, result })
-              await new Promise(resolve => setTimeout(resolve, 1000))
-            } catch (individualError) {
-              results.push({
-                id: answer.id,
-                result: {
-                  score: 50,
-                  feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
-                  reasoning: 'Fallback scoring'
-                }
-              })
+        const task = (async () => {
+          await semaphore.acquire()
+          try {
+            return await gradeMultipleEssaysInOneRequest(batch)
+          } catch (error: unknown) {
+            logger.error('Smart batch failed, falling back to individual grading', { code: 'AI_SMART_BATCH_FAILED', message: error instanceof Error ? error.message : 'Unknown error' })
+            
+            // Fallback to individual grading (still bounded by semaphore)
+            const fallbackResults: Array<{ id: string; result: AIGradingResponse }> = []
+            for (const answer of batch) {
+              try {
+                const result = await gradeEssayAnswer(
+                  answer.question,
+                  answer.studentAnswer,
+                  answer.questionType,
+                  answer.correctAnswer
+                )
+                fallbackResults.push({ id: answer.id, result })
+              } catch {
+                fallbackResults.push({
+                  id: answer.id,
+                  result: {
+                    score: 50,
+                    feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
+                    reasoning: 'Fallback scoring'
+                  }
+                })
+              }
             }
+            return fallbackResults
+          } finally {
+            semaphore.release()
           }
-        }
+        })()
         
-        // Delay between batches
-        if (i + batchSize < groupAnswers.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000))
-        }
+        allTasks.push(task)
       }
     } else {
-      // For multiple choice or single essays, use individual grading
+      // For multiple choice or single essays, use individual grading with semaphore
       for (const answer of groupAnswers) {
-        try {
-          const result = await gradeEssayAnswer(
-            answer.question,
-            answer.studentAnswer,
-            answer.questionType,
-            answer.correctAnswer
-          )
-          results.push({ id: answer.id, result })
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        } catch (error: unknown) {
-          results.push({
-            id: answer.id,
-            result: {
-              score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
-              feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
-              reasoning: 'AI grading error'
-            }
-          })
-        }
+        const task = (async () => {
+          await semaphore.acquire()
+          try {
+            const result = await gradeEssayAnswer(
+              answer.question,
+              answer.studentAnswer,
+              answer.questionType,
+              answer.correctAnswer
+            )
+            return [{ id: answer.id, result }]
+          } catch (error: unknown) {
+            return [{
+              id: answer.id,
+              result: {
+                score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
+                feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
+                reasoning: 'AI grading error'
+              }
+            }]
+          } finally {
+            semaphore.release()
+          }
+        })()
+        
+        allTasks.push(task)
       }
     }
   }
   
-  console.log('Smart batch AI grading completed:', results.length, 'results')
+  const nestedResults = await Promise.all(allTasks)
+  const results = nestedResults.flat()
+
+  if (isDebug) {
+    logger.debug('Smart batch AI grading completed:', results.length, 'results')
+  }
   return results
 }
 
@@ -418,14 +429,6 @@ async function gradeMultipleEssaysInOneRequest(
   
   if (answers.length === 0) return []
   
-  // const model = genAI.getGenerativeModel({ 
-  //   model: 'gemini-1.5-flash',
-  //   generationConfig: {
-  //     temperature: 0.3,
-  //     maxOutputTokens: 2000, // Increased for multiple responses
-  //   }
-  // })
-
   // Create batch prompt for multiple essays
   const question = answers[0].question
   const studentAnswers = answers.map((ans, index) => 
@@ -479,7 +482,9 @@ async function gradeMultipleEssaysInOneRequest(
 
   const text = result.choices[0]?.message?.content || ''
 
-  console.log('Smart batch AI response preview:', text.substring(0, 300) + '...')
+  if (isDebug) {
+    logger.debug('Smart batch AI response preview:', text.substring(0, 300) + '...')
+  }
 
   // Parse JSON array response
   let jsonMatch = text.match(/\[[\s\S]*\]/)
@@ -497,8 +502,8 @@ async function gradeMultipleEssaysInOneRequest(
   try {
     batchResults = JSON.parse(jsonMatch[0])
   } catch (parseError) {
-    console.error('Failed to parse batch JSON:', parseError)
-    throw new Error('Invalid JSON in batch AI response')
+    logger.error('Failed to parse batch JSON', { code: 'AI_BATCH_PARSE_FAILED', message: parseError instanceof Error ? parseError.message : 'Unknown parse error' })
+    throw new Error('Invalid JSON in batch AI response', { cause: parseError })
   }
 
   // Validate and format results
@@ -529,6 +534,8 @@ async function gradeMultipleEssaysInOneRequest(
     }
   }
 
-  console.log(`Smart batch processed ${formattedResults.length} answers successfully`)
+  if (isDebug) {
+    logger.debug(`Smart batch processed ${formattedResults.length} answers successfully`)
+  }
   return formattedResults
 }

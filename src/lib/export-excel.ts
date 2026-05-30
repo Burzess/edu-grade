@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx'
-
 interface SiswaResult {
   siswa: {
     full_name: string
@@ -7,10 +5,12 @@ interface SiswaResult {
   averageScore: number | null
 }
 
-export function exportHasilUjianToExcel(
+export async function exportHasilUjianToExcel(
   ujianName: string,
   siswaResults: SiswaResult[]
 ) {
+  const XLSX = await import('xlsx')
+
   const rows = siswaResults.map((result, index) => ({
     'No': index + 1,
     'Nama Siswa': result.siswa.full_name,

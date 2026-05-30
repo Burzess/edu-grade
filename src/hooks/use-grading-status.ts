@@ -3,6 +3,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 
+const supabase = createClient()
+
 interface GradingStatus {
   jawabanId: string
   status: 'PENDING' | 'GRADED' | 'ERROR'
@@ -17,7 +19,6 @@ interface GradingStatus {
  * dari PENDING ke GRADED setelah background job selesai.
  */
 export function useGradingStatus(jawabanId: string | null, enabled: boolean = true) {
-  const supabase = createClient()
 
   return useQuery({
     queryKey: ['grading-status', jawabanId],
@@ -72,7 +73,6 @@ export function useGradingStatus(jawabanId: string | null, enabled: boolean = tr
  * Hook untuk polling multiple jawaban sekaligus (untuk batch grading)
  */
 export function useBatchGradingStatus(jawabanIds: string[], enabled: boolean = true) {
-  const supabase = createClient()
 
   return useQuery({
     queryKey: ['batch-grading-status', ...jawabanIds],

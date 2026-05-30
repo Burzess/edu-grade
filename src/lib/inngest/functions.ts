@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { generateObject } from 'ai'
 import { google } from '@ai-sdk/google'
 import { z } from 'zod'
+import { aiGradingEventSchema, type AiGradingEventPayload } from '@/lib/grading/event-schema'
 
 // Zod schema untuk structured output dari AI
 const GradingResultSchema = z.object({
@@ -30,21 +31,22 @@ export const gradeEssayJob = inngest.createFunction(
     triggers: [{ event: 'essay/grade.requested' }]
   },
   async ({ event, step }) => {
-    const { jawabanId, question, answer, correctAnswer, rubric } = event.data
-
-    // Step 1: Validate data
+    // Step 1: Validate data against the shared schema
     const validatedData = await step.run('validate-data', async () => {
-      if (!jawabanId || !question || !answer) {
-        throw new Error('Missing required data')
+      const result = aiGradingEventSchema.safeParse(event.data)
+      if (!result.success) {
+        throw new Error(`Missing required data: ${result.error.issues.map(i => i.message).join(', ')}`)
       }
-      return { jawabanId, question, answer, correctAnswer, rubric }
+      return result.data
     })
+
+    const { question, answer, correctAnswer, rubric } = validatedData
 
     // Step 2: Call AI with generateObject (Tahap 3: Structured JSON output)
     const gradingResult = await step.run('call-ai-grading', async () => {
       try {
         // Build base prompt
-        let prompt = correctAnswer 
+        let prompt = correctAnswer
           ? `Sebagai sistem penilaian otomatis, nilai essay berikut dengan menggunakan kunci jawaban sebagai referensi:
 
 PERTANYAAN:
@@ -65,11 +67,11 @@ ${answer}`
 
         // Use teacher's rubric as primary criteria if available,
         // otherwise fall back to default criteria
-        if (validatedData.rubric?.trim()) {
+        if (rubric?.trim()) {
           prompt += `
 
 RUBRIK PENILAIAN DARI GURU:
-${validatedData.rubric}
+${rubric}
 
 Harap gunakan rubrik ini sebagai dasar UTAMA penilaian Anda.
 Berikan penilaian objektif dengan skor 0-100.`
@@ -104,8 +106,7 @@ Berikan penilaian objektif dengan skor 0-100.`
         })
 
         return object
-      } catch (error: unknown) {
-        console.error('AI grading error:', error)
+      } catch (_error: unknown) {
         // Fallback scoring
         return {
           skor_akhir: 50,
@@ -120,7 +121,7 @@ Berikan penilaian objektif dengan skor 0-100.`
     // Step 3: Update database dengan hasil grading
     await step.run('update-database', async () => {
       const supabase = await createClient()
-      
+
       const { error } = await supabase
         .from('jawaban_siswa')
         .update({
