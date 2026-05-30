@@ -1,23 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
+import { generateKodeKelas } from '@/lib/kelas/generate-kode';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { adminKelasCreateSchema } from './_schema';
+import type { AdminKelasCreatePayload } from './_schema';
+import { adminWriteLimiter } from '@/lib/rate-limit';
+import { checkRateLimit } from '@/lib/api/check-rate-limit';
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/admin/kelas - List all kelas (guru only, auth required)
+ * GET /api/admin/kelas - List all kelas (admin only, auth required)
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Tidak terautentikasi' }, { status: 401 });
     }
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'guru') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
     const adminSupabase = await createAdminClient();
@@ -34,8 +41,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching kelas:', error);
-      return NextResponse.json({ success: false, error: 'Failed to fetch kelas' }, { status: 500 });
+      logger.error('Error fetching kelas:', error);
+      return NextResponse.json({ success: false, error: 'Gagal mengambil data kelas' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -44,14 +51,14 @@ export async function GET(request: NextRequest) {
       count: kelasList?.length || 0
     });
 
-  } catch (error: unknown) {
-    console.error('Error in GET /api/admin/kelas:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  } catch (_error: unknown) {
+    logger.error('Error in GET /api/admin/kelas:', _error);
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }
 
 /**
- * POST /api/admin/kelas - Create test kelas (guru only, auth required)
+ * POST /api/admin/kelas - Create test kelas (admin only, auth required)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -59,38 +66,27 @@ export async function POST(request: NextRequest) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Tidak terautentikasi' }, { status: 401 });
     }
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'guru') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
+
+    // Rate limit admin writes
+    const limited = checkRateLimit(adminWriteLimiter(user.id));
+    if (limited) return limited;
 
     const adminSupabase = await createAdminClient();
 
-    const body: unknown = await request.json();
-    if (!body || typeof body !== 'object') {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-    }
-    const { nama_kelas, guru_id } = body as Record<string, unknown>;
+    const parsed = await parseJsonBody<AdminKelasCreatePayload>(request, adminKelasCreateSchema);
+    if ('response' in parsed) return parsed.response;
+    const { nama_kelas, guru_id } = parsed.data;
 
-    const generateKode = () => {
-      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      const segments = [];
-      for (let i = 0; i < 3; i++) {
-        let segment = '';
-        for (let j = 0; j < 3; j++) {
-          segment += chars[Math.floor(Math.random() * chars.length)];
-        }
-        segments.push(segment);
-      }
-      return segments.join('-');
-    };
+    const kodeKelas = generateKodeKelas();
 
-    const kodeKelas = generateKode();
-
-    let finalGuruId = typeof guru_id === 'string' ? guru_id : undefined;
+    let finalGuruId = guru_id;
     if (!finalGuruId) {
       const { data: guruProfile } = await adminSupabase
         .from('profiles')
@@ -102,13 +98,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!finalGuruId) {
-      return NextResponse.json({ error: 'No guru found' }, { status: 400 });
+      return NextResponse.json({ error: 'Guru tidak ditemukan' }, { status: 400 });
     }
 
     const { data: newKelas, error } = await adminSupabase
       .from('kelas')
       .insert({
-        nama_kelas: typeof nama_kelas === 'string' ? nama_kelas : 'Test Kelas Debug',
+        nama_kelas: nama_kelas ?? 'Test Kelas Debug',
         kode_kelas: kodeKelas,
         created_by: finalGuruId
       })
@@ -122,8 +118,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating test kelas:', error);
-      return NextResponse.json({ success: false, error: 'Failed to create kelas' }, { status: 500 });
+      logger.error('Error creating test kelas:', error);
+      return NextResponse.json({ success: false, error: 'Gagal membuat kelas' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -133,8 +129,8 @@ export async function POST(request: NextRequest) {
       kode_kelas: kodeKelas
     });
 
-  } catch (error: unknown) {
-    console.error('Error in POST /api/admin/kelas:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  } catch (_error: unknown) {
+    logger.error('Error in POST /api/admin/kelas:', _error);
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }

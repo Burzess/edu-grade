@@ -6,21 +6,21 @@ export interface Database {
                     id: string
                     email: string
                     full_name: string | null
-                    role: 'siswa' | 'guru'
+                    role: 'siswa' | 'guru' | 'admin'
                     created_at: string
                 }
                 Insert: {
                     id: string
                     email: string
                     full_name?: string | null
-                    role: 'siswa' | 'guru'
+                    role: 'siswa' | 'guru' | 'admin'
                     created_at?: string
                 }
                 Update: {
                     id?: string
                     email?: string
                     full_name?: string | null
-                    role?: 'siswa' | 'guru'
+                    role?: 'siswa' | 'guru' | 'admin'
                     created_at?: string
                 }
             }
@@ -80,6 +80,7 @@ export interface Database {
                     kelas_id: string | null
                     allow_remidi: boolean
                     max_attempts: number
+                    visibility_setting: 'visible' | 'hidden'
                 }
                 Insert: {
                     id?: string
@@ -95,6 +96,7 @@ export interface Database {
                     kelas_id?: string | null
                     allow_remidi?: boolean
                     max_attempts?: number
+                    visibility_setting?: 'visible' | 'hidden'
                 }
                 Update: {
                     id?: string
@@ -110,6 +112,7 @@ export interface Database {
                     kelas_id?: string | null
                     allow_remidi?: boolean
                     max_attempts?: number
+                    visibility_setting?: 'visible' | 'hidden'
                 }
             }
             ujian_soal: {
@@ -202,6 +205,99 @@ export interface Database {
                     attempt_number?: number
                 }
             }
+            audit_logs: {
+                Row: {
+                    id: string
+                    actor_id: string | null
+                    actor_role: 'siswa' | 'guru' | 'admin' | null
+                    action: string
+                    entity_type: string
+                    entity_id: string | null
+                    metadata: Record<string, unknown> | null
+                    ip_address: string | null
+                    user_agent: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    actor_id?: string | null
+                    actor_role?: 'siswa' | 'guru' | 'admin' | null
+                    action: string
+                    entity_type: string
+                    entity_id?: string | null
+                    metadata?: Record<string, unknown> | null
+                    ip_address?: string | null
+                    user_agent?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    actor_id?: string | null
+                    actor_role?: 'siswa' | 'guru' | 'admin' | null
+                    action?: string
+                    entity_type?: string
+                    entity_id?: string | null
+                    metadata?: Record<string, unknown> | null
+                    ip_address?: string | null
+                    user_agent?: string | null
+                    created_at?: string
+                }
+            }
+            security_events: {
+                Row: {
+                    id: string
+                    user_id: string | null
+                    ujian_id: string | null
+                    event_type: string
+                    severity: string | null
+                    details: Record<string, unknown> | null
+                    source: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id?: string | null
+                    ujian_id?: string | null
+                    event_type: string
+                    severity?: string | null
+                    details?: Record<string, unknown> | null
+                    source?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string | null
+                    ujian_id?: string | null
+                    event_type?: string
+                    severity?: string | null
+                    details?: Record<string, unknown> | null
+                    source?: string | null
+                    created_at?: string
+                }
+            }
+            system_settings: {
+                Row: {
+                    setting_key: string
+                    value: Record<string, unknown>
+                    description: string | null
+                    updated_by: string | null
+                    updated_at: string
+                }
+                Insert: {
+                    setting_key: string
+                    value: Record<string, unknown>
+                    description?: string | null
+                    updated_by?: string | null
+                    updated_at?: string
+                }
+                Update: {
+                    setting_key?: string
+                    value?: Record<string, unknown>
+                    description?: string | null
+                    updated_by?: string | null
+                    updated_at?: string
+                }
+            }
         }
         Views: {
             [_ in never]: never
@@ -210,7 +306,7 @@ export interface Database {
             [_ in never]: never
         }
         Enums: {
-            user_role: 'siswa' | 'guru'
+            user_role: 'siswa' | 'guru' | 'admin'
         }
     }
 }
