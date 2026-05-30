@@ -5,7 +5,7 @@ import { ReactNode, memo } from 'react'
 import { InlineAuthLoading } from './auth-loading'
 
 // Type definitions
-type UserRole = 'guru' | 'siswa'
+type UserRole = 'guru' | 'siswa' | 'admin'
 
 interface SimpleRoleGuardProps {
     children: ReactNode
@@ -174,6 +174,25 @@ export const SiswaOnly = memo(({
     </InlineRoleGuard>
 ))
 SiswaOnly.displayName = 'SiswaOnly'
+
+export const AdminOnly = memo(({ 
+    children, 
+    fallback = null, 
+    showLoading = false 
+}: { 
+    children: ReactNode
+    fallback?: ReactNode
+    showLoading?: boolean 
+}) => (
+    <InlineRoleGuard 
+        requiredRole="admin" 
+        fallback={fallback} 
+        showLoading={showLoading}
+    >
+        {children}
+    </InlineRoleGuard>
+))
+AdminOnly.displayName = 'AdminOnly'
 
 /**
  * Legacy AuthGuard alias untuk backward compatibility

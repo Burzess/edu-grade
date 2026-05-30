@@ -19,10 +19,20 @@ const SISWA_ROUTES = [
   '/siswa/ujian'
 ]
 
+// Routes yang sering dikunjungi admin
+const ADMIN_ROUTES = [
+  '/admin/dashboard',
+  '/admin/users',
+  '/admin/monitoring',
+  '/admin/audit-logs',
+  '/admin/reports',
+  '/admin/settings'
+]
+
 interface PreloadOptions {
   delay?: number
   priority?: 'high' | 'low'
-  userRole?: 'guru' | 'siswa'
+  userRole?: 'guru' | 'siswa' | 'admin'
 }
 
 /**
@@ -42,9 +52,13 @@ export function usePreloadNavigation({
 
   // Preload semua routes berdasarkan role
   const preloadAllRoutes = useCallback(() => {
-    const routes = userRole === 'guru' ? GURU_ROUTES : 
-                   userRole === 'siswa' ? SISWA_ROUTES : 
-                   [...GURU_ROUTES, ...SISWA_ROUTES]
+    const routes = userRole === 'guru'
+      ? GURU_ROUTES
+      : userRole === 'siswa'
+        ? SISWA_ROUTES
+        : userRole === 'admin'
+          ? ADMIN_ROUTES
+          : [...GURU_ROUTES, ...SISWA_ROUTES, ...ADMIN_ROUTES]
 
     routes.forEach(route => {
       setTimeout(() => {
@@ -69,7 +83,8 @@ export function usePreloadNavigation({
     preloadRoute,
     preloadAllRoutes,
     preloadGuruRoutes: () => GURU_ROUTES.forEach(route => router.prefetch(route)),
-    preloadSiswaRoutes: () => SISWA_ROUTES.forEach(route => router.prefetch(route))
+    preloadSiswaRoutes: () => SISWA_ROUTES.forEach(route => router.prefetch(route)),
+    preloadAdminRoutes: () => ADMIN_ROUTES.forEach(route => router.prefetch(route))
   }
 }
 

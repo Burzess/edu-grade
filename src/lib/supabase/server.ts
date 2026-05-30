@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 /**
@@ -55,27 +56,20 @@ export async function createClient() {
  * - Operasi batch yang memerlukan akses penuh
  * - Migrasi data
  * - Webhook handlers
+ * - Insert ke tabel dengan RLS restrictive (e.g. security_events)
+ * 
+ * NOTE: Menggunakan createClient dari @supabase/supabase-js (bukan createServerClient
+ * dari @supabase/ssr) agar service role key benar-benar bypass RLS tanpa
+ * terpengaruh cookie-based auth context.
  */
 export async function createAdminClient() {
-  const cookieStore = await cookies()
-
-  return createServerClient(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Diabaikan di Server Component
-          }
-        },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   )

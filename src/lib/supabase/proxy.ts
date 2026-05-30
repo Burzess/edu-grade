@@ -53,7 +53,7 @@ export async function updateSession(request: NextRequest) {
     error || !data?.claims
   ) {
     // Route public yang tidak perlu autentikasi
-    const publicPaths = ['/login', '/register', '/auth', '/api/auth']
+    const publicPaths = ['/login', '/auth', '/api/auth']
     const isPublicPath = publicPaths.some(path => 
       request.nextUrl.pathname.startsWith(path)
     )

@@ -21,6 +21,7 @@ export function useOptimizedAuth() {
         userRole,
         isGuru: userRole === 'guru',
         isSiswa: userRole === 'siswa',
+        isAdmin: userRole === 'admin',
         canAccess: (roles: string[]) => roles.includes(userRole || ''),
         user,
         profile,

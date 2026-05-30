@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 
 interface AuthLoadingProps {
   message?: string
-  role?: 'guru' | 'siswa' | null
+  role?: 'guru' | 'siswa' | 'admin' | null
 }
 
 // Komponen AuthLoading yang sangat minimal untuk menghindari blank page

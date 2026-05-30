@@ -1,14 +1,11 @@
-import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { Database } from '@/types/database';
-
-type Profile = Database['public']['Tables']['profiles']['Row'];
+import { logger } from '@/lib/logger';
 
 export interface User {
   id: string;
   email: string;
-  role: 'guru' | 'siswa';
+  role: 'guru' | 'siswa' | 'admin';
   full_name: string;
   created_at?: string;
 }
@@ -32,7 +29,7 @@ export async function getCurrentUser(): Promise<User | null> {
       return {
         id: user.id,
         email: user.email!,
-        role: metadata.role as 'guru' | 'siswa',
+        role: metadata.role as User['role'],
         full_name: metadata.full_name,
         created_at: user.created_at,
       };
@@ -50,26 +47,26 @@ export async function getCurrentUser(): Promise<User | null> {
         return {
           id: profile.id,
           email: profile.email,
-          role: profile.role as 'guru' | 'siswa',
+          role: profile.role as User['role'],
           full_name: profile.full_name,
           created_at: profile.created_at,
         };
       }
     } catch (dbError) {
-      console.error('Database query failed, using fallback:', dbError);
+      logger.error('Database query failed, using fallback:', dbError);
     }
 
     // Emergency fallback - buat user object minimal
     return {
       id: user.id,
       email: user.email!,
-      role: (metadata.role as 'guru' | 'siswa') || 'siswa',
+      role: (metadata.role as User['role']) || 'siswa',
       full_name: metadata.full_name || user.email?.split('@')[0] || 'User',
       created_at: user.created_at,
     };
 
   } catch (error: unknown) {
-    console.error('getCurrentUser error:', error);
+    logger.error('getCurrentUser error:', error);
     return null;
   }
 }
@@ -90,7 +87,7 @@ export async function requireAuth(): Promise<User> {
  * Server-side function yang membutuhkan role tertentu
  * Akan redirect ke /unauthorized jika role tidak sesuai
  */
-export async function requireRole(roles: string[]): Promise<User> {
+export async function requireRole(roles: Array<User['role']>): Promise<User> {
   const user = await requireAuth();
   if (!roles.includes(user.role)) {
     redirect('/unauthorized');
@@ -99,40 +96,8 @@ export async function requireRole(roles: string[]): Promise<User> {
 }
 
 /**
- * Server-side function khusus untuk guru
+ * Server-side function khusus untuk admin
  */
-export async function requireGuru(): Promise<User> {
-  return requireRole(['guru']);
-}
-
-/**
- * Server-side function khusus untuk siswa
- */
-export async function requireSiswa(): Promise<User> {
-  return requireRole(['siswa']);
-}
-
-/**
- * Helper function untuk mengecek apakah user memiliki permission
- */
-export function hasPermission(user: User, permission: string): boolean {
-  const permissions = {
-    guru: ['read', 'write', 'delete', 'manage_students', 'manage_exams'],
-    siswa: ['read', 'take_exam'],
-  };
-
-  const userPermissions = permissions[user.role] || [];
-  return userPermissions.includes(permission);
-}
-
-/**
- * Server-side function untuk logout
- */
-export async function signOut() {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    console.error('Signout error:', error);
-  }
-  redirect('/login');
+export async function requireAdmin(): Promise<User> {
+  return requireRole(['admin']);
 }

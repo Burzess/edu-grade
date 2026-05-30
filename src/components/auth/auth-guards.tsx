@@ -4,5 +4,6 @@ export {
   SimpleRoleGuard,
   InlineRoleGuard,
   GuruOnly,
-  SiswaOnly 
+  SiswaOnly,
+  AdminOnly
 } from './simple-role-guard'

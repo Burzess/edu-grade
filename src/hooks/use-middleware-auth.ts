@@ -1,48 +1,156 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth'
 
 export interface MiddlewareAuth {
   userId: string | null
   userEmail: string | null
-  userRole: 'guru' | 'siswa' | null
+  userRole: 'guru' | 'siswa' | 'admin' | null
   isAuthenticated: boolean
   isGuru: boolean
   isSiswa: boolean
+  isAdmin: boolean
   loading: boolean
   error: string | null
 }
 
+interface AuthCheckResponse {
+  isAuthenticated: boolean
+  user: {
+    id: string
+    email: string
+    role: 'guru' | 'siswa' | 'admin'
+  } | null
+}
+
 /**
- * Hook untuk mengakses auth data dari middleware headers dengan cache optimization
+ * Fetch auth check from the server.
+ * Extracted as a standalone function so React Query can deduplicate
+ * concurrent calls across all components using this hook.
  */
-export function useMiddlewareAuth(): MiddlewareAuth {
-  const [authData, setAuthData] = useState<MiddlewareAuth>(() => {
-    // Inisialisasi dengan cached state jika ada
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = sessionStorage.getItem('auth-state-cache')
-        if (cached) {
-          const parsed = JSON.parse(cached)
-          if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
-            return {
-              userId: parsed.state.user?.id || null,
-              userEmail: parsed.state.user?.email || null,
-              userRole: parsed.state.profile?.role || null,
-              isAuthenticated: !!(parsed.state.user && parsed.state.profile),
-              isGuru: parsed.state.profile?.role === 'guru',
-              isSiswa: parsed.state.profile?.role === 'siswa',
-              loading: false, // Set false untuk immediate rendering
-              error: null
-            }
+async function fetchAuthCheck(): Promise<AuthCheckResponse> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+  try {
+    const response = await fetch('/api/auth/check', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-cache',
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (response.status === 401) {
+      return { isAuthenticated: false, user: null }
+    }
+
+    const body = await response.json()
+    return {
+      isAuthenticated: body?.isAuthenticated === true && !!body?.user?.id,
+      user: body?.user ?? null,
+    }
+  } catch {
+    clearTimeout(timeoutId)
+    throw new Error('Auth check failed')
+  }
+}
+
+/**
+ * Read cached auth state from sessionStorage for instant rendering on page load.
+ * Returns undefined if no valid cache exists.
+ */
+function getCachedInitialData(): AuthCheckResponse | undefined {
+  if (typeof window === 'undefined') return undefined
+
+  try {
+    const cached = sessionStorage.getItem('auth-state-cache')
+    if (cached) {
+      const parsed = JSON.parse(cached)
+      if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+        const user = parsed.state?.user
+        const profile = parsed.state?.profile
+        if (user && profile) {
+          return {
+            isAuthenticated: true,
+            user: {
+              id: user.id,
+              email: user.email ?? '',
+              role: profile.role,
+            },
           }
         }
-      } catch (error: unknown) {
-        console.warn('Failed to parse auth cache:', error)
       }
     }
-    
+  } catch {
+    // Ignore parse errors — will fetch fresh data
+  }
+
+  return undefined
+}
+
+/**
+ * Hook untuk mengakses auth data dari middleware headers dengan React Query optimization.
+ *
+ * Uses React Query's single-flight deduplication so all guarded sections
+ * on a single dashboard share one in-flight request instead of each
+ * component triggering its own fetch on mount.
+ *
+ * staleTime is set to 5 minutes (≥ session lifetime / 2) to avoid
+ * unnecessary re-fetches within a session.
+ */
+export function useMiddlewareAuth(): MiddlewareAuth {
+  const { setUser, setProfile } = useAuthStore()
+
+  const { data, isLoading, error } = useQuery<AuthCheckResponse>({
+    queryKey: ['auth-check'],
+    queryFn: fetchAuthCheck,
+    staleTime: 5 * 60 * 1000, // 5 minutes — avoids redundant round-trips
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 1,
+    initialData: getCachedInitialData,
+  })
+
+  // Sync with auth store for compatibility with other components
+  useEffect(() => {
+    if (!data) return
+
+    if (data.isAuthenticated && data.user) {
+      const { id, email, role } = data.user
+
+      const minimalUser = {
+        id,
+        email: email ?? '',
+        user_metadata: { role },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        email_confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        role: 'authenticated',
+      } as unknown as Parameters<typeof setUser>[0]
+
+      const minimalProfile = {
+        id,
+        email: email ?? '',
+        full_name: (email ?? '').split('@')[0],
+        role,
+        created_at: new Date().toISOString(),
+      }
+
+      setUser(minimalUser)
+      setProfile(minimalProfile)
+    }
+  }, [data, setUser, setProfile])
+
+  // Derive the MiddlewareAuth shape from query state
+  if (isLoading && !data) {
     return {
       userId: null,
       userEmail: null,
@@ -50,122 +158,49 @@ export function useMiddlewareAuth(): MiddlewareAuth {
       isAuthenticated: false,
       isGuru: false,
       isSiswa: false,
+      isAdmin: false,
       loading: true,
-      error: null
+      error: null,
     }
-  })
+  }
 
-  const { setUser, setProfile } = useAuthStore()
-
-  useEffect(() => {
-    const checkMiddlewareHeaders = async () => {
-      try {
-        // Jika sudah ada cached data yang fresh, skip fetch untuk performa
-        if (authData.isAuthenticated && !authData.loading) {
-          return
-        }
-
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout
-
-        const response = await fetch('/api/auth/check', {
-          method: 'GET',
-          credentials: 'include',
-          cache: 'no-cache',
-          signal: controller.signal
-        })
-
-        clearTimeout(timeoutId)
-
-        if (response.status === 401) {
-          setAuthData({
-            userId: null,
-            userEmail: null,
-            userRole: null,
-            isAuthenticated: false,
-            isGuru: false,
-            isSiswa: false,
-            loading: false,
-            error: null
-          })
-          return
-        }
-
-        // Ambil data dari headers yang di-set oleh middleware
-        const userId = response.headers.get('x-user-id')
-        const userEmail = response.headers.get('x-user-email')
-        const userRole = response.headers.get('x-user-role') as 'guru' | 'siswa' | null
-
-        const isAuthenticated = !!(userId && userEmail && userRole)
-        
-        const newAuthData = {
-          userId,
-          userEmail,
-          userRole,
-          isAuthenticated,
-          isGuru: userRole === 'guru',
-          isSiswa: userRole === 'siswa',
-          loading: false,
-          error: null
-        }
-
-        setAuthData(newAuthData)
-
-        // Sync dengan store untuk compatibility
-        if (isAuthenticated && userId && userEmail && userRole) {
-          const minimalUser = {
-            id: userId,
-            email: userEmail,
-            user_metadata: { role: userRole },
-            app_metadata: {},
-            aud: 'authenticated',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            email_confirmed_at: new Date().toISOString(),
-            last_sign_in_at: new Date().toISOString(),
-            role: 'authenticated'
-          } as any
-
-          const minimalProfile = {
-            id: userId,
-            email: userEmail,
-            full_name: userEmail.split('@')[0],
-            role: userRole,
-            created_at: new Date().toISOString()
-          }
-
-          setUser(minimalUser)
-          setProfile(minimalProfile)
-        }
-
-      } catch (error: unknown) {
-        console.error('Failed to check middleware auth:', error)
-        const errorMessage = error instanceof Error ? error.message : 'Auth check failed'
-        
-        setAuthData({ 
-          userId: null,
-          userEmail: null,
-          userRole: null,
-          isAuthenticated: false,
-          isGuru: false,
-          isSiswa: false,
-          loading: false, 
-          error: errorMessage
-        })
-      }
+  if (error) {
+    return {
+      userId: null,
+      userEmail: null,
+      userRole: null,
+      isAuthenticated: false,
+      isGuru: false,
+      isSiswa: false,
+      isAdmin: false,
+      loading: false,
+      error: error instanceof Error ? error.message : 'Auth check failed',
     }
+  }
 
-    checkMiddlewareHeaders()
-  }, [setUser, setProfile])
+  const userId = data?.user?.id ?? null
+  const userEmail = data?.user?.email ?? null
+  const userRole = (data?.user?.role ?? null) as 'guru' | 'siswa' | 'admin' | null
+  const isAuthenticated = data?.isAuthenticated === true && !!userId
 
-  return authData
+  return {
+    userId,
+    userEmail,
+    userRole,
+    isAuthenticated,
+    isGuru: userRole === 'guru',
+    isSiswa: userRole === 'siswa',
+    isAdmin: userRole === 'admin',
+    loading: false,
+    error: null,
+  }
 }
 
 /**
  * Hook yang khusus untuk component guards
  * Return boolean langsung untuk conditional rendering
  */
-export function useAuthGuard(requiredRole?: 'guru' | 'siswa') {
+export function useAuthGuard(requiredRole?: 'guru' | 'siswa' | 'admin') {
   const auth = useMiddlewareAuth()
 
   if (!auth.isAuthenticated) {
@@ -188,10 +223,11 @@ export function useRoleCheck() {
   return {
     isGuru: auth.isGuru,
     isSiswa: auth.isSiswa,
+    isAdmin: auth.isAdmin,
     role: auth.userRole,
-    canAccess: (allowedRoles: ('guru' | 'siswa')[]) => {
+    canAccess: (allowedRoles: ('guru' | 'siswa' | 'admin')[]) => {
       return auth.userRole ? allowedRoles.includes(auth.userRole) : false
-    }
+    },
   }
 }
 
@@ -200,7 +236,6 @@ export function useRoleCheck() {
  * Gunakan saat logout atau refresh auth
  */
 export function clearAuthCache() {
-  // Tidak ada cache lagi, jadi hanya clear sessionStorage jika ada
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('auth-quick-cache')
   }

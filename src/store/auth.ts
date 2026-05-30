@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { subscribeWithSelector, persist } from 'zustand/middleware'
+import { subscribeWithSelector } from 'zustand/middleware'
 import { User } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
@@ -21,7 +21,7 @@ interface AuthState {
     // Computed getters untuk mencegah re-computation
     isAuthenticated: () => boolean
     getUserRole: () => string | null
-    isRole: (role: 'guru' | 'siswa') => boolean
+    isRole: (role: 'guru' | 'siswa' | 'admin') => boolean
     // Caching methods
     getCachedProfile: (userId: string) => Profile | null
     setCachedProfile: (userId: string, profile: Profile) => void
@@ -44,8 +44,8 @@ const getInitialState = () => {
                     }
                 }
             }
-        } catch (error: unknown) {
-            console.warn('Failed to parse auth cache:', error)
+        } catch (_error: unknown) {
+            // Failed to parse auth cache, use defaults
         }
     }
     
@@ -82,8 +82,8 @@ export const useAuthStore = create<AuthState>()(
                             state: { ...get(), ...newState },
                             timestamp: Date.now()
                         }))
-                    } catch (error: unknown) {
-                        console.warn('Failed to cache auth state:', error)
+                    } catch (_error: unknown) {
+                        // Failed to cache auth state
                     }
                 }
             }
@@ -106,8 +106,8 @@ export const useAuthStore = create<AuthState>()(
                             state: { ...get(), ...newState },
                             timestamp: Date.now()
                         }))
-                    } catch (error: unknown) {
-                        console.warn('Failed to cache auth state:', error)
+                    } catch (_error: unknown) {
+                        // Failed to cache auth state
                     }
                 }
             }
@@ -141,8 +141,8 @@ export const useAuthStore = create<AuthState>()(
             if (typeof window !== 'undefined') {
                 try {
                     sessionStorage.removeItem('auth-state-cache')
-                } catch (error: unknown) {
-                    console.warn('Failed to clear auth cache:', error)
+                } catch (_error: unknown) {
+                    // Failed to clear auth cache
                 }
             }
         },
@@ -223,6 +223,7 @@ export const useUserRole = () => useAuthStore(selectUserRole)
 // Custom hooks untuk specific role checks
 export const useIsGuru = () => useAuthStore(state => selectUserRole(state) === 'guru')
 export const useIsSiswa = () => useAuthStore(state => selectUserRole(state) === 'siswa')
+export const useIsAdmin = () => useAuthStore(state => selectUserRole(state) === 'admin')
 
 // Hook untuk mengambil minimal auth state yang dibutuhkan guards
 export const useAuthGuardState = () => useAuthStore(state => ({

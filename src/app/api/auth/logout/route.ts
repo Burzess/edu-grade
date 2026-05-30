@@ -1,10 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { logoutLimiter } from '@/lib/rate-limit'
+import { getClientIp, checkRateLimit } from '@/lib/api/check-rate-limit'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
     try {
+        // Rate limit: 3 requests per minute per IP
+        const limited = checkRateLimit(logoutLimiter(getClientIp(request)))
+        if (limited) return limited
+
         const supabase = await createClient()
         
         const { data: { user } } = await supabase.auth.getUser()
@@ -13,7 +19,7 @@ export async function POST(request: NextRequest) {
         
         if (error) {
             return NextResponse.json(
-                { error: 'Logout failed' },
+                { error: 'Gagal melakukan logout' },
                 { status: 400 }
             )
         }
@@ -34,10 +40,9 @@ export async function POST(request: NextRequest) {
         
         return response
         
-    } catch (error: unknown) {
-        console.error('Logout API error:', error)
+    } catch (_error: unknown) {
         return NextResponse.json(
-            { error: 'Logout failed' },
+            { error: 'Terjadi kesalahan pada server' },
             { status: 500 }
         )
     }

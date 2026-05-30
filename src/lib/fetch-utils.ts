@@ -46,7 +46,6 @@ export async function fetchWithTimeout(
       // Clear timeout on success
       if (timeoutId) {
         clearTimeout(timeoutId)
-        timeoutId = null
       }
 
       return response
@@ -57,13 +56,11 @@ export async function fetchWithTimeout(
       // Clear timeout on error
       if (timeoutId) {
         clearTimeout(timeoutId)
-        timeoutId = null
       }
 
       // Don't retry on AbortError if it's the last attempt
       if (error instanceof Error && error.name === 'AbortError') {
         if (attempt === retries) {
-          console.warn(`Fetch timeout after ${timeout}ms (attempt ${attempt + 1}/${retries + 1})`)
           break
         }
       }
@@ -75,7 +72,6 @@ export async function fetchWithTimeout(
 
       // Retry dengan delay
       if (attempt < retries) {
-        console.warn(`Fetch failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${retryDelay}ms...`)
         await new Promise(resolve => setTimeout(resolve, retryDelay))
       }
     }
@@ -160,7 +156,6 @@ export async function safeFetch(
     
     // Don't treat AbortError as real error untuk UX
     if (err.name === 'AbortError') {
-      console.debug('Fetch was aborted (likely due to timeout or navigation)')
       return { error: err }
     }
     

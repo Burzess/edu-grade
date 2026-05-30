@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Shield, Loader2 } from 'lucide-react'
 
 // Type definitions untuk role system
-type UserRole = 'guru' | 'siswa'
+type UserRole = 'guru' | 'siswa' | 'admin'
 
 interface RoleGuardProps {
     children: ReactNode
@@ -122,6 +122,8 @@ const getDefaultDashboardPath = (role: UserRole): string => {
             return '/guru/dashboard'
         case 'siswa':
             return '/siswa/dashboard'
+        case 'admin':
+            return '/admin/dashboard'
         default:
             return '/login'
     }
@@ -145,7 +147,7 @@ const useAuthRedirect = () => {
     return { redirectTo, redirectToDashboard }
 }
 
-// Guard untuk mencegah user yang sudah login mengakses halaman login/register
+// Guard untuk mencegah user yang sudah login mengakses halaman login
 export const AuthRedirectGuard = memo(({ children }: { children: ReactNode }) => {
     const { isAuthenticated, loading, userRole } = useQuickAuthCheck()
     const { redirectToDashboard } = useAuthRedirect()
@@ -168,7 +170,7 @@ export const AuthRedirectGuard = memo(({ children }: { children: ReactNode }) =>
         return <QuickRedirectLoader />
     }
 
-    // Jika belum login, render children (halaman login/register)
+    // Jika belum login, render children (halaman login)
     return <>{children}</>
 })
 AuthRedirectGuard.displayName = 'AuthRedirectGuard'
@@ -247,9 +249,16 @@ export const SiswaOnlyGuard = memo(({ children }: { children: ReactNode }) => (
 ))
 SiswaOnlyGuard.displayName = 'SiswaOnlyGuard'
 
+export const AdminOnlyGuard = memo(({ children }: { children: ReactNode }) => (
+    <RoleGuard allowedRoles={['admin']}>
+        {children}
+    </RoleGuard>
+))
+AdminOnlyGuard.displayName = 'AdminOnlyGuard'
+
 // Guard untuk halaman yang bisa diakses oleh kedua role
 export const AuthenticatedGuard = memo(({ children }: { children: ReactNode }) => (
-    <RoleGuard allowedRoles={['guru', 'siswa']}>
+    <RoleGuard allowedRoles={['guru', 'siswa', 'admin']}>
         {children}
     </RoleGuard>
 ))

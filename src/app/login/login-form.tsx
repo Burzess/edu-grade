@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/providers/auth-provider"
+import { getDashboardPathForRole } from "@/lib/auth/dashboard-path"
+import { isUserRole, ROLES } from "@/types/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import Link from "next/link"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { MiddlewareErrorHandler } from "@/components/auth/middleware-error-handler"
 import { SessionExpiredHandler } from "@/components/auth/session-expired-handler"
@@ -21,6 +22,30 @@ const loginSchema = z.object({
 })
 
 type LoginForm = z.infer<typeof loginSchema>
+
+/**
+ * Translate Supabase auth error messages to Indonesian.
+ */
+function translateAuthError(message: string): string {
+    const errorMap: Record<string, string> = {
+        'Invalid login credentials': 'Email atau password salah',
+        'Email not confirmed': 'Email belum dikonfirmasi. Silakan cek inbox Anda.',
+        'User is banned': 'Akun Anda telah dinonaktifkan. Hubungi administrator.',
+        'User not found': 'Pengguna tidak ditemukan',
+        'Too many requests': 'Terlalu banyak percobaan. Silakan coba lagi nanti.',
+        'Email rate limit exceeded': 'Batas pengiriman email tercapai. Coba lagi nanti.',
+        'Signup disabled': 'Pendaftaran tidak tersedia saat ini.',
+        'Password should be at least 6 characters': 'Password minimal 6 karakter',
+    }
+
+    for (const [english, indonesian] of Object.entries(errorMap)) {
+        if (message.toLowerCase().includes(english.toLowerCase())) {
+            return indonesian
+        }
+    }
+
+    return message
+}
 
 export default function LoginForm() {
     const [error, setError] = useState<string | null>(null)
@@ -54,9 +79,6 @@ export default function LoginForm() {
                 case 'access_denied':  
                     setError('Akses ditolak. Silakan login dengan akun yang sesuai.')
                     break
-                case 'register_disabled':
-                    setError('Registrasi tidak tersedia saat ini. Silakan hubungi administrator.')
-                    break
                 default:
                     setError(messageParam || 'Terjadi kesalahan. Silakan coba lagi.')
             }
@@ -80,16 +102,18 @@ export default function LoginForm() {
 
             // Ambil role dari profile yang sudah di-fetch dari database (lebih aman)
             // Profile diambil dari database, bukan dari user_metadata yang bisa dimanipulasi
-            const userRole = result?.profile?.role || 'siswa'
-            const dashboardPath = userRole === 'guru' ? '/guru/dashboard' : '/siswa/dashboard'
-            
-            console.log('Login successful, redirecting to:', dashboardPath, 'role:', userRole)
+            const profileRole = result?.profile?.role
+            const userRole = isUserRole(profileRole) ? profileRole : ROLES.SISWA
+            const dashboardPath = getDashboardPathForRole(userRole)
             
             // Langsung redirect ke dashboard yang sesuai tanpa delay
             router.replace(dashboardPath)
 
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Terjadi kesalahan saat login")
+            const message = err instanceof Error ? err.message : "Terjadi kesalahan saat login"
+            // Translate common Supabase auth error messages
+            const translatedMessage = translateAuthError(message)
+            setError(translatedMessage)
         } finally {
             setLoading(false)
         }
@@ -170,32 +194,9 @@ export default function LoginForm() {
                     </Form>
 
                     <div className="mt-6 space-y-3">
-                        <div className="text-center text-sm">
-                            Belum punya akun?{" "}
-                            <Link href="/register" className="text-brand-500 font-bold underline md:no-underline dark:text-brand-400 hover:underline">
-                                Daftar di sini
-                            </Link>
+                        <div className="text-center text-sm text-muted-foreground">
+                            Hubungi administrator untuk pembuatan akun baru.
                         </div>
-                        
-                        {/* <div className="border-t pt-3">
-                            <div className="text-center text-sm font-medium text-foreground mb-2">
-                                Akun Demo Tersedia:
-                            </div>
-                            <div className="text-xs text-gray-600 space-y-1">
-                                <div className="bg-muted p-2 rounded">
-                                    <strong>Guru:</strong> guru@gmail.com
-                                </div>
-                                <div className="bg-muted p-2 rounded">
-                                    <strong>Siswa 1:</strong> siswa@demo.com
-                                </div>
-                                <div className="bg-muted p-2 rounded">
-                                    <strong>Siswa 2:</strong> siswa1@demo.com
-                                </div>
-                                <div className="text-center mt-2 text-muted-foreground">
-                                    Password untuk semua akun: <strong>demo123</strong>
-                                </div>
-                            </div>
-                        </div> */}
                     </div>
                 </CardContent>
             </Card>

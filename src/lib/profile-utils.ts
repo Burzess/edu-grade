@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
+import { UserRole } from '@/types/auth'
 
 type Profile = Database['public']['Tables']['profiles']['Insert']
 
@@ -7,7 +8,7 @@ export async function ensureProfileExists(
     userId: string,
     email: string,
     fullName?: string,
-    role?: 'siswa' | 'guru'
+    role?: UserRole
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const supabase = createClient()

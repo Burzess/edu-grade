@@ -3,14 +3,21 @@
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/auth'
 import { ensureProfileExists } from '@/lib/profile-utils'
+import { UserRole } from '@/types/auth'
+import {
+  lookupCachedProfile,
+  buildMetadataProfile,
+  fetchProfileFromDB,
+  buildFallbackProfile,
+} from '@/lib/auth/profile-fetcher'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useRef, useCallback } from 'react'
+import { createContext, useContext, useEffect, useRef } from 'react'
 import { AuthErrorBoundary } from '@/components/auth/auth-error-boundary'
 
 interface AuthContextType {
-    signUp: (email: string, password: string, fullName: string, role: 'siswa' | 'guru') => Promise<{ user: any; session: any }>
-    signIn: (email: string, password: string) => Promise<{ user: any; session: any; profile: { role: 'guru' | 'siswa' } | null }>
+    signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<{ user: any; session: any }>
+    signIn: (email: string, password: string) => Promise<{ user: any; session: any; profile: { role: UserRole } | null }>
     signOut: () => Promise<void>
 }
 
@@ -38,7 +45,7 @@ export function AuthProvider({
                 id: initialUser.id,
                 email: initialUser.email,
                 full_name: initialUser.full_name,
-                role: initialUser.role as 'siswa' | 'guru',
+                role: initialUser.role as UserRole,
                 created_at: new Date().toISOString()
             }
 
@@ -134,144 +141,55 @@ export function AuthProvider({
 
     const getProfile = async (user: User) => {
         try {
-            // Set timeout untuk mencegah hanging (kurangi dari 10 detik ke 5 detik)
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => {
-                controller.abort()
-                console.error('Profile fetch timeout after 5 seconds')
-            }, 5000) // Kurangi ke 5 detik
-
-            // Cek cache terlebih dahulu dengan validasi yang lebih ketat
-            const cachedProfile = getCachedProfile(user.id)
-            if (cachedProfile && cachedProfile.email && cachedProfile.role) {
-                console.log('Using cached profile for user:', user.id)
-                setProfile(cachedProfile)
-                clearTimeout(timeoutId)
-                return
-            }
-
-            // Coba ambil dari metadata dulu (lebih cepat) dengan validasi
             const metadata = user.user_metadata || {}
-            if (metadata.role && metadata.full_name && user.email) {
-                const quickProfile = {
-                    id: user.id,
-                    email: user.email,
-                    full_name: metadata.full_name,
-                    role: metadata.role as 'siswa' | 'guru',
-                    created_at: user.created_at
-                }
-                console.log('Using metadata profile for user:', user.id)
-                setProfile(quickProfile)
-                setCachedProfile(user.id, quickProfile)
-                clearTimeout(timeoutId)
+
+            // 1. Cache lookup
+            const cached = lookupCachedProfile(user.id, getCachedProfile)
+            if (cached) {
+                setProfile(cached)
                 return
             }
 
-            // Check network connectivity
-            if (!navigator.onLine) {
-                console.warn('No internet connection, using fallback profile')
-                clearTimeout(timeoutId)
-                const fallbackProfile = {
-                    id: user.id,
-                    email: user.email!,
-                    full_name: user.email?.split('@')[0] || 'User',
-                    role: (metadata.role as 'siswa' | 'guru') || 'siswa',
-                    created_at: user.created_at
-                }
-                setProfile(fallbackProfile)
-                setCachedProfile(user.id, fallbackProfile)
+            // 2. Metadata fast path (no DB call)
+            const metaProfile = buildMetadataProfile(
+                user.id, user.email!, metadata, user.created_at
+            )
+            if (metaProfile) {
+                setProfile(metaProfile)
+                setCachedProfile(user.id, metaProfile)
                 return
             }
 
-            // Fallback ke database query dengan retry logic yang dipercepat
-            console.log('Fetching profile from database for user:', user.id)
-            let retries = 2 // Kurangi dari 3 ke 2 retry
-            let profileData = null
-
-            while (retries > 0 && !profileData && !controller.signal.aborted) {
-                try {
-                    const { data, error } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', user.id)
-                        .single()
-
-                    if (data) {
-                        profileData = data
-                        setProfile(data)
-                        setCachedProfile(user.id, data)
-                        break
-                    } else if (error) {
-                        if (error.code === 'PGRST116') {
-                            // Profile not found, create quickly
-                            console.log('Profile not found, creating...')
-                            const result = await ensureProfileExists(
-                                user.id,
-                                user.email!,
-                                metadata.full_name || user.email?.split('@')[0] || 'User',
-                                (metadata.role as 'siswa' | 'guru') || 'siswa'
-                            )
-                            
-                            if (result.success) {
-                                // Try fetch again after creation
-                                const { data: newProfile } = await supabase
-                                    .from('profiles')
-                                    .select('*')
-                                    .eq('id', user.id)
-                                    .single()
-                                
-                                if (newProfile) {
-                                    profileData = newProfile
-                                    setProfile(newProfile)
-                                    setCachedProfile(user.id, newProfile)
-                                    break
-                                }
-                            }
-                        } else {
-                            throw error
-                        }
-                    }
-                } catch (fetchError: any) {
-                    if (fetchError.name === 'AbortError') {
-                        console.error('Profile fetch aborted due to timeout')
-                        break
-                    }
-                    
-                    retries--
-                    console.warn(`Profile fetch failed, ${retries} retries left:`, fetchError)
-                    
-                    if (retries > 0) {
-                        // Kurangi delay retry dari exponential backoff
-                        await new Promise(resolve => setTimeout(resolve, 500))
-                    }
-                }
+            // 3. Offline fallback
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                const fallback = buildFallbackProfile(user.id, user.email!, metadata, user.created_at)
+                setProfile(fallback)
+                setCachedProfile(user.id, fallback)
+                return
             }
 
-            clearTimeout(timeoutId)
+            // 4. DB fetch (with creation if not found)
+            const dbProfile = await fetchProfileFromDB(
+                supabase,
+                user.id,
+                user.email!,
+                (metadata.full_name as string) || user.email?.split('@')[0] || 'User',
+                (metadata.role as UserRole) || 'siswa'
+            )
 
-            // Jika setelah retry masih gagal atau timeout, buat profile fallback
-            if (!profileData || controller.signal.aborted) {
-                console.warn('Unable to fetch/create profile, using emergency fallback')
-                const emergencyProfile = {
-                    id: user.id,
-                    email: user.email!,
-                    full_name: metadata.full_name || user.email?.split('@')[0] || 'User',
-                    role: (metadata.role as 'siswa' | 'guru') || 'siswa',
-                    created_at: user.created_at
-                }
-                setProfile(emergencyProfile)
-                setCachedProfile(user.id, emergencyProfile)
-                
-                // Schedule background sync untuk update profile nanti
-                setTimeout(() => {
-                    console.log('Attempting background profile sync...')
-                    getProfile(user).catch(console.error)
-                }, 10000)
+            if (dbProfile) {
+                setProfile(dbProfile)
+                setCachedProfile(user.id, dbProfile)
+                return
             }
+
+            // 5. Emergency fallback
+            const emergency = buildFallbackProfile(user.id, user.email!, metadata, user.created_at)
+            setProfile(emergency)
+            setCachedProfile(user.id, emergency)
 
         } catch (err: unknown) {
             console.error('Critical error in getProfile:', err)
-            // Fallback profile untuk mencegah stuck loading
             const emergencyProfile = {
                 id: user.id,
                 email: user.email!,
@@ -283,14 +201,13 @@ export function AuthProvider({
         }
     }
 
-    const signUp = async (email: string, password: string, fullName: string, role: 'siswa' | 'guru') => {
+    const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
                     full_name: fullName,
-                    role: role,
                 },
                 emailRedirectTo: `${window.location.origin}/auth/callback`
             }
@@ -298,19 +215,10 @@ export function AuthProvider({
 
         if (error) throw error
 
-        // Update user metadata agar role tersimpan di JWT untuk akses cepat
+        // Ensure profile exists in the database with the requested role.
+        // Role assignment is handled server-side via the profiles table,
+        // NOT via user_metadata (which is client-writable and insecure).
         if (data.user && data.session) {
-            const { error: updateError } = await supabase.auth.updateUser({
-                data: {
-                    full_name: fullName,
-                    role: role
-                }
-            })
-
-            if (updateError) {
-                console.warn('Warning: Could not update user metadata:', updateError)
-            }
-
             const result = await ensureProfileExists(
                 data.user.id,
                 data.user.email!,
@@ -328,7 +236,7 @@ export function AuthProvider({
         return data
     }
 
-    const signIn = async (email: string, password: string): Promise<{ user: any; session: any; profile: { role: 'guru' | 'siswa' } | null }> => {
+    const signIn = async (email: string, password: string): Promise<{ user: any; session: any; profile: { role: UserRole } | null }> => {
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -339,7 +247,7 @@ export function AuthProvider({
 
         if (error) throw error
 
-        let userProfile: { role: 'guru' | 'siswa' } | null = null
+        let userProfile: { role: UserRole } | null = null
 
         // Ensure user and profile are set immediately
         if (data.user) {
@@ -354,13 +262,13 @@ export function AuthProvider({
                     .single()
                 
                 if (profileData && !profileError) {
-                    userProfile = { role: profileData.role as 'guru' | 'siswa' }
+                    userProfile = { role: profileData.role as UserRole }
                     setProfile(profileData)
                     setCachedProfile(data.user.id, profileData)
                 } else {
                     // Fallback ke metadata jika profile tidak ada
                     const metadata = data.user.user_metadata || {}
-                    userProfile = { role: (metadata.role as 'guru' | 'siswa') || 'siswa' }
+                    userProfile = { role: (metadata.role as UserRole) || 'siswa' }
                     await getProfile(data.user)
                 }
             } catch (profileErr) {
@@ -368,7 +276,7 @@ export function AuthProvider({
                 // Fallback ke getProfile async
                 await getProfile(data.user)
                 const metadata = data.user.user_metadata || {}
-                userProfile = { role: (metadata.role as 'guru' | 'siswa') || 'siswa' }
+                userProfile = { role: (metadata.role as UserRole) || 'siswa' }
             }
         }
         

@@ -225,7 +225,7 @@ export default function UnauthorizedPage() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 1.8 }}
               >
-                Access denied at {new Date().toLocaleString('id-ID')}
+                Akses ditolak pada {new Date().toLocaleString('id-ID')}
                 <br />
                 Session ID: {Date.now().toString(36)}
               </motion.div>

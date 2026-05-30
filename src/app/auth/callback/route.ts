@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { ROLES } from '@/types/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
                     .single()
 
                 // Jika profile belum ada, buat manual
+                // Security: Always default role to ROLES.SISWA. Admin/guru
+                // escalation only via server-trusted path (seeded admin or
+                // manual DB update by an existing admin). Never trust
+                // client-supplied metadata.role at profile creation.
                 if (!existingProfile) {
                     const metadata = data.user.user_metadata || {}
                     await supabase
@@ -27,11 +32,10 @@ export async function GET(request: NextRequest) {
                             id: data.user.id,
                             email: data.user.email!,
                             full_name: metadata.full_name || '',
-                            role: (metadata.role as 'siswa' | 'guru') || 'siswa',
+                            role: ROLES.SISWA,
                         })
                 }
-            } catch (profileError) {
-                console.error('Error creating profile in callback:', profileError)
+            } catch (_profileError) {
                 // Jangan fail redirect, user tetap bisa login
             }
 
