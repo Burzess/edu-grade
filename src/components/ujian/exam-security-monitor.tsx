@@ -1,170 +1,170 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { format } from 'date-fns'
+import { id as idLocale } from 'date-fns/locale'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-    Shield, 
-    Users, 
-    AlertTriangle, 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+    Shield,
+    AlertTriangle,
     Activity,
-    Eye,
-    EyeOff,
     RefreshCw,
-    Download,
     Clock,
-    SplitSquareHorizontal
+    SplitSquareHorizontal,
+    Monitor,
+    MousePointerClick,
+    Keyboard,
+    Camera,
 } from 'lucide-react'
-
-// Mock data untuk demo - replace dengan real API call
-interface StudentSecurityData {
-    id: string
-    name: string
-    ujianId: string
-    isOnline: boolean
-    isWindowFocused: boolean
-    tabSwitchCount: number
-    isSplitScreenMode: boolean
-    securityEvents: {
-        totalEvents: number
-        rightClicks: number
-        forbiddenKeys: number
-        splitScreenDetections: number
-        timeAwayMinutes: number
-    }
-    lastActivity: Date
-    riskLevel: 'low' | 'medium' | 'high'
-}
-
-const mockStudentData: StudentSecurityData[] = [
-    {
-        id: '1',
-        name: 'Ahmad Wijaya',
-        ujianId: 'ujian-123',
-        isOnline: true,
-        isWindowFocused: true,
-        tabSwitchCount: 1,
-        isSplitScreenMode: false,
-        securityEvents: { totalEvents: 2, rightClicks: 0, forbiddenKeys: 1, splitScreenDetections: 0, timeAwayMinutes: 0.5 },
-        lastActivity: new Date(Date.now() - 30000),
-        riskLevel: 'low'
-    },
-    {
-        id: '2',
-        name: 'Siti Nurhaliza',
-        ujianId: 'ujian-123',
-        isOnline: true,
-        isWindowFocused: false,
-        tabSwitchCount: 5,
-        isSplitScreenMode: true,
-        securityEvents: { totalEvents: 8, rightClicks: 2, forbiddenKeys: 3, splitScreenDetections: 2, timeAwayMinutes: 3.2 },
-        lastActivity: new Date(Date.now() - 120000),
-        riskLevel: 'medium'
-    },
-    {
-        id: '3',
-        name: 'Budi Santoso',
-        ujianId: 'ujian-123',
-        isOnline: true,
-        isWindowFocused: true,
-        tabSwitchCount: 12,
-        isSplitScreenMode: false,
-        securityEvents: { totalEvents: 18, rightClicks: 5, forbiddenKeys: 8, splitScreenDetections: 3, timeAwayMinutes: 8.7 },
-        lastActivity: new Date(Date.now() - 60000),
-        riskLevel: 'high'
-    },
-    {
-        id: '4',
-        name: 'Dewi Kartika',
-        ujianId: 'ujian-123',
-        isOnline: false,
-        isWindowFocused: false,
-        tabSwitchCount: 0,
-        isSplitScreenMode: false,
-        securityEvents: { totalEvents: 0, rightClicks: 0, forbiddenKeys: 0, splitScreenDetections: 0, timeAwayMinutes: 0 },
-        lastActivity: new Date(Date.now() - 300000),
-        riskLevel: 'low'
-    }
-]
+import { useAdminMonitoring } from '@/hooks/use-admin'
 
 interface ExamSecurityMonitorProps {
     ujianId: string
     ujianTitle?: string
 }
 
-export default function ExamSecurityMonitor({ ujianId, ujianTitle = "Ujian Online" }: ExamSecurityMonitorProps) {
-    const [students, setStudents] = useState<StudentSecurityData[]>(mockStudentData)
-    const [autoRefresh, setAutoRefresh] = useState(true)
-    const [lastRefresh, setLastRefresh] = useState(new Date())
+const EVENT_TYPE_LABELS: Record<string, string> = {
+    tab_switch: 'Keluar Tab',
+    screenshot_attempt: 'Screenshot',
+    split_screen: 'Split Screen',
+    right_click: 'Klik Kanan',
+    key_combination: 'Kombinasi Tombol',
+    before_unload: 'Before Unload',
+    orientation_suspicious: 'Orientasi',
+    viewport_change: 'Perubahan Viewport',
+    text_selection: 'Seleksi Teks',
+}
 
-    // Auto refresh every 30 seconds
-    useEffect(() => {
+function getEventIcon(eventType: string) {
+    switch (eventType) {
+        case 'tab_switch':
+            return <Monitor className="h-4 w-4" />
+        case 'screenshot_attempt':
+            return <Camera className="h-4 w-4" />
+        case 'split_screen':
+            return <SplitSquareHorizontal className="h-4 w-4" />
+        case 'right_click':
+            return <MousePointerClick className="h-4 w-4" />
+        case 'key_combination':
+            return <Keyboard className="h-4 w-4" />
+        default:
+            return <Activity className="h-4 w-4" />
+    }
+}
+
+function getSeverityBadge(severity: string | null) {
+    const normalized = severity || 'info'
+    if (normalized === 'critical' || normalized === 'high') {
+        return <Badge variant="destructive">Tinggi</Badge>
+    }
+    if (normalized === 'warning' || normalized === 'medium') {
+        return <Badge variant="secondary">Sedang</Badge>
+    }
+    return <Badge className="bg-cyan-100 text-cyan-800">Info</Badge>
+}
+
+function formatDate(value: string | null): string {
+    return value ? format(new Date(value), 'dd MMM yyyy, HH:mm:ss', { locale: idLocale }) : '-'
+}
+
+function getUserName(event: { profiles?: { full_name: string } | null; user_id: string | null }): string {
+    return event.profiles?.full_name || (event.user_id ? `${event.user_id.slice(0, 8)}...` : '-')
+}
+
+function getUjianName(event: { ujian?: { name: string } | null; ujian_id: string | null }): string {
+    if (!event.ujian_id) return '-'
+    return event.ujian?.name || '-'
+}
+
+export default function ExamSecurityMonitor({ ujianId, ujianTitle = "Ujian Online" }: ExamSecurityMonitorProps) {
+    const [autoRefresh, setAutoRefresh] = useState(true)
+
+    const { data, isLoading, isError, error, refetch, dataUpdatedAt } = useAdminMonitoring({
+        limit: 50,
+        search: ujianId,
+    })
+
+    // Auto-refresh every 30 seconds using TanStack Query refetchInterval pattern
+    React.useEffect(() => {
         if (!autoRefresh) return
 
         const interval = setInterval(() => {
-            // In real implementation, fetch data from API
-            setLastRefresh(new Date())
-            // setStudents(fetchStudentSecurityData(ujianId))
+            void refetch()
         }, 30000)
 
         return () => clearInterval(interval)
-    }, [autoRefresh, ujianId])
+    }, [autoRefresh, refetch])
+
+    const events = data?.data ?? []
+
+    // Compute summary counts by event type
+    const tabSwitchCount = events.filter(e => e.event_type === 'tab_switch').length
+    const screenshotCount = events.filter(e => e.event_type === 'screenshot_attempt').length
+    const splitScreenCount = events.filter(e => e.event_type === 'split_screen').length
+    const rightClickCount = events.filter(e => e.event_type === 'right_click').length
+    const keyCombinationCount = events.filter(e => e.event_type === 'key_combination').length
+
+    // High severity events
+    const highSeverityEvents = events.filter(e => e.severity === 'high' || e.severity === 'critical')
 
     const handleManualRefresh = () => {
-        setLastRefresh(new Date())
-        // In real implementation, fetch data from API
-        // setStudents(fetchStudentSecurityData(ujianId))
+        void refetch()
     }
 
-    const handleExportReport = () => {
-        // Export security report to CSV/PDF
-        const csvData = students.map(student => ({
-            Nama: student.name,
-            Status: student.isOnline ? 'Online' : 'Offline',
-            'Fokus Window': student.isWindowFocused ? 'Ya' : 'Tidak',
-            'Mode Layar': student.isSplitScreenMode ? 'Split Screen' : 'Fullscreen',
-            'Keluar Tab': student.tabSwitchCount,
-            'Total Pelanggaran': student.securityEvents.totalEvents,
-            'Klik Kanan': student.securityEvents.rightClicks,
-            'Tombol Terlarang': student.securityEvents.forbiddenKeys,
-            'Split Screen': student.securityEvents.splitScreenDetections,
-            'Waktu Keluar (menit)': student.securityEvents.timeAwayMinutes,
-            'Tingkat Risiko': student.riskLevel,
-            'Aktivitas Terakhir': student.lastActivity.toLocaleString('id-ID')
-        }))
-        
-        console.log('Exporting security report:', csvData)
-        // Implement actual CSV/PDF export
+    const lastRefreshTime = dataUpdatedAt
+        ? new Date(dataUpdatedAt).toLocaleTimeString('id-ID')
+        : '-'
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                    <Shield className="h-6 w-6" />
+                    <h1 className="text-2xl font-bold">Monitor Keamanan Ujian</h1>
+                </div>
+                <Card>
+                    <CardContent className="p-8 text-center">
+                        <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">Memuat data monitoring...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        )
     }
 
-    const getRiskBadgeVariant = (risk: string) => {
-        switch (risk) {
-            case 'low': return 'default'
-            case 'medium': return 'outline'
-            case 'high': return 'destructive'
-            default: return 'secondary'
-        }
+    // Error state
+    if (isError) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                    <Shield className="h-6 w-6" />
+                    <h1 className="text-2xl font-bold">Monitor Keamanan Ujian</h1>
+                </div>
+                <Card className="border-red-200 bg-red-50">
+                    <CardContent className="p-8 text-center">
+                        <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-red-800 mb-2">Gagal Memuat Data</h3>
+                        <p className="text-red-700 mb-4">
+                            {error instanceof Error ? error.message : 'Terjadi kesalahan saat memuat data monitoring.'}
+                        </p>
+                        <Button variant="outline" onClick={handleManualRefresh}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Coba Lagi
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        )
     }
-
-    const getRiskText = (risk: string) => {
-        switch (risk) {
-            case 'low': return 'Rendah'
-            case 'medium': return 'Sedang'
-            case 'high': return 'Tinggi'
-            default: return 'Tidak Diketahui'
-        }
-    }
-
-    const onlineStudents = students.filter(s => s.isOnline).length
-    const focusedStudents = students.filter(s => s.isWindowFocused && s.isOnline).length
-    const splitScreenStudents = students.filter(s => s.isSplitScreenMode && s.isOnline).length
-    const highRiskStudents = students.filter(s => s.riskLevel === 'high').length
 
     return (
         <div className="space-y-6">
-            {/* Header with stats */}
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -173,24 +173,15 @@ export default function ExamSecurityMonitor({ ujianId, ujianTitle = "Ujian Onlin
                     </h1>
                     <p className="text-muted-foreground">{ujianTitle}</p>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         size="sm"
                         onClick={handleManualRefresh}
                     >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Refresh
-                    </Button>
-                    
-                    <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleExportReport}
-                    >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
                     </Button>
                 </div>
             </div>
@@ -200,60 +191,58 @@ export default function ExamSecurityMonitor({ ujianId, ujianTitle = "Ujian Onlin
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-brand-500" />
+                            <Activity className="h-4 w-4 text-brand-500" />
                             <div>
-                                <p className="text-sm text-muted-foreground">Siswa Online</p>
-                                <p className="text-2xl font-bold">{onlineStudents}/{students.length}</p>
+                                <p className="text-sm text-muted-foreground">Total Event</p>
+                                <p className="text-2xl font-bold">{data?.count ?? 0}</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-green-600" />
+                            <Monitor className="h-4 w-4 text-orange-600" />
                             <div>
-                                <p className="text-sm text-muted-foreground">Sedang Fokus</p>
-                                <p className="text-2xl font-bold">{focusedStudents}/{onlineStudents}</p>
+                                <p className="text-sm text-muted-foreground">Tab Switch</p>
+                                <p className="text-2xl font-bold">{tabSwitchCount}</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-2">
-                            <SplitSquareHorizontal className="h-4 w-4 text-orange-600" />
+                            <SplitSquareHorizontal className="h-4 w-4 text-red-600" />
                             <div>
                                 <p className="text-sm text-muted-foreground">Split Screen</p>
-                                <p className="text-2xl font-bold">{splitScreenStudents}</p>
+                                <p className="text-2xl font-bold">{splitScreenCount}</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4 text-red-600" />
                             <div>
-                                <p className="text-sm text-muted-foreground">Risiko Tinggi</p>
-                                <p className="text-2xl font-bold">{highRiskStudents}</p>
+                                <p className="text-sm text-muted-foreground">Severity Tinggi</p>
+                                <p className="text-2xl font-bold">{highSeverityEvents.length}</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-purple-600" />
                             <div>
                                 <p className="text-sm text-muted-foreground">Update Terakhir</p>
-                                <p className="text-sm font-medium">
-                                    {lastRefresh.toLocaleTimeString('id-ID')}
-                                </p>
+                                <p className="text-sm font-medium">{lastRefreshTime}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -262,8 +251,8 @@ export default function ExamSecurityMonitor({ ujianId, ujianTitle = "Ujian Onlin
 
             {/* Auto refresh toggle */}
             <div className="flex items-center gap-2 text-sm">
-                <input 
-                    type="checkbox" 
+                <input
+                    type="checkbox"
                     id="autoRefresh"
                     checked={autoRefresh}
                     onChange={(e) => setAutoRefresh(e.target.checked)}
@@ -274,185 +263,187 @@ export default function ExamSecurityMonitor({ ujianId, ujianTitle = "Ujian Onlin
                 </label>
             </div>
 
-            {/* Student monitoring tabs */}
+            {/* Tabs */}
             <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="detailed">Detail Siswa</TabsTrigger>
+                    <TabsTrigger value="events">Daftar Event</TabsTrigger>
                     <TabsTrigger value="alerts">Peringatan</TabsTrigger>
                 </TabsList>
 
+                {/* Overview Tab - Summary by event type */}
                 <TabsContent value="overview" className="space-y-4">
-                    <div className="grid gap-4">
-                        {students.map((student) => (
-                            <Card key={student.id} className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            {student.isOnline ? (
-                                                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                                            ) : (
-                                                <div className="h-2 w-2 bg-gray-400 rounded-full" />
-                                            )}
-                                            <span className="font-medium">{student.name}</span>
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-2">
-                                            {student.isWindowFocused && student.isOnline ? (
-                                                <Badge variant="default" className="flex items-center gap-1">
-                                                    <Eye className="h-3 w-3" />
-                                                    Fokus
-                                                </Badge>
-                                            ) : student.isOnline ? (
-                                                <Badge variant="destructive" className="flex items-center gap-1">
-                                                    <EyeOff className="h-3 w-3" />
-                                                    Tidak Fokus
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="secondary">Offline</Badge>
-                                            )}
-                                            
-                                            <Badge variant={getRiskBadgeVariant(student.riskLevel)}>
-                                                Risiko {getRiskText(student.riskLevel)}
-                                            </Badge>
-                                            
-                                            {student.isSplitScreenMode && (
-                                                <Badge variant="destructive" className="flex items-center gap-1">
-                                                    <SplitSquareHorizontal className="h-3 w-3" />
-                                                    Split Screen
-                                                </Badge>
-                                            )}
-                                        </div>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Activity className="h-4 w-4" />
+                                Ringkasan Pelanggaran
+                            </CardTitle>
+                            <CardDescription>
+                                Jumlah pelanggaran berdasarkan jenis event untuk ujian ini.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <div className="text-center p-3 border rounded">
+                                    <div className="flex justify-center mb-2">
+                                        <Monitor className="h-5 w-5 text-orange-600" />
                                     </div>
-                                    
-                                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                        <span>Tab Switch: {student.tabSwitchCount}</span>
-                                        <span>Split Screen: {student.securityEvents.splitScreenDetections}</span>
-                                        <span>Total Event: {student.securityEvents.totalEvents}</span>
-                                        <span>
-                                            Terakhir: {new Date(student.lastActivity).toLocaleTimeString('id-ID')}
-                                        </span>
+                                    <div className="text-lg font-semibold text-orange-600">
+                                        {tabSwitchCount}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Tab Switch
                                     </div>
                                 </div>
-                            </Card>
-                        ))}
-                    </div>
+
+                                <div className="text-center p-3 border rounded">
+                                    <div className="flex justify-center mb-2">
+                                        <Camera className="h-5 w-5 text-red-600" />
+                                    </div>
+                                    <div className="text-lg font-semibold text-red-600">
+                                        {screenshotCount}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Screenshot
+                                    </div>
+                                </div>
+
+                                <div className="text-center p-3 border rounded">
+                                    <div className="flex justify-center mb-2">
+                                        <SplitSquareHorizontal className="h-5 w-5 text-purple-600" />
+                                    </div>
+                                    <div className="text-lg font-semibold text-purple-600">
+                                        {splitScreenCount}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Split Screen
+                                    </div>
+                                </div>
+
+                                <div className="text-center p-3 border rounded">
+                                    <div className="flex justify-center mb-2">
+                                        <MousePointerClick className="h-5 w-5 text-yellow-600" />
+                                    </div>
+                                    <div className="text-lg font-semibold text-yellow-600">
+                                        {rightClickCount}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Klik Kanan
+                                    </div>
+                                </div>
+
+                                <div className="text-center p-3 border rounded">
+                                    <div className="flex justify-center mb-2">
+                                        <Keyboard className="h-5 w-5 text-gray-600" />
+                                    </div>
+                                    <div className="text-lg font-semibold text-gray-600">
+                                        {keyCombinationCount}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Kombinasi Tombol
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {events.length === 0 && (
+                        <Card>
+                            <CardContent className="p-8 text-center">
+                                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold mb-2">Tidak Ada Pelanggaran</h3>
+                                <p className="text-muted-foreground">
+                                    Belum ada pelanggaran keamanan yang tercatat untuk ujian ini.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
 
-                <TabsContent value="detailed" className="space-y-4">
-                    <div className="grid gap-6">
-                        {students.map((student) => (
-                            <Card key={student.id}>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center justify-between">
-                                        <span>{student.name}</span>
-                                        <Badge variant={getRiskBadgeVariant(student.riskLevel)}>
-                                            Risiko {getRiskText(student.riskLevel)}
-                                        </Badge>
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Status: {student.isOnline ? 'Online' : 'Offline'} • 
-                                        Fokus: {student.isWindowFocused ? 'Ya' : 'Tidak'}
-                                    </CardDescription>
-                                </CardHeader>
-                                
-                                <CardContent>
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                        <div className="text-center p-3 border rounded">
-                                            <div className="text-lg font-semibold text-brand-500">
-                                                {student.tabSwitchCount}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Keluar Tab
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="text-center p-3 border rounded">
-                                            <div className="text-lg font-semibold text-orange-600">
-                                                {student.securityEvents.rightClicks}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Klik Kanan
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="text-center p-3 border rounded">
-                                            <div className="text-lg font-semibold text-red-600">
-                                                {student.securityEvents.forbiddenKeys}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Tombol Terlarang
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="text-center p-3 border rounded">
-                                            <div className="text-lg font-semibold text-purple-600">
-                                                {student.securityEvents.splitScreenDetections}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Split Screen
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="text-center p-3 border rounded">
-                                            <div className="text-lg font-semibold text-gray-600">
-                                                {student.securityEvents.timeAwayMinutes.toFixed(1)}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Menit Keluar
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mt-4 p-3 bg-muted rounded text-sm">
-                                        <strong>Aktivitas Terakhir:</strong> {student.lastActivity.toLocaleString('id-ID')}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                {/* Events Tab - Table of recent events */}
+                <TabsContent value="events" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Activity className="h-4 w-4" />
+                                Daftar Event Keamanan
+                            </CardTitle>
+                            <CardDescription>
+                                Event keamanan terbaru yang tercatat untuk ujian ini.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {events.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-8">
+                                    Belum ada event keamanan.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[50px] text-center">No</TableHead>
+                                            <TableHead>Event</TableHead>
+                                            <TableHead>Severity</TableHead>
+                                            <TableHead>User</TableHead>
+                                            <TableHead>Ujian</TableHead>
+                                            <TableHead>Waktu</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {events.map((event, index) => (
+                                            <TableRow key={event.id}>
+                                                <TableCell className="text-center">{index + 1}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        {getEventIcon(event.event_type)}
+                                                        <span className="font-medium">
+                                                            {EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{getSeverityBadge(event.severity)}</TableCell>
+                                                <TableCell>{getUserName(event)}</TableCell>
+                                                <TableCell>{getUjianName(event)}</TableCell>
+                                                <TableCell>{formatDate(event.created_at)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
+                {/* Alerts Tab - High severity events */}
                 <TabsContent value="alerts" className="space-y-4">
                     <div className="space-y-4">
-                        {students.filter(s => s.riskLevel === 'high' || s.tabSwitchCount > 5 || s.isSplitScreenMode).map((student) => (
-                            <Card key={student.id} className="border-red-200 bg-red-50">
-                                <CardContent className="p-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <AlertTriangle className="h-4 w-4 text-red-600" />
-                                        <span className="font-medium text-red-800">
-                                            Peringatan: {student.name}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="text-sm text-red-700 space-y-1">
-                                        {student.tabSwitchCount > 5 && (
-                                            <p>• Keluar tab terlalu sering ({student.tabSwitchCount} kali)</p>
-                                        )}
-                                        {student.securityEvents.rightClicks > 3 && (
-                                            <p>• Klik kanan berlebihan ({student.securityEvents.rightClicks} kali)</p>
-                                        )}
-                                        {student.securityEvents.forbiddenKeys > 5 && (
-                                            <p>• Menggunakan tombol terlarang ({student.securityEvents.forbiddenKeys} kali)</p>
-                                        )}
-                                        {student.securityEvents.timeAwayMinutes > 5 && (
-                                            <p>• Terlalu lama keluar halaman ({student.securityEvents.timeAwayMinutes.toFixed(1)} menit)</p>
-                                        )}
-                                        {student.isSplitScreenMode && (
-                                            <p>• Menggunakan split screen mode ({student.securityEvents.splitScreenDetections} deteksi)</p>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                        
-                        {students.filter(s => s.riskLevel === 'high' || s.tabSwitchCount > 5 || s.isSplitScreenMode).length === 0 && (
+                        {highSeverityEvents.length > 0 ? (
+                            highSeverityEvents.map((event) => (
+                                <Card key={event.id} className="border-red-200 bg-red-50">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                                            <span className="font-medium text-red-800">
+                                                {EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}
+                                            </span>
+                                            {getSeverityBadge(event.severity)}
+                                        </div>
+                                        <div className="text-sm text-red-700 space-y-1">
+                                            <p>User: {getUserName(event)}</p>
+                                            <p>Ujian: {getUjianName(event)}</p>
+                                            <p>Waktu: {formatDate(event.created_at)}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        ) : (
                             <Card>
                                 <CardContent className="p-8 text-center">
                                     <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
                                     <h3 className="text-lg font-semibold mb-2">Tidak Ada Peringatan</h3>
                                     <p className="text-muted-foreground">
-                                        Semua siswa mengikuti ujian dengan baik tanpa aktivitas mencurigakan.
+                                        Tidak ada pelanggaran dengan severity tinggi untuk ujian ini.
                                     </p>
                                 </CardContent>
                             </Card>

@@ -35,6 +35,7 @@ interface ExamSecurityProviderProps {
     onSecurityViolation?: (violationType: string, details?: any) => void
     autoEnable?: boolean
     isSubmitted?: boolean // NEW: Flag to disable security after successful submission
+    ujianId?: string
 }
 
 export function ExamSecurityProvider({ 
@@ -42,7 +43,8 @@ export function ExamSecurityProvider({
     examTitle = "Ujian",
     onSecurityViolation,
     autoEnable = true,
-    isSubmitted = false
+    isSubmitted = false,
+    ujianId
 }: ExamSecurityProviderProps) {
     const [isSecurityEnabled, setIsSecurityEnabled] = useState(autoEnable)
     
@@ -95,16 +97,18 @@ export function ExamSecurityProvider({
                 })
                 break
                 
-            case 'screenshot_attempt':
+            case 'screenshot_attempt': {
                 // Different handling based on screenshot method
                 const method = details?.method || 'unknown'
+                void method
                 if (details?.attemptCount >= 3) {
-                    toast.error('🚨 Multiple Screenshot Attempts!', {
+                    toast.error('🚨 Percobaan Screenshot Berulang!', {
                         description: `${details.attemptCount} percobaan screenshot terdeteksi. Aktivitas ini akan dilaporkan.`,
                         duration: 10000,
                     })
                 }
                 break
+            }
                 
             case 'before_unload':
                 // This is handled by the browser's native dialog
@@ -136,7 +140,8 @@ export function ExamSecurityProvider({
         enableTextSelection: true,
         enableAntiScreenshot: true,
         examTitle,
-        isSubmitted // Pass isSubmitted to disable security after submission
+        isSubmitted,
+        ujianId
     })
 
     const enableSecurity = () => {

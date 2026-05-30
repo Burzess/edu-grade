@@ -4,35 +4,75 @@ import { useEffect, useCallback, useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAntiScreenshot } from './use-anti-screenshot'
 
+export interface ViolationAutoSubmitConfig {
+    maxViolations: number
+    autoSubmitOnThreshold: boolean
+    violationTypes: string[]
+}
+
+/**
+ * Pure function that determines whether auto-submit should be triggered
+ * based on the total violation count and configuration.
+ *
+ * Returns true iff totalViolationCount >= config.maxViolations AND config.autoSubmitOnThreshold === true
+ */
+export function shouldAutoSubmitOnViolation(
+    totalViolationCount: number,
+    config: ViolationAutoSubmitConfig
+): boolean {
+    return totalViolationCount >= config.maxViolations && config.autoSubmitOnThreshold
+}
+
 interface UseExamSecurityOptions {
     isExamActive?: boolean
-    onSecurityViolation?: (violationType: string, details?: any) => void
+    onSecurityViolation?: (violationType: string, details?: unknown) => void
+    onAutoSubmit?: () => Promise<void>
+    violationAutoSubmitConfig?: ViolationAutoSubmitConfig
     enableAntiCheating?: boolean
     enableBeforeUnload?: boolean
     enableFocusDetection?: boolean
     enableTextSelection?: boolean
     enableAntiScreenshot?: boolean
     examTitle?: string
-    isSubmitted?: boolean // NEW: Flag to disable security after successful submission
+    isSubmitted?: boolean // Flag to disable security after successful submission
+    ujianId?: string
 }
 
 interface SecurityEvent {
     type: 'tab_switch' | 'before_unload' | 'text_selection' | 'right_click' | 'key_combination' | 'split_screen' | 'viewport_change' | 'orientation_suspicious' | 'screenshot_attempt'
     timestamp: Date
-    details?: any
+    details?: Record<string, unknown>
+}
+
+export function getSeverityForEvent(eventType: string): string {
+    switch (eventType) {
+        case 'screenshot_attempt':
+        case 'split_screen':
+            return 'high'
+        case 'tab_switch':
+            return 'medium'
+        case 'right_click':
+        case 'key_combination':
+            return 'warning'
+        default:
+            return 'info'
+    }
 }
 
 export function useExamSecurity(options: UseExamSecurityOptions = {}) {
     const {
         isExamActive = true,
         onSecurityViolation,
+        onAutoSubmit,
+        violationAutoSubmitConfig,
         enableAntiCheating = true,
         enableBeforeUnload = true,
         enableFocusDetection = true,
         enableTextSelection = true,
         enableAntiScreenshot = true,
         examTitle = 'Ujian',
-        isSubmitted = false
+        isSubmitted = false,
+        ujianId
     } = options
 
     const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([])
@@ -42,6 +82,8 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
     const [totalViolationCount, setTotalViolationCount] = useState(0)
     const totalViolationRef = useRef(0) // Ref to avoid stale closure
     const lastRecordTime = useRef(0) // Debounce duplicate events
+    const autoSubmitTriggeredRef = useRef(false) // Prevent multiple auto-submit triggers
+    const warningShownRef = useRef(false) // Prevent duplicate warning notifications
     const [initialViewport, setInitialViewport] = useState<{width: number, height: number} | null>(null)
     const lastVisibilityChange = useRef<Date>(new Date())
     const focusWarningShown = useRef(false)
@@ -58,7 +100,6 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         // Debounce: ignore duplicate events within 500ms
         const now = Date.now()
         if (now - lastRecordTime.current < 500 && type !== 'tab_switch') {
-            console.log(`Security event debounced: ${type}`)
             return
         }
         lastRecordTime.current = now
@@ -87,15 +128,61 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
             }
         }
         
-        console.log(`Recording security event:`, { 
-            type, 
-            details: event.details,
-            totalViolations: newTotalCount 
-        })
-        
         setSecurityEvents(prev => [...prev, event])
         onSecurityViolation?.(type, event.details)
-    }, [onSecurityViolation])
+
+        // Check violation threshold for auto-submit
+        if (violationAutoSubmitConfig && onAutoSubmit && !autoSubmitTriggeredRef.current) {
+            // Display warning at maxViolations - 1
+            if (
+                newTotalCount === violationAutoSubmitConfig.maxViolations - 1 &&
+                !warningShownRef.current
+            ) {
+                warningShownRef.current = true
+                toast.warning('⚠️ Peringatan Pelanggaran', {
+                    description: 'Pelanggaran berikutnya akan menyebabkan ujian dikumpulkan otomatis.',
+                    duration: 8000,
+                })
+            }
+
+            // Trigger auto-submit when threshold is reached
+            if (shouldAutoSubmitOnViolation(newTotalCount, violationAutoSubmitConfig)) {
+                autoSubmitTriggeredRef.current = true
+                onAutoSubmit().catch(() => {
+                    // On submission failure, show error notification and retain local state
+                    autoSubmitTriggeredRef.current = false
+                    toast.error('❌ Gagal mengumpulkan ujian otomatis', {
+                        description: 'Terjadi kesalahan saat mengumpulkan ujian. Jawaban Anda tetap tersimpan di perangkat.',
+                        duration: 10000,
+                    })
+                })
+            }
+        }
+
+        // Send event to server (request-scoped) so RLS can allow user inserts
+        ;(async () => {
+            try {
+                await fetch('/api/admin/security-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true,
+                    body: JSON.stringify({
+                        ujian_id: ujianId ?? null,
+                        event_type: type,
+                        severity: getSeverityForEvent(type),
+                        details: event.details,
+                        source: 'client'
+                    })
+                })
+            } catch (err) {
+                console.error('[ExamSecurity] Failed to record event:', {
+                    event_type: type,
+                    ujian_id: ujianId ?? null,
+                    error: err instanceof Error ? err.message : String(err)
+                })
+            }
+        })()
+    }, [onSecurityViolation, onAutoSubmit, violationAutoSubmitConfig, ujianId])
 
     // Screenshot attempt handler
     const handleScreenshotAttempt = useCallback((method: string, details?: any) => {
@@ -302,24 +389,12 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                     })
                 }
                 
-                console.log('DEBUG - User left tab, sending event:', {
-                    action: 'left',
-                    tabSwitchCount: tabSwitchCount + 1
-                })
-                
                 // Tidak tampilkan toast saat leave, alert akan muncul saat returned
                 focusWarningShown.current = true
             } else {
                 // User returned to tab
                 setIsWindowFocused(true)
                 const timeAway = now.getTime() - lastVisibilityChange.current.getTime()
-                
-                console.log('DEBUG - User returned to tab, sending event:', {
-                    action: 'returned',
-                    timeAwayMs: timeAway,
-                    tabSwitchCount: tabSwitchCount,
-                    isSubmitted
-                })
                 
                 // Don't record violation if exam is successfully submitted
                 if (!isSubmitted) {
@@ -329,8 +404,6 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                         tabSwitchCount: tabSwitchCount
                     })
                 }
-                
-                // Tidak tampilkan toast di sini, alert sudah ditangani di page level
                 
                 // Reset warning flag after a delay
                 setTimeout(() => {
@@ -354,7 +427,6 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             // Don't record or show warning if exam is successfully submitted
             if (isSubmitted) {
-                console.log('Exam submitted - skipping beforeunload warning')
                 return
             }
             
