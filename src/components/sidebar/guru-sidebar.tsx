@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useAuthStore } from '@/store/auth'
 import { useAuth } from '@/components/providers/auth-provider'
 import { usePreloadNavigation, useHoverPreload } from '@/hooks/use-preload-navigation'
+import {
+  dispatchGuruPreferencesUpdated,
+  GURU_PREFERENCES_UPDATED_EVENT,
+  loadGuruPreferences,
+  updateGuruPreferences,
+} from '@/lib/guru-preferences'
 import {
   BookOpen,
   BarChart3,
@@ -108,6 +114,28 @@ export function GuruSidebar({ className }: SidebarProps) {
     }
   }
 
+  useEffect(() => {
+    const applyPreferences = () => {
+      const preferences = loadGuruPreferences()
+      setIsCollapsed(preferences.sidebarCompact)
+    }
+
+    applyPreferences()
+
+    const handlePreferencesUpdate = () => applyPreferences()
+    window.addEventListener(GURU_PREFERENCES_UPDATED_EVENT, handlePreferencesUpdate)
+    return () => {
+      window.removeEventListener(GURU_PREFERENCES_UPDATED_EVENT, handlePreferencesUpdate)
+    }
+  }, [])
+
+  const handleToggleCollapse = () => {
+    const nextCollapsed = !isCollapsed
+    setIsCollapsed(nextCollapsed)
+    updateGuruPreferences({ sidebarCompact: nextCollapsed })
+    dispatchGuruPreferencesUpdated()
+  }
+
   return (
     <div className={cn(
       "flex flex-col h-full bg-card border-r border-border transition-all duration-300",
@@ -130,7 +158,7 @@ export function GuruSidebar({ className }: SidebarProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={handleToggleCollapse}
           className="p-2"
         >
           {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}

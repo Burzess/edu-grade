@@ -91,7 +91,12 @@ export const useAuthStore = create<AuthState>()(
         
         setProfile: (profile) => {
             const currentState = get()
-            if (currentState.profile?.id !== profile?.id || currentState.profile?.role !== profile?.role) {
+            if (
+                currentState.profile?.id !== profile?.id ||
+                currentState.profile?.role !== profile?.role ||
+                currentState.profile?.full_name !== profile?.full_name ||
+                currentState.profile?.email !== profile?.email
+            ) {
                 const newState = { 
                     profile, 
                     lastUpdated: Date.now(),

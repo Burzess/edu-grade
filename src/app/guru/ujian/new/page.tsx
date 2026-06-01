@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -24,6 +24,7 @@ import { id } from 'date-fns/locale'
 import Link from 'next/link'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import KelasSelector from '@/components/ui/kelas-selector'
+import { loadGuruPreferences } from '@/lib/guru-preferences'
 
 const ujianSchema = z.object({
   name: z.string().min(3, 'Nama ujian minimal 3 karakter'),
@@ -245,6 +246,17 @@ export default function CreateUjianPage() {
       max_attempts: 2,
     },
   })
+
+  useEffect(() => {
+    if (form.formState.isDirty) return
+
+    const preferences = loadGuruPreferences()
+    const duration = preferences.examDefaults.defaultDuration
+
+    if (Number.isFinite(duration) && duration > 0) {
+      form.setValue('duration_minutes', duration, { shouldDirty: false })
+    }
+  }, [form, form.formState.isDirty])
 
   const selectedSoalIds = form.watch('selected_soal')
 

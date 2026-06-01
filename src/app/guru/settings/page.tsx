@@ -1,35 +1,241 @@
 'use client'
 
-import { GuruLayout } from '@/components/layout/guru-layout'
-import { useAuthStore } from '@/store/auth'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState, type FormEvent } from 'react'
+import toast from 'react-hot-toast'
 import {
-  User,
-  Bell,
+  Database as DatabaseIcon,
   Lock,
   Palette,
-  Database,
-  Save
+  Save,
+  User,
 } from 'lucide-react'
 
+import { GuruLayout } from '@/components/layout/guru-layout'
+import { useTheme } from '@/components/providers/theme-provider'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  dispatchGuruPreferencesUpdated,
+  loadGuruPreferences,
+  updateGuruPreferences,
+} from '@/lib/guru-preferences'
+import { createClient } from '@/lib/supabase/client'
+import { useAuthStore } from '@/store/auth'
+import type { Database } from '@/types/database'
+
 export default function GuruSettingsPage() {
-  const { profile } = useAuthStore()
+  const profile = useAuthStore((state) => state.profile)
+  const setProfile = useAuthStore((state) => state.setProfile)
+  const setCachedProfile = useAuthStore((state) => state.setCachedProfile)
+  const setUser = useAuthStore((state) => state.setUser)
+  const { theme, setTheme } = useTheme()
+
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [defaultDuration, setDefaultDuration] = useState(60)
+  const [passingGrade, setPassingGrade] = useState(70)
+  const [autoPublish, setAutoPublish] = useState(false)
+  const [shuffleQuestions, setShuffleQuestions] = useState(true)
+  const [allowReview, setAllowReview] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [sidebarCompact, setSidebarCompact] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!profile) return
+    setFullName(profile.full_name ?? '')
+    setEmail(profile.email ?? '')
+  }, [profile])
+
+  useEffect(() => {
+    const preferences = loadGuruPreferences()
+    setDefaultDuration(preferences.examDefaults.defaultDuration)
+    setPassingGrade(preferences.examDefaults.passingGrade)
+    setAutoPublish(preferences.examDefaults.autoPublish)
+    setShuffleQuestions(preferences.examDefaults.shuffleQuestions)
+    setAllowReview(preferences.examDefaults.allowReview)
+    setSidebarCompact(preferences.sidebarCompact)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setIsDarkMode(document.documentElement.classList.contains('dark'))
+  }, [theme])
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (isSaving) return
+    setIsSaving(true)
+
+    const normalizedFullName = fullName.trim()
+    const normalizedEmail = email.trim()
+    const durationValue = Number(defaultDuration)
+    const passingValue = Number(passingGrade)
+
+    if (!normalizedFullName) {
+      toast.error('Nama lengkap wajib diisi')
+      setIsSaving(false)
+      return
+    }
+
+    if (!normalizedEmail) {
+      toast.error('Email wajib diisi')
+      setIsSaving(false)
+      return
+    }
+
+    if (!Number.isFinite(durationValue) || durationValue < 1 || durationValue > 300) {
+      toast.error('Durasi default harus antara 1-300 menit')
+      setIsSaving(false)
+      return
+    }
+
+    if (!Number.isFinite(passingValue) || passingValue < 0 || passingValue > 100) {
+      toast.error('Nilai kelulusan harus antara 0-100')
+      setIsSaving(false)
+      return
+    }
+
+    updateGuruPreferences({
+      examDefaults: {
+        defaultDuration: durationValue,
+        passingGrade: passingValue,
+        autoPublish,
+        shuffleQuestions,
+        allowReview,
+      },
+      sidebarCompact,
+    })
+    dispatchGuruPreferencesUpdated()
+    setTheme(isDarkMode ? 'dark' : 'light')
+
+    if (!profile?.id) {
+      toast.error('Profil belum siap. Silakan muat ulang halaman.')
+      setIsSaving(false)
+      return
+    }
+
+    const supabase = createClient()
+
+    const shouldUpdatePassword =
+      currentPassword.length > 0 || newPassword.length > 0 || confirmPassword.length > 0
+
+    if (shouldUpdatePassword) {
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        toast.error('Lengkapi semua field password')
+        setIsSaving(false)
+        return
+      }
+
+      if (newPassword !== confirmPassword) {
+        toast.error('Konfirmasi password tidak sesuai')
+        setIsSaving(false)
+        return
+      }
+
+      if (newPassword.length < 6) {
+        toast.error('Password baru minimal 6 karakter')
+        setIsSaving(false)
+        return
+      }
+
+      const reauthEmail = profile.email || normalizedEmail
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: reauthEmail,
+        password: currentPassword,
+      })
+
+      if (reauthError) {
+        toast.error('Password saat ini salah')
+        setIsSaving(false)
+        return
+      }
+
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: newPassword,
+      })
+
+      if (passwordError) {
+        toast.error('Gagal memperbarui password')
+        setIsSaving(false)
+        return
+      }
+
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    }
+
+    type ProfileRow = Database['public']['Tables']['profiles']['Row']
+    const profileUpdates: Partial<ProfileRow> = {}
+    const authUpdates: { email?: string; data?: { full_name?: string } } = {}
+
+    if (normalizedFullName !== (profile.full_name ?? '')) {
+      profileUpdates.full_name = normalizedFullName
+      authUpdates.data = { full_name: normalizedFullName }
+    }
+
+    if (normalizedEmail !== (profile.email ?? '')) {
+      profileUpdates.email = normalizedEmail
+      authUpdates.email = normalizedEmail
+    }
+
+    if (Object.keys(authUpdates).length > 0) {
+      const { data: authData, error: authError } = await supabase.auth.updateUser(authUpdates)
+
+      if (authError) {
+        toast.error('Gagal memperbarui akun')
+        setIsSaving(false)
+        return
+      }
+
+      if (authData.user) {
+        setUser(authData.user)
+      }
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', profile.id)
+        .select('id, email, full_name, role, created_at')
+        .single()
+
+      if (profileError) {
+        toast.error('Gagal memperbarui profil')
+        setIsSaving(false)
+        return
+      }
+
+      if (updatedProfile) {
+        setProfile(updatedProfile)
+        setCachedProfile(updatedProfile.id, updatedProfile)
+      }
+    }
+
+    toast.success('Pengaturan berhasil disimpan')
+    setIsSaving(false)
+  }
 
   return (
     <GuruLayout>
       <div className="p-6 max-w-4xl">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-foreground">Pengaturan</h1>
+          <p className="text-muted-foreground">
             Kelola preferensi dan konfigurasi akun Anda
           </p>
         </div>
 
-        <div className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSave}>
           {/* Profile Settings */}
           <Card>
             <CardHeader>
@@ -45,34 +251,36 @@ export default function GuruSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Nama Lengkap</Label>
-                  <Input 
-                    id="fullName" 
-                    defaultValue={profile?.full_name || ''} 
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
                     placeholder="Masukkan nama lengkap"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
+                  <Input
+                    id="email"
                     type="email"
-                    defaultValue={profile?.email || ''} 
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     placeholder="email@example.com"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
                 <Input 
                   id="bio" 
                   placeholder="Ceritakan sedikit tentang Anda..."
                 />
-              </div>
+              </div> */}
             </CardContent>
           </Card>
 
           {/* Notification Settings */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -115,7 +323,7 @@ export default function GuruSettingsPage() {
                 <input type="checkbox" className="w-4 h-4" />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Security Settings */}
           <Card>
@@ -131,34 +339,40 @@ export default function GuruSettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Password Saat Ini</Label>
-                <Input 
-                  id="currentPassword" 
-                  type="password"
-                  placeholder="Masukkan password saat ini"
-                />
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    placeholder="Masukkan password saat ini"
+                  />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">Password Baru</Label>
-                  <Input 
-                    id="newPassword" 
+                  <Input
+                    id="newPassword"
                     type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
                     placeholder="Password baru"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
-                  <Input 
-                    id="confirmPassword" 
+                  <Input
+                    id="confirmPassword"
                     type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
                     placeholder="Konfirmasi password baru"
                   />
                 </div>
               </div>
               
-              <hr className="border-gray-200" />
+              {/* <hr className="border-gray-200" /> */}
               
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Two-Factor Authentication</Label>
                   <p className="text-sm text-muted-foreground">
@@ -166,7 +380,7 @@ export default function GuruSettingsPage() {
                   </p>
                 </div>
                 <input type="checkbox" className="w-4 h-4" />
-              </div>
+              </div> */}
             </CardContent>
           </Card>
 
@@ -174,7 +388,7 @@ export default function GuruSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
+                <DatabaseIcon className="h-5 w-5" />
                 Pengaturan Ujian
               </CardTitle>
               <CardDescription>
@@ -185,20 +399,30 @@ export default function GuruSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="defaultDuration">Durasi Default (menit)</Label>
-                  <Input 
-                    id="defaultDuration" 
+                  <Input
+                    id="defaultDuration"
                     type="number"
-                    defaultValue="60"
+                    value={defaultDuration}
+                    onChange={(event) =>
+                      setDefaultDuration(
+                        event.target.value === '' ? 0 : Number(event.target.value)
+                      )
+                    }
                     min="1"
                     max="300"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="passingGrade">Nilai Kelulusan (%)</Label>
-                  <Input 
-                    id="passingGrade" 
+                  <Input
+                    id="passingGrade"
                     type="number"
-                    defaultValue="70"
+                    value={passingGrade}
+                    onChange={(event) =>
+                      setPassingGrade(
+                        event.target.value === '' ? 0 : Number(event.target.value)
+                      )
+                    }
                     min="0"
                     max="100"
                   />
@@ -215,7 +439,12 @@ export default function GuruSettingsPage() {
                       Otomatis publikasikan ujian setelah dibuat
                     </p>
                   </div>
-                  <input type="checkbox" className="w-4 h-4" />
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4"
+                    checked={autoPublish}
+                    onChange={(event) => setAutoPublish(event.target.checked)}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -225,7 +454,12 @@ export default function GuruSettingsPage() {
                       Acak urutan soal secara default
                     </p>
                   </div>
-                  <input type="checkbox" defaultChecked className="w-4 h-4" />
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4"
+                    checked={shuffleQuestions}
+                    onChange={(event) => setShuffleQuestions(event.target.checked)}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -235,7 +469,12 @@ export default function GuruSettingsPage() {
                       Izinkan siswa meninjau jawaban setelah ujian
                     </p>
                   </div>
-                  <input type="checkbox" defaultChecked className="w-4 h-4" />
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4"
+                    checked={allowReview}
+                    onChange={(event) => setAllowReview(event.target.checked)}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -260,7 +499,12 @@ export default function GuruSettingsPage() {
                     Gunakan tema gelap untuk aplikasi
                   </p>
                 </div>
-                <input type="checkbox" className="w-4 h-4" />
+                <input
+                  type="checkbox"
+                  className="w-4 h-4"
+                  checked={isDarkMode}
+                  onChange={(event) => setIsDarkMode(event.target.checked)}
+                />
               </div>
               
               <div className="flex items-center justify-between">
@@ -270,19 +514,24 @@ export default function GuruSettingsPage() {
                     Gunakan sidebar yang lebih kecil
                   </p>
                 </div>
-                <input type="checkbox" className="w-4 h-4" />
+                <input
+                  type="checkbox"
+                  className="w-4 h-4"
+                  checked={sidebarCompact}
+                  onChange={(event) => setSidebarCompact(event.target.checked)}
+                />
               </div>
             </CardContent>
           </Card>
 
           {/* Save Button */}
           <div className="flex justify-end">
-            <Button className="min-w-32">
+            <Button className="min-w-32" type="submit" disabled={isSaving}>
               <Save className="h-4 w-4 mr-2" />
-              Simpan Perubahan
+              {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </Button>
           </div>
-        </div>
+        </form>
       </div>
     </GuruLayout>
   )
