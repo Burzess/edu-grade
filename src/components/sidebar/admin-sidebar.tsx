@@ -12,7 +12,6 @@ import { usePreloadNavigation, useHoverPreload } from '@/hooks/use-preload-navig
 import {
   Activity,
   BarChart3,
-  FileText,
   Home,
   LogOut,
   Menu,
@@ -53,12 +52,6 @@ const navigationItems: NavigationItem[] = [
     href: '/admin/monitoring',
     icon: Activity,
     description: 'Pantau pelanggaran ujian'
-  },
-  {
-    name: 'Audit Log',
-    href: '/admin/audit-logs',
-    icon: FileText,
-    description: 'Riwayat aktivitas admin'
   },
   {
     name: 'Laporan',

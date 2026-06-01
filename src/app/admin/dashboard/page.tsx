@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
-import { Activity, BarChart3, FileText, Shield, Users } from 'lucide-react'
+import { Activity, BarChart3, Shield, Users } from 'lucide-react'
 import AdminLayout from '@/components/layout/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,6 @@ import { createAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database'
 
 type SecurityEventRow = Database['public']['Tables']['security_events']['Row']
-type AuditLogRow = Database['public']['Tables']['audit_logs']['Row']
 
 const formatDate = (value: string | null) =>
   value ? format(new Date(value), 'dd MMM yyyy, HH:mm', { locale: idLocale }) : '-'
@@ -66,14 +65,7 @@ export default async function AdminDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  const { data: auditData } = await adminSupabase
-    .from('audit_logs')
-    .select('id, action, entity_type, entity_id, actor_role, created_at')
-    .order('created_at', { ascending: false })
-    .limit(5)
-
   const securityEvents = (securityData ?? []) as SecurityEventRow[]
-  const auditLogs = (auditData ?? []) as AuditLogRow[]
 
   const totalUsers = totalUsersResult.count ?? 0
   const totalGuru = guruUsersResult.count ?? 0
@@ -142,6 +134,38 @@ export default async function AdminDashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Aksi Cepat Admin
+              </CardTitle>
+              <CardDescription>Akses cepat ke modul utama.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button asChild>
+                  <Link href="/admin/users">
+                    <Users className="h-4 w-4" />
+                    Kelola Akun
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/monitoring">
+                    <Activity className="h-4 w-4" />
+                    Monitoring Ujian
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/reports">
+                    <BarChart3 className="h-4 w-4" />
+                    Laporan Sistem
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
                 Monitoring Keamanan
               </CardTitle>
@@ -172,73 +196,7 @@ export default async function AdminDashboardPage() {
               </Button>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Audit Log
-              </CardTitle>
-              <CardDescription>Aktivitas terbaru admin dan sistem.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {auditLogs.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Belum ada audit log.</div>
-              ) : (
-                <div className="space-y-3">
-                  {auditLogs.map(log => (
-                    <div key={log.id} className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-foreground">
-                          {log.action} · {log.entity_type}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(log.created_at)}
-                        </div>
-                      </div>
-                      <Badge variant="outline">{log.actor_role || 'system'}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/admin/audit-logs">Lihat Audit Log</Link>
-              </Button>
-            </CardContent>
-          </Card>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Aksi Cepat Admin
-            </CardTitle>
-            <CardDescription>Akses cepat ke modul utama.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button asChild>
-                <Link href="/admin/users">
-                  <Users className="h-4 w-4" />
-                  Kelola Akun
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/admin/monitoring">
-                  <Activity className="h-4 w-4" />
-                  Monitoring Ujian
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/admin/reports">
-                  <BarChart3 className="h-4 w-4" />
-                  Laporan Sistem
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   )
