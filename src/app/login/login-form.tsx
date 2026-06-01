@@ -10,6 +10,7 @@ import { isUserRole, ROLES } from "@/types/auth"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -50,6 +51,7 @@ function translateAuthError(message: string): string {
 export default function LoginForm() {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false)
     const { signIn } = useAuth()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -176,11 +178,27 @@ export default function LoginForm() {
                                     <FormItem>
                                         <FormLabel>Password</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                type="password"
-                                                placeholder="Masukkan password"
-                                                {...field}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    type={isPasswordVisible ? "text" : "password"}
+                                                    placeholder="Masukkan password"
+                                                    className="pr-10"
+                                                    {...field}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsPasswordVisible((value) => !value)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                                                    aria-label={isPasswordVisible ? "Sembunyikan password" : "Tampilkan password"}
+                                                    title={isPasswordVisible ? "Sembunyikan password" : "Tampilkan password"}
+                                                >
+                                                    {isPasswordVisible ? (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    ) : (
+                                                        <Eye className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
