@@ -545,7 +545,7 @@ function HasilUjianPageContent() {
         </Card>
 
         {/* Visibility hidden alert banner */}
-        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800">
+        {/* <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800">
           <EyeOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
             Nilai belum dipublikasikan oleh guru
@@ -553,7 +553,7 @@ function HasilUjianPageContent() {
           <AlertDescription className="text-amber-700 dark:text-amber-300">
             Guru belum menampilkan nilai untuk ujian ini. Anda tetap dapat melihat feedback AI untuk soal essay.
           </AlertDescription>
-        </Alert>
+        </Alert> */}
 
         {/* Results - hidden mode */}
         <div className="space-y-3 sm:space-y-4">
