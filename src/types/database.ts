@@ -7,6 +7,7 @@ export interface Database {
                     email: string
                     full_name: string | null
                     role: 'siswa' | 'guru' | 'admin'
+                    preferences: Record<string, unknown> | null
                     created_at: string
                 }
                 Insert: {
@@ -14,6 +15,7 @@ export interface Database {
                     email: string
                     full_name?: string | null
                     role: 'siswa' | 'guru' | 'admin'
+                    preferences?: Record<string, unknown> | null
                     created_at?: string
                 }
                 Update: {
@@ -21,7 +23,40 @@ export interface Database {
                     email?: string
                     full_name?: string | null
                     role?: 'siswa' | 'guru' | 'admin'
+                    preferences?: Record<string, unknown> | null
                     created_at?: string
+                }
+            }
+            bank_soal: {
+                Row: {
+                    id: string
+                    ujian_id: string
+                    tipe_soal: string | null
+                    konten_soal: string
+                    rubrik_ai: string | null
+                    created_by: string
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    ujian_id: string
+                    tipe_soal?: string | null
+                    konten_soal: string
+                    rubrik_ai?: string | null
+                    created_by: string
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    ujian_id?: string
+                    tipe_soal?: string | null
+                    konten_soal?: string
+                    rubrik_ai?: string | null
+                    created_by?: string
+                    created_at?: string
+                    updated_at?: string
                 }
             }
             soal: {
@@ -77,7 +112,7 @@ export interface Database {
                     created_by: string
                     created_at: string
                     updated_at: string
-                    kelas_id: string | null
+                    guru_id: string | null
                     allow_remidi: boolean
                     max_attempts: number
                     visibility_setting: 'visible' | 'hidden'
@@ -93,7 +128,7 @@ export interface Database {
                     created_by: string
                     created_at?: string
                     updated_at?: string
-                    kelas_id?: string | null
+                    guru_id?: string | null
                     allow_remidi?: boolean
                     max_attempts?: number
                     visibility_setting?: 'visible' | 'hidden'
@@ -109,7 +144,7 @@ export interface Database {
                     created_by?: string
                     created_at?: string
                     updated_at?: string
-                    kelas_id?: string | null
+                    guru_id?: string | null
                     allow_remidi?: boolean
                     max_attempts?: number
                     visibility_setting?: 'visible' | 'hidden'
@@ -299,12 +334,8 @@ export interface Database {
                 }
             }
         }
-        Views: {
-            [_ in never]: never
-        }
-        Functions: {
-            [_ in never]: never
-        }
+        Views: Record<string, never>
+        Functions: Record<string, never>
         Enums: {
             user_role: 'siswa' | 'guru' | 'admin'
         }

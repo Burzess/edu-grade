@@ -8,6 +8,7 @@ export interface Kelas {
   nama_kelas: string;
   kode_kelas: string;
   created_by: string;
+  guru_id?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -116,6 +117,7 @@ export interface RemoveSiswaDbResponse {
 // Form Types untuk UI Components
 export interface KelasFormData {
   nama_kelas: string;
+  guru_id?: string | null;
 }
 
 export interface JoinKelasFormData {
