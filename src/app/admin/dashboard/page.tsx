@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
-import { Activity, BarChart3, Shield, Users } from 'lucide-react'
+import { Activity, Shield, Users, BookOpen } from 'lucide-react'
 import AdminLayout from '@/components/layout/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -140,7 +140,7 @@ export default async function AdminDashboardPage() {
               <CardDescription>Akses cepat ke modul utama.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Button asChild>
                   <Link href="/admin/users">
                     <Users className="h-4 w-4" />
@@ -148,15 +148,21 @@ export default async function AdminDashboardPage() {
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link href="/admin/monitoring">
-                    <Activity className="h-4 w-4" />
-                    Monitoring Ujian
+                  <Link href="/admin/kelas">
+                    <Users className="h-4 w-4" />
+                    Kelola Kelas
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link href="/admin/reports">
-                    <BarChart3 className="h-4 w-4" />
-                    Laporan Sistem
+                  <Link href="/admin/ujian">
+                    <BookOpen className="h-4 w-4" />
+                    Kelola Ujian
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/monitoring">
+                    <Activity className="h-4 w-4" />
+                    Monitoring
                   </Link>
                 </Button>
               </div>

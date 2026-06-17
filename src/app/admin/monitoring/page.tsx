@@ -73,10 +73,6 @@ function MonitoringContent() {
   const screenshotCount = events.filter(e => e.event_type === 'screenshot_attempt').length
   const splitScreenCount = events.filter(e => e.event_type === 'split_screen').length
 
-  const handleApplyFilter = () => {
-    setPage(1)
-  }
-
   const clearFilters = () => {
     setSearch('')
     setTypeFilter('all')

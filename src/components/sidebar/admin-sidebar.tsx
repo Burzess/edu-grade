@@ -20,7 +20,8 @@ import {
   User,
   Users,
   X,
-  Loader2
+  Loader2,
+  BookOpen
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -46,6 +47,18 @@ const navigationItems: NavigationItem[] = [
     href: '/admin/users',
     icon: Users,
     description: 'Akun guru dan siswa'
+  },
+  {
+    name: 'Kelola Kelas',
+    href: '/admin/kelas',
+    icon: Users,
+    description: 'Kelola kelas dan siswa'
+  },
+  {
+    name: 'Kelola Ujian',
+    href: '/admin/ujian',
+    icon: BookOpen,
+    description: 'Manajemen jadwal ujian'
   },
   {
     name: 'Monitoring Ujian',

@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { AnggotaKelasPage } from '@/components/kelas/anggota-kelas-page';
-import { GuruLayout } from '@/components/layout/guru-layout';
+import { AdminLayout } from '@/components/layout/admin-layout';
+import { AuthGuard } from '@/components/auth/auth-guards';
 
 interface PageProps {
   params: Promise<{
@@ -13,8 +14,10 @@ interface PageProps {
 export default function AnggotaKelasPageRoute({ params }: PageProps) {
   const resolvedParams = React.use(params);
   return (
-    <GuruLayout>
-      <AnggotaKelasPage kelasId={resolvedParams.kelasId} />
-    </GuruLayout>
+    <AuthGuard requiredRole="admin" showLoading={false}>
+      <AdminLayout>
+        <AnggotaKelasPage kelasId={resolvedParams.kelasId} />
+      </AdminLayout>
+    </AuthGuard>
   );
 }

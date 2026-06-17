@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuthStore } from '@/store/auth';
+import { GuruSelector } from '@/components/ui/guru-selector';
 import {
   Dialog,
   DialogContent,
@@ -18,10 +20,11 @@ import { Loader2, Edit3 } from 'lucide-react';
 interface EditKelasModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { kelas_id: string; nama_kelas: string }) => Promise<void>;
+  onSubmit: (data: { kelas_id: string; nama_kelas: string; guru_id?: string | null }) => Promise<void>;
   kelas: {
     id: string;
     nama_kelas: string;
+    guru_id?: string | null;
   } | null;
   isLoading?: boolean;
 }
@@ -33,7 +36,11 @@ export function EditKelasModal({
   kelas,
   isLoading: externalLoading = false
 }: EditKelasModalProps) {
+  const { profile } = useAuthStore();
+  const isAdmin = profile?.role === 'admin';
+
   const [namaKelas, setNamaKelas] = useState('');
+  const [guruId, setGuruId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,9 +48,11 @@ export function EditKelasModal({
   React.useEffect(() => {
     if (isOpen && kelas) {
       setNamaKelas(kelas.nama_kelas);
+      setGuruId(kelas.guru_id || null);
       setError(null);
     } else if (!isOpen) {
       setNamaKelas('');
+      setGuruId(null);
       setError(null);
       setIsSubmitting(false);
     }
@@ -71,8 +80,8 @@ export function EditKelasModal({
     }
 
     // Check if there's actually a change
-    if (namaKelas.trim() === kelas.nama_kelas) {
-      setError('Tidak ada perubahan pada nama kelas');
+    if (namaKelas.trim() === kelas.nama_kelas && guruId === (kelas.guru_id || null)) {
+      setError('Tidak ada perubahan pada kelas');
       return;
     }
 
@@ -82,7 +91,8 @@ export function EditKelasModal({
     try {
       await onSubmit({
         kelas_id: kelas.id,
-        nama_kelas: namaKelas.trim()
+        nama_kelas: namaKelas.trim(),
+        guru_id: guruId
       });
       
       // Success akan di-handle oleh parent component
@@ -142,6 +152,19 @@ export function EditKelasModal({
                 <span>{namaKelas.length}/100</span>
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label>Guru Pengampu (Opsional)</Label>
+                <GuruSelector
+                  value={guruId}
+                  onValueChange={(val) => setGuruId(val)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Pilih guru yang akan mengelola kelas ini.
+                </p>
+              </div>
+            )}
 
             {error && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">

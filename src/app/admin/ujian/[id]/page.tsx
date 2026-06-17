@@ -25,7 +25,8 @@ import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import Link from 'next/link'
 import { useState } from 'react'
-import { GuruLayout } from '@/components/layout/guru-layout'
+import AdminLayout from '@/components/layout/admin-layout'
+import { AuthGuard } from '@/components/auth/auth-guards'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -130,7 +131,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
 
             await deleteUjianMutation.mutateAsync(resolvedParams.id)
 
-            router.push('/guru/ujian')
+            router.push('/admin/ujian')
         } catch (_err: unknown) {
             setIsDeleting(false)
         }
@@ -138,10 +139,11 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
 
     if (isLoading) {
         return (
-            <GuruLayout>
+            <AuthGuard requiredRole="admin">
+            <AdminLayout>
                 <div className="p-6 space-y-6">
                     <div className="flex items-center space-x-4">
-                        <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                        <Link href="/admin/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
                             <ArrowLeft className="h-4 w-4 mr-1" />
                             Kembali ke Daftar Ujian
                         </Link>
@@ -178,16 +180,18 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                         </div>
                     </div>
                 </div>
-            </GuruLayout>
+            </AdminLayout>
+            </AuthGuard>
         )
     }
 
     if (error || !ujian) {
         return (
-            <GuruLayout>
+            <AuthGuard requiredRole="admin">
+            <AdminLayout>
                 <div className="p-6 space-y-6">
                     <div className="flex items-center space-x-4">
-                        <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                        <Link href="/admin/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
                             <ArrowLeft className="h-4 w-4 mr-1" />
                             Kembali ke Daftar Ujian
                         </Link>
@@ -203,7 +207,8 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                         </AlertDescription>
                     </Alert>
                 </div>
-            </GuruLayout>
+            </AdminLayout>
+            </AuthGuard>
         )
     }
 
@@ -231,11 +236,12 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
     }
 
     return (
-        <GuruLayout>
+        <AuthGuard requiredRole="admin">
+        <AdminLayout>
             <div className="p-6 space-y-6">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center space-x-4">
-                        <Link href="/guru/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                        <Link href="/admin/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
                             <ArrowLeft className="h-4 w-4 mr-1" />
                             Kembali ke Daftar Ujian
                         </Link>
@@ -249,7 +255,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                             size="sm"
                             asChild
                         >
-                            <Link href={`/guru/ujian/${ujian.id}/edit`}>
+                            <Link href={`/admin/ujian/${ujian.id}/edit`}>
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
                             </Link>
@@ -440,7 +446,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                                             className="mt-3"
                                             asChild
                                         >
-                                            <Link href={`/guru/ujian/${ujian.id}/edit`}>
+                                            <Link href={`/admin/ujian/${ujian.id}/edit`}>
                                                 Tambah Soal
                                             </Link>
                                         </Button>
@@ -463,6 +469,7 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
                     </div>
                 </div>
             </div>
-        </GuruLayout>
+        </AdminLayout>
+        </AuthGuard>
     )
 }

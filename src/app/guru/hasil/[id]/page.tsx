@@ -26,8 +26,17 @@ import {
   User,
   Award,
   Download,
-  Bot
+  Bot,
+  Search,
+  Filter
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { exportHasilUjianToExcel } from '@/lib/export-excel'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
@@ -74,6 +83,25 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
   }
 
   const renderAnswer = () => {
+    if (jawaban.is_unanswered) {
+      return (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Jawaban Siswa:</div>
+          <div className="p-3 bg-muted/50 dark:bg-muted/30 border border-dashed rounded-md text-muted-foreground italic">
+            Siswa tidak menjawab soal ini
+          </div>
+          <div className="text-sm mt-4">
+            <div className="font-medium text-green-600 dark:text-green-400">Jawaban Benar:</div>
+            <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+              {jawaban.soal?.question_type === 'multiple_choice' 
+                ? `${jawaban.soal.correct_answer}. ${jawaban.soal.options?.find((opt: any) => opt.id === jawaban.soal.correct_answer)?.text || ''}`
+                : jawaban.soal?.correct_answer || 'Tidak ada kunci jawaban'}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     if (jawaban.soal?.question_type === 'multiple_choice') {
       const selectedOption = jawaban.soal.options?.find((opt: any) => opt.id === jawaban.answer_text)
       const correctOption = jawaban.soal.options?.find((opt: any) => opt.id === jawaban.soal.correct_answer)
@@ -215,9 +243,11 @@ interface SiswaResultCardProps {
 }
 
 function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
+  const isBelumMengerjakan = siswaResult.status === 'Belum Mengerjakan'
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className={isBelumMengerjakan ? "opacity-75" : ""}>
+      <CardHeader className={isBelumMengerjakan ? "pb-6" : "pb-3"}>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -227,17 +257,26 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
             <CardDescription>{siswaResult.siswa.email}</CardDescription>
           </div>
           <div className="text-right">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Award className="h-4 w-4" />
-              <span>Nilai:</span>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground justify-end">
+              {isBelumMengerjakan ? (
+                <Badge variant="outline" className="bg-muted text-muted-foreground">Belum Mengerjakan</Badge>
+              ) : (
+                <>
+                  <Award className="h-4 w-4" />
+                  <span>Nilai:</span>
+                </>
+              )}
             </div>
-            <div className="text-2xl font-bold">
-              {siswaResult.averageScore !== null ? siswaResult.averageScore : '-'}
-            </div>
+            {!isBelumMengerjakan && (
+              <div className="text-2xl font-bold">
+                {siswaResult.averageScore !== null ? siswaResult.averageScore : '-'}
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
 
+      {!isBelumMengerjakan && (
       <CardContent className="space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 text-sm">
@@ -281,7 +320,9 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {jawaban.score !== null ? (
+                  {jawaban.is_unanswered ? (
+                    <Badge variant="outline" className="text-muted-foreground border-dashed">Tidak Dijawab</Badge>
+                  ) : jawaban.score !== null ? (
                     <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                       {jawaban.score}
                     </Badge>
@@ -298,6 +339,7 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
           </div>
         </div>
       </CardContent>
+      )}
     </Card>
   )
 }
@@ -331,6 +373,9 @@ export default function HasilUjianDetail() {
   const { data: hasilData, isLoading, refetch } = useHasilUjianDetail(ujianId)
   const updateScoreMutation = useUpdateScore()
   const batchAIGrading = useBatchAIGrading()
+  
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const handleScoreUpdate = async (jawabanId: string, score: number, feedback?: string) => {
     try {
@@ -386,10 +431,27 @@ export default function HasilUjianDetail() {
   
   // Calculate statistics
   const totalSiswa = siswaResults.length
-  const siswaWithScores = siswaResults.filter(s => s.averageScore !== null).length
+  const siswaMengerjakan = siswaResults.filter(s => s.status === 'Sudah Mengerjakan').length
+  const siswaBelumMengerjakan = siswaResults.filter(s => s.status === 'Belum Mengerjakan').length
+  const siswaWithScores = siswaResults.filter(s => s.status === 'Sudah Mengerjakan' && s.averageScore !== null).length
   const overallAverage = siswaWithScores > 0 
-    ? Math.round(siswaResults.reduce((sum, s) => sum + (s.averageScore || 0), 0) / siswaWithScores)
+    ? Math.round(siswaResults.filter((s: any) => s.status === 'Sudah Mengerjakan').reduce((sum: any, s: any) => sum + (s.averageScore || 0), 0) / siswaWithScores)
     : null
+
+  // Filter and search logic
+  const filteredResults = siswaResults.filter((s: any) => {
+    const matchSearch = s.siswa.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        s.siswa.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchSearch) return false;
+
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'belum_mengerjakan') return s.status === 'Belum Mengerjakan';
+    if (statusFilter === 'sudah_mengerjakan') return s.status === 'Sudah Mengerjakan';
+    if (statusFilter === 'belum_dinilai') return s.status === 'Sudah Mengerjakan' && s.averageScore === null;
+    
+    return true;
+  });
 
   return (
     <GuruLayout>
@@ -407,14 +469,7 @@ export default function HasilUjianDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={handleBatchAIGrading}
-              disabled={siswaResults.length === 0 || batchAIGrading.isPending}
-              className="bg-brand-600 hover:bg-brand-700 text-white"
-            >
-              <Bot className="h-4 w-4 mr-2" />
-              {batchAIGrading.isPending ? 'Menilai...' : 'Nilai dengan AI'}
-            </Button>
+            {/* Nilai dengan AI button dihilangkan */}
             <Button
               onClick={async () => exportHasilUjianToExcel(ujian.name, siswaResults)}
               disabled={siswaResults.length === 0}
@@ -427,34 +482,44 @@ export default function HasilUjianDetail() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
+              <CardTitle className="text-sm font-medium">Siswa Terdaftar</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalSiswa}</div>
-              <p className="text-xs text-muted-foreground">Mengerjakan ujian</p>
+              <p className="text-xs text-muted-foreground">Terdaftar di ujian</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Sudah Dinilai</CardTitle>
+              <CardTitle className="text-sm font-medium">Mengerjakan</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{siswaWithScores}</div>
-              <p className="text-xs text-muted-foreground">Siswa selesai dinilai</p>
+              <div className="text-2xl font-bold">{siswaMengerjakan}</div>
+              <p className="text-xs text-muted-foreground">Sudah mengerjakan</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Belum Dinilai</CardTitle>
+              <CardTitle className="text-sm font-medium">Belum Mulai</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalSiswa - siswaWithScores}</div>
-              <p className="text-xs text-muted-foreground">Perlu penilaian</p>
+              <div className="text-2xl font-bold">{siswaBelumMengerjakan}</div>
+              <p className="text-xs text-muted-foreground">Belum mengerjakan</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Perlu Penilaian</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{siswaMengerjakan - siswaWithScores}</div>
+              <p className="text-xs text-muted-foreground">Belum dinilai</p>
             </CardContent>
           </Card>
 
@@ -472,17 +537,49 @@ export default function HasilUjianDetail() {
         </div>
 
         {/* Results */}
-        <div>
-          <h2 className="text-lg font-medium mb-4">Hasil Siswa</h2>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <h2 className="text-lg font-medium">Hasil Siswa</h2>
+            
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-[250px]">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cari nama atau email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <div className="w-full sm:w-[200px]">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Semua Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="sudah_mengerjakan">Mengerjakan Ujian</SelectItem>
+                    <SelectItem value="belum_mengerjakan">Belum Mengerjakan</SelectItem>
+                    <SelectItem value="belum_dinilai">Perlu Penilaian</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
           
-          {siswaResults.length === 0 ? (
+          {filteredResults.length === 0 ? (
             <div className="text-center py-12">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Belum ada siswa yang mengerjakan ujian ini</p>
+              <p className="text-muted-foreground">
+                {siswaResults.length === 0 
+                  ? "Belum ada siswa terdaftar pada ujian ini" 
+                  : "Tidak ada siswa yang cocok dengan pencarian/filter"}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {siswaResults.map((siswaResult) => (
+              {filteredResults.map((siswaResult: any) => (
                 <SiswaResultCard
                   key={siswaResult.siswa.id}
                   siswaResult={siswaResult}

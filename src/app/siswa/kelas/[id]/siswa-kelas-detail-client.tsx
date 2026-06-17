@@ -162,7 +162,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
                   {ujian.is_remidi ? (
                     <>
                       <RotateCcw className="h-4 w-4 mr-2" />
-                      Mulai Remidi (Percobaan {ujian.current_attempt}/{ujian.max_attempts})
+                      Mulai Remidi (Percobaan {ujian.current_attempt}{ujian.max_attempts === 0 ? '' : `/${ujian.max_attempts}`})
                     </>
                   ) : (
                     <>
@@ -175,7 +175,12 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             ) : ujian.status === 'draft' ? (
               <Button className="w-full" disabled>
                 <Clock className="h-4 w-4 mr-2" />
-                Menunggu Guru Memulai
+                Menunggu Soal
+              </Button>
+            ) : timeStatus?.status === 'upcoming' ? (
+              <Button className="w-full" disabled>
+                <Clock className="h-4 w-4 mr-2" />
+                Belum Dimulai
               </Button>
             ) : timeStatus?.status === 'ended' ? (
               <Button className="w-full" disabled>
@@ -194,7 +199,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
             {ujian.status === 'draft' && (
               <div className="text-yellow-600 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded text-center">
                 <Clock className="h-4 w-4 inline mr-1" />
-                Ujian belum dimulai oleh guru
+                Menunggu kelengkapan soal
               </div>
             )}
 
@@ -324,7 +329,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
               <Button asChild className="w-full bg-orange-600 hover:bg-orange-700 text-white">
                 <Link href={`/siswa/ujian/${ujian.id}?remidi=true`}>
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Remidi (Percobaan {(ujian.attempt_count || 1) + 1}/{ujian.max_attempts})
+                  Remidi (Percobaan {(ujian.attempt_count || 1) + 1}{ujian.max_attempts === 0 ? '' : `/${ujian.max_attempts}`})
                 </Link>
               </Button>
             )}

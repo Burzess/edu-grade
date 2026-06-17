@@ -46,6 +46,7 @@ export function AuthProvider({
                 email: initialUser.email,
                 full_name: initialUser.full_name,
                 role: initialUser.role as UserRole,
+                preferences: null,
                 created_at: new Date().toISOString()
             }
 
@@ -195,6 +196,7 @@ export function AuthProvider({
                 email: user.email!,
                 full_name: user.email?.split('@')[0] || 'User',
                 role: 'siswa' as const,
+                preferences: null,
                 created_at: user.created_at
             }
             setProfile(emergencyProfile)
@@ -257,7 +259,7 @@ export function AuthProvider({
             try {
                 const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
-                    .select('id, email, full_name, role, created_at')
+                    .select('id, email, full_name, role, created_at, preferences')
                     .eq('id', data.user.id)
                     .single()
                 

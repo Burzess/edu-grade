@@ -196,11 +196,11 @@ export default function GuruDashboardClient() {
         <div className="lg:col-span-3">
           <div>
             <h2 className="text-lg font-semibold mb-4">Aksi Cepat</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button asChild className="h-20 flex-col gap-2">
-                <Link href="/guru/ujian/new">
-                  <PlusCircle className="h-6 w-6" />
-                  <span>Buat Ujian Baru</span>
+                <Link href="/guru/ujian">
+                  <BookOpen className="h-6 w-6" />
+                  <span>Daftar Ujian</span>
                 </Link>
               </Button>
               
@@ -215,13 +215,6 @@ export default function GuruDashboardClient() {
                 <Link href="/guru/hasil">
                   <BarChart3 className="h-6 w-6" />
                   <span>Lihat Hasil</span>
-                </Link>
-              </Button>
-              
-              <Button variant="outline" asChild className="h-20 flex-col gap-2">
-                <Link href="/guru/kelas">
-                  <Users className="h-6 w-6" />
-                  <span>Kelola Kelas</span>
                 </Link>
               </Button>
             </div>

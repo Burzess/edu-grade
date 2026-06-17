@@ -77,7 +77,7 @@ export function KelolaKelasPage() {
   };
 
   const handleViewMembers = (kelasId: string) => {
-    router.push(`/guru/kelas/${kelasId}/anggota`);
+    router.push(`/admin/kelas/${kelasId}/anggota`);
   };
 
   const handleEditKelas = (kelas: any) => {

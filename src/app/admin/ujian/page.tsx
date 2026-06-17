@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useUjian } from '@/hooks/use-ujian'
+import { useUjian, useDeleteUjian } from '@/hooks/use-ujian'
 import { useKelasGuru } from '@/hooks/use-kelas'
-import { GuruLayout } from '@/components/layout/guru-layout'
+import { AdminLayout } from '@/components/layout/admin-layout'
 import { AuthGuard } from '@/components/auth/auth-guards'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,21 +12,41 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu'
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Clock, Users, FileText, Settings } from 'lucide-react'
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { Plus, Search, MoreVertical, Edit, Trash2, Clock, Users, FileText, Eye } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { id } from 'date-fns/locale'
 
 interface UjianCardProps {
   ujian: any
+  onDelete: (id: string) => void
 }
 
-function UjianCard({ ujian }: UjianCardProps) {
+function UjianCard({ ujian, onDelete }: UjianCardProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  
   const getStatus = () => {
     const soalCount = ujian.ujian_soal?.length || 0
     if (ujian.status === 'draft') {
@@ -39,7 +59,7 @@ function UjianCard({ ujian }: UjianCardProps) {
     if (ujian.status === 'active') {
       const now = new Date()
       if (ujian.start_time && new Date(ujian.start_time) > now) {
-        return { label: 'Akan Datang', color: 'bg-blue-100 text-blue-800' }
+        return { label: 'Ready', color: 'bg-blue-100 text-blue-800' }
       }
       if (ujian.end_time && new Date(ujian.end_time) < now) {
         return { label: 'Selesai', color: 'bg-gray-100 text-gray-800' }
@@ -57,6 +77,7 @@ function UjianCard({ ujian }: UjianCardProps) {
   const status = getStatus()
   const soalCount = ujian.ujian_soal?.length || 0
 
+  // Format durasi ke jam dan menit
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
@@ -67,90 +88,154 @@ function UjianCard({ ujian }: UjianCardProps) {
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1">
-            <CardTitle className="text-lg">{ujian.name}</CardTitle>
-            <CardDescription className="line-clamp-2">
-              {ujian.description || 'Tidak ada deskripsi'}
-            </CardDescription>
-            <div className="flex items-center gap-2 pt-2">
-              {ujian.ujian_kelas && ujian.ujian_kelas.length > 0 ? (
-                <Badge variant="outline" className="text-xs max-w-[200px]" title={ujian.ujian_kelas.map((uk: any) => uk.kelas?.nama_kelas).filter(Boolean).join(', ')}>
-                  <span className="truncate">
-                    {ujian.ujian_kelas.map((uk: any) => uk.kelas?.nama_kelas).filter(Boolean).join(', ')}
-                  </span>
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">
-                  Global
-                </Badge>
-              )}
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1 flex-1">
+              <CardTitle className="text-lg">{ujian.name}</CardTitle>
+              <CardDescription className="line-clamp-2">
+                {ujian.description || 'Tidak ada deskripsi'}
+              </CardDescription>
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                {ujian.ujian_kelas && ujian.ujian_kelas.length > 0 ? (
+                  <Badge variant="outline" className="text-xs max-w-[200px]" title={ujian.ujian_kelas.map((uk: any) => uk.kelas?.nama_kelas).filter(Boolean).join(', ')}>
+                    <span className="truncate">
+                      Kelas: {ujian.ujian_kelas.map((uk: any) => uk.kelas?.nama_kelas).filter(Boolean).join(', ')}
+                    </span>
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs">
+                    Kelas: Global
+                  </Badge>
+                )}
+                {ujian.guru_id ? (
+                  <Badge variant="secondary" className="text-xs max-w-[200px] bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    <span className="truncate">
+                      Guru: {ujian.guru?.full_name || 'Tidak Diketahui'}
+                    </span>
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs text-muted-foreground">
+                    Tanpa Guru Pengampu
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge className={status.color} variant="secondary">
+                {status.label}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/ujian/${ujian.id}`}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Detail
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/ujian/${ujian.id}/edit`}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge className={status.color} variant="secondary">
-              {status.label}
-            </Badge>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {/* Statistik */}
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              <span>{soalCount} soal</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              <span>{ujian.totalPeserta || 0} peserta</span>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Statistik */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <FileText className="h-4 w-4" />
-            <span>{soalCount} soal</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            <span>{ujian.totalPeserta || 0} peserta</span>
-          </div>
-        </div>
 
-        {/* Waktu dan Durasi */}
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">Durasi:</span>
-            <span>{formatDuration(ujian.duration_minutes || 60)}</span>
-          </div>
-          
-          {ujian.start_time && (
+          {/* Waktu dan Durasi */}
+          <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">Dimulai:</span>
-              <span>{format(new Date(ujian.start_time), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
+              <span className="font-medium">Durasi:</span>
+              <span>{formatDuration(ujian.duration_minutes || 60)}</span>
             </div>
-          )}
-        </div>
+            
+            {ujian.start_time && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Dimulai:</span>
+                <span>{format(new Date(ujian.start_time), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
+              </div>
+            )}
+            
+            {ujian.end_time && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Selesai:</span>
+                <span>{format(new Date(ujian.end_time), 'dd MMM yyyy, HH:mm', { locale: id })}</span>
+              </div>
+            )}
 
-        {/* Action Button */}
-        {ujian.status === 'draft' || (ujian.status === 'active' && ujian.start_time && new Date(ujian.start_time) > new Date()) ? (
-          <Button asChild className="w-full" size="sm">
-            <Link href={`/guru/ujian/${ujian.id}/kelola-soal`}>
-              <Settings className="h-4 w-4 mr-2" />
-              Kelola Soal
-            </Link>
-          </Button>
-        ) : (
-          <Button variant="outline" className="w-full" size="sm" disabled>
-            <FileText className="h-4 w-4 mr-2" />
-            Soal Terkunci (Ujian Berlangsung/Selesai)
-          </Button>
-        )}
+            {/* {ujian.status === 'draft' && (
+              <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 p-2 rounded">
+                💡 Ujian belum dimulai. Klik "Mulai Ujian" untuk mengaktifkan.
+              </div>
+            )} */}
+          </div>
 
-        {/* Created info */}
-        <div className="text-xs text-muted-foreground pt-2 border-t">
-          Dibuat {formatDistanceToNow(new Date(ujian.created_at), { 
-            addSuffix: true, 
-            locale: id 
-          })}
-        </div>
-      </CardContent>
-    </Card>
+          {/* Ujian otomatis publish ketika soal ditambahkan, dan berjalan sesuai jadwal */}
+
+          {/* Created info */}
+          <div className="text-xs text-muted-foreground pt-2 border-t">
+            Dibuat {formatDistanceToNow(new Date(ujian.created_at), { 
+              addSuffix: true, 
+              locale: id 
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Ujian</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus ujian &quot;{ujian.name}&quot;? 
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(ujian.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -165,6 +250,7 @@ function UjianSkeleton() {
           </div>
           <div className="flex items-center gap-2">
             <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-8 w-8" />
           </div>
         </div>
       </CardHeader>
@@ -192,6 +278,16 @@ function UjianPageContent() {
 
   const { data: ujianData, isLoading, error } = useUjian(currentPage, pageSize)
   const { data: kelasData } = useKelasGuru()
+  const deleteUjianMutation = useDeleteUjian()
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteUjianMutation.mutateAsync(id)
+      toast.success('Ujian berhasil dihapus')
+    } catch (_error: unknown) {
+      toast.error('Gagal menghapus ujian')
+    }
+  }
 
   if (error) {
     return (
@@ -231,11 +327,17 @@ function UjianPageContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Daftar Ujian</h1>
+          <h1 className="text-2xl font-bold">Kelola Ujian</h1>
           <p className="text-muted-foreground">
-            Kelola soal untuk ujian yang dijadwalkan oleh admin
+            Kelola ujian yang akan diberikan kepada siswa
           </p>
         </div>
+        <Button asChild>
+          <Link href="/admin/ujian/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Buat Ujian
+          </Link>
+        </Button>
       </div>
 
       {/* Search and Filters */}
@@ -307,8 +409,14 @@ function UjianPageContent() {
           ) : (
             <>
               <p className="text-muted-foreground text-lg mb-4">
-                Belum ada ujian yang dijadwalkan oleh admin
+                Belum ada ujian yang dibuat
               </p>
+              <Button asChild>
+                <Link href="/admin/ujian/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Buat Ujian Pertama
+                </Link>
+              </Button>
             </>
           )}
         </div>
@@ -330,6 +438,7 @@ function UjianPageContent() {
               <UjianCard
                 key={ujian.id}
                 ujian={ujian}
+                onDelete={handleDelete}
               />
             ))}
           </div>
@@ -354,10 +463,10 @@ function UjianPageContent() {
 
 export default function UjianPage() {
   return (
-    <AuthGuard requiredRole="guru" showLoading={false}>
-      <GuruLayout>
+    <AuthGuard requiredRole="admin" showLoading={false}>
+      <AdminLayout>
         <UjianPageContent />
-      </GuruLayout>
+      </AdminLayout>
     </AuthGuard>
   )
 }

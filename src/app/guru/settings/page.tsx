@@ -19,6 +19,8 @@ import { Label } from '@/components/ui/label'
 import {
   dispatchGuruPreferencesUpdated,
   loadGuruPreferences,
+  loadGuruPreferencesFromDB,
+  saveGuruPreferencesToDB,
   updateGuruPreferences,
 } from '@/lib/guru-preferences'
 import { createClient } from '@/lib/supabase/client'
@@ -45,6 +47,7 @@ export default function GuruSettingsPage() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [sidebarCompact, setSidebarCompact] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true)
 
   useEffect(() => {
     if (!profile) return
@@ -53,14 +56,33 @@ export default function GuruSettingsPage() {
   }, [profile])
 
   useEffect(() => {
-    const preferences = loadGuruPreferences()
-    setDefaultDuration(preferences.examDefaults.defaultDuration)
-    setPassingGrade(preferences.examDefaults.passingGrade)
-    setAutoPublish(preferences.examDefaults.autoPublish)
-    setShuffleQuestions(preferences.examDefaults.shuffleQuestions)
-    setAllowReview(preferences.examDefaults.allowReview)
-    setSidebarCompact(preferences.sidebarCompact)
-  }, [])
+    // Load dari localStorage sebagai initial state (cepat)
+    const localPrefs = loadGuruPreferences()
+    setDefaultDuration(localPrefs.examDefaults.defaultDuration)
+    setPassingGrade(localPrefs.examDefaults.passingGrade)
+    setAutoPublish(localPrefs.examDefaults.autoPublish)
+    setShuffleQuestions(localPrefs.examDefaults.shuffleQuestions)
+    setAllowReview(localPrefs.examDefaults.allowReview)
+    setSidebarCompact(localPrefs.sidebarCompact)
+
+    // Kemudian load dari database (sumber kebenaran)
+    if (!profile?.id) {
+      setIsLoadingPrefs(false)
+      return
+    }
+
+    const supabase = createClient()
+    loadGuruPreferencesFromDB(supabase, profile.id)
+      .then((dbPrefs) => {
+        setDefaultDuration(dbPrefs.examDefaults.defaultDuration)
+        setPassingGrade(dbPrefs.examDefaults.passingGrade)
+        setAutoPublish(dbPrefs.examDefaults.autoPublish)
+        setShuffleQuestions(dbPrefs.examDefaults.shuffleQuestions)
+        setAllowReview(dbPrefs.examDefaults.allowReview)
+        setSidebarCompact(dbPrefs.sidebarCompact)
+      })
+      .finally(() => setIsLoadingPrefs(false))
+  }, [profile?.id])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -102,7 +124,7 @@ export default function GuruSettingsPage() {
       return
     }
 
-    updateGuruPreferences({
+    const prefsToSave = {
       examDefaults: {
         defaultDuration: durationValue,
         passingGrade: passingValue,
@@ -111,7 +133,10 @@ export default function GuruSettingsPage() {
         allowReview,
       },
       sidebarCompact,
-    })
+    }
+
+    // Simpan ke localStorage (cache lokal)
+    updateGuruPreferences(prefsToSave)
     dispatchGuruPreferencesUpdated()
     setTheme(isDarkMode ? 'dark' : 'light')
 
@@ -122,6 +147,14 @@ export default function GuruSettingsPage() {
     }
 
     const supabase = createClient()
+
+    // Simpan preferensi ke database
+    const prefResult = await saveGuruPreferencesToDB(supabase, profile.id, prefsToSave)
+    if (!prefResult.success) {
+      toast.error('Gagal menyimpan preferensi ke database')
+      setIsSaving(false)
+      return
+    }
 
     const shouldUpdatePassword =
       currentPassword.length > 0 || newPassword.length > 0 || confirmPassword.length > 0
@@ -205,7 +238,7 @@ export default function GuruSettingsPage() {
         .from('profiles')
         .update(profileUpdates)
         .eq('id', profile.id)
-        .select('id, email, full_name, role, created_at')
+        .select('id, email, full_name, role, created_at, preferences')
         .single()
 
       if (profileError) {
@@ -526,7 +559,7 @@ export default function GuruSettingsPage() {
 
           {/* Save Button */}
           <div className="flex justify-end">
-            <Button className="min-w-32" type="submit" disabled={isSaving}>
+            <Button className="min-w-32" type="submit" disabled={isSaving || isLoadingPrefs}>
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </Button>

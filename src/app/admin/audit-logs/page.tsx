@@ -28,7 +28,6 @@ function AuditLogsContent() {
   const { data, isLoading } = useAdminAuditLogs({ page, limit: pageSize, search })
 
   const logs = data?.data ?? []
-  const totalFiltered = data?.count ?? 0
   const totalLogs = data?.stats?.total ?? 0
   const logs24h = data?.stats?.last24h ?? 0
   const totalPages = data?.totalPages ?? 1

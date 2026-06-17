@@ -13,6 +13,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { KelasFormData } from '@/types/kelas';
+import { useAuthStore } from '@/store/auth';
+import { GuruSelector } from '@/components/ui/guru-selector';
 
 interface CreateKelasModalProps {
   isOpen: boolean;
@@ -21,7 +23,10 @@ interface CreateKelasModalProps {
 }
 
 export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModalProps) {
-  const [formData, setFormData] = useState<KelasFormData>({nama_kelas: ''});
+  const { profile } = useAuthStore();
+  const isAdmin = profile?.role === 'admin';
+
+  const [formData, setFormData] = useState<KelasFormData>({nama_kelas: '', guru_id: null});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<KelasFormData>>({});
 
@@ -51,10 +56,11 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
     try {
       await onSubmit({
         nama_kelas: formData.nama_kelas.trim(),
+        guru_id: formData.guru_id
       });
       
       // Reset form on success
-      setFormData({ nama_kelas: '' });
+      setFormData({ nama_kelas: '', guru_id: null });
       setErrors({});
     } catch (error: unknown) {
       console.error('Error submitting form:', error);
@@ -65,7 +71,7 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormData({ nama_kelas: '' });
+      setFormData({ nama_kelas: '', guru_id: null });
       setErrors({});
       onClose();
     }
@@ -96,6 +102,19 @@ export function CreateKelasModal({ isOpen, onClose, onSubmit }: CreateKelasModal
               <p className="text-sm text-red-500">{errors.nama_kelas}</p>
             )}
           </div>
+
+          {isAdmin && (
+            <div className="space-y-2">
+              <Label>Guru Pengampu (Opsional)</Label>
+              <GuruSelector
+                value={formData.guru_id}
+                onValueChange={(val) => setFormData(prev => ({ ...prev, guru_id: val }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Pilih guru yang akan mengelola kelas ini.
+              </p>
+            </div>
+          )}
           
           <DialogFooter>
             <Button

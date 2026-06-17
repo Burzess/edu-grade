@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   Select,
   SelectContent,
@@ -270,6 +271,61 @@ export function SimpleKelasSelector({ value, onValueChange, placeholder, allowNo
       allowNone={allowNone}
       showDetails={false}
     />
+  )
+}
+
+export function MultiKelasSelector({ 
+  value = [], 
+  onValueChange 
+}: { 
+  value?: string[], 
+  onValueChange: (val: string[]) => void 
+}) {
+  const [kelasList, setKelasList] = useState<Kelas[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchKelasList()
+  }, [])
+
+  const fetchKelasList = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/kelas/list', { credentials: 'include' })
+      if (!response.ok) throw new Error('Gagal')
+      const result = await response.json()
+      if (result.success) setKelasList(result.data || [])
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isLoading) return <Skeleton className="h-20 w-full" />
+
+  return (
+    <div className="space-y-3 max-h-[200px] overflow-y-auto border rounded-md p-4 bg-background">
+      {kelasList.map(kelas => (
+        <div key={kelas.id} className="flex items-center space-x-2">
+          <Checkbox 
+            id={`kelas-${kelas.id}`} 
+            checked={value.includes(kelas.id)}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                onValueChange([...value, kelas.id])
+              } else {
+                onValueChange(value.filter(id => id !== kelas.id))
+              }
+            }}
+          />
+          <label htmlFor={`kelas-${kelas.id}`} className="text-sm font-medium leading-none cursor-pointer">
+            {kelas.nama_kelas} <span className="text-muted-foreground ml-1">({kelas.kode_kelas})</span>
+          </label>
+        </div>
+      ))}
+      {kelasList.length === 0 && <span className="text-sm text-muted-foreground">Belum ada kelas yang dibuat.</span>}
+    </div>
   )
 }
 

@@ -1,15 +1,15 @@
 'use client';
 
 import { KelolaKelasPage } from '@/components/kelas/kelola-kelas-page';
-import { GuruLayout } from '@/components/layout/guru-layout';
+import { AdminLayout } from '@/components/layout/admin-layout';
 import { AuthGuard } from '@/components/auth/auth-guards';
 
-export default function GuruKelasPage() {
+export default function AdminKelasPage() {
   return (
-    <AuthGuard requiredRole="guru" showLoading={false}>
-      <GuruLayout>
+    <AuthGuard requiredRole="admin" showLoading={false}>
+      <AdminLayout>
         <KelolaKelasPage />
-      </GuruLayout>
+      </AdminLayout>
     </AuthGuard>
   );
 }
