@@ -7,6 +7,7 @@ export interface ProfileData {
   email: string
   full_name: string | null
   role: UserRole
+  preferences: Record<string, unknown> | null
   created_at: string
 }
 
@@ -37,6 +38,7 @@ export function buildMetadataProfile(
       email,
       full_name: metadata.full_name as string,
       role: metadata.role as UserRole,
+      preferences: null,
       created_at: createdAt,
     }
   }
@@ -92,6 +94,7 @@ export function buildFallbackProfile(
     email,
     full_name: (metadata.full_name as string) || email.split('@')[0] || 'User',
     role: (metadata.role as UserRole) || 'siswa',
+    preferences: null,
     created_at: createdAt,
   }
 }

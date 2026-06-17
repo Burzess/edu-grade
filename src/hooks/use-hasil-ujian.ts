@@ -29,7 +29,7 @@ export function useUjianGuru() {
                         end_time,
                         created_at
                     `)
-                    .eq('created_by', user.id)
+                    .or(`created_by.eq.${user.id},guru_id.eq.${user.id}`)
                     .order('created_at', { ascending: false })
 
                 if (ujianError) {
@@ -155,15 +155,28 @@ export function useHasilUjianDetail(ujianId: string) {
                         start_time,
                         end_time,
                         created_at,
-                        created_by
+                        created_by,
+                        ujian_kelas(kelas_id)
                     `)
                     .eq('id', ujianId)
-                    .eq('created_by', user.id) // ✅ CRITICAL: Hanya ujian milik guru ini
+                    .or(`created_by.eq.${user.id},guru_id.eq.${user.id}`) // ✅ CRITICAL: Ujian milik guru ini atau di-assign kepadanya
                     .maybeSingle()
 
                 if (ujianError || !ujianData) {
                     throw new Error('Ujian tidak ditemukan atau Anda tidak memiliki akses')
                 }
+
+                // Ambil semua soal untuk ujian ini
+                const { data: allSoalData } = await supabase
+                    .from('ujian_soal')
+                    .select(`
+                        id,
+                        question_text,
+                        question_type,
+                        options,
+                        correct_answer
+                    `)
+                    .eq('ujian_id', ujianId)
 
                 // Ambil semua jawaban siswa untuk ujian ini
                 const { data: allJawaban, error: jawabanError } = await supabase
@@ -196,27 +209,63 @@ export function useHasilUjianDetail(ujianId: string) {
                     throw jawabanError
                 }
 
-                if (!allJawaban || allJawaban.length === 0) {
-                    return {
-                        ujian: ujianData,
-                        siswaResults: []
+                const siswaMap = new Map()
+                if (allJawaban) {
+                    allJawaban.forEach((jawaban: any) => {
+                        const siswaId = jawaban.siswa_id
+                        if (!siswaMap.has(siswaId)) {
+                            siswaMap.set(siswaId, { jawabans: [], profile: jawaban.profiles })
+                        }
+                        siswaMap.get(siswaId).jawabans.push(jawaban)
+                    })
+                }
+
+                // Add students from assigned classes who haven't taken the exam
+                if (ujianData.ujian_kelas && ujianData.ujian_kelas.length > 0) {
+                    const kelasIds = ujianData.ujian_kelas.map((uk: any) => uk.kelas_id)
+                    const { data: membersData } = await supabase
+                        .from('kelas_members')
+                        .select(`
+                            siswa_id,
+                            profiles!siswa_id (
+                                id,
+                                full_name,
+                                email
+                            )
+                        `)
+                        .in('kelas_id', kelasIds)
+                    
+                    if (membersData) {
+                        membersData.forEach((member: any) => {
+                            if (!siswaMap.has(member.siswa_id)) {
+                                siswaMap.set(member.siswa_id, { jawabans: [], profile: member.profiles })
+                            }
+                        })
                     }
                 }
 
-                // Group by siswa dan ambil attempt terakhir
-                const siswaMap = new Map()
-                allJawaban.forEach((jawaban: any) => {
-                    const siswaId = jawaban.siswa_id
-                    if (!siswaMap.has(siswaId)) {
-                        siswaMap.set(siswaId, [])
-                    }
-                    siswaMap.get(siswaId).push(jawaban)
-                })
-
                 // Process setiap siswa
-                const siswaResults = Array.from(siswaMap.entries()).map(([siswaId, jawabans]: [string, any[]]) => {
+                const siswaResults = Array.from(siswaMap.entries()).map(([siswaId, data]: [string, any]) => {
+                    const { jawabans, profile } = data
+
+                    if (!jawabans || jawabans.length === 0) {
+                        return {
+                            siswa: {
+                                id: siswaId,
+                                full_name: profile?.full_name || 'Unknown',
+                                email: profile?.email || 'unknown@email.com'
+                            },
+                            status: 'Belum Mengerjakan',
+                            totalJawaban: 0,
+                            jawabanDinilai: 0,
+                            averageScore: null,
+                            lastAttempt: null,
+                            jawaban: []
+                        }
+                    }
+
                     // Sort by created_at dan ambil attempt terakhir
-                    const sortedJawaban = jawabans.sort((a, b) => 
+                    const sortedJawaban = jawabans.sort((a: any, b: any) => 
                         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                     )
                     
@@ -229,32 +278,49 @@ export function useHasilUjianDetail(ujianId: string) {
                         return Math.abs(diff) < 60000
                     })
 
-                    // Hitung statistik siswa
+                    // Tambahkan soal yang tidak dijawab
+                    const answeredSoalIds = new Set(latestAttemptJawaban.map((j: any) => j.soal_id))
+                    const unansweredSoal = allSoalData?.filter((s: any) => !answeredSoalIds.has(s.id)) || []
+                    
+                    const unansweredJawaban = unansweredSoal.map((s: any) => ({
+                        id: `unanswered-${s.id}-${siswaId}`,
+                        soal_id: s.id,
+                        answer_text: null,
+                        score: 0,
+                        ai_feedback: 'Tidak dijawab',
+                        created_at: latestAttemptDate,
+                        soal: s,
+                        is_unanswered: true
+                    }))
+
+                    const combinedJawaban = [...latestAttemptJawaban, ...unansweredJawaban]
+
+                    // Hitung statistik siswa (hanya dari yang benar-benar dijawab dan dinilai)
                     const scores = latestAttemptJawaban.filter((j: any) => j.score !== null).map((j: any) => j.score)
                     const averageScore = scores.length > 0 
                         ? Math.round(scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length)
                         : null
 
-                    const siswaInfo = latestAttemptJawaban[0]?.profiles
-
                     return {
                         siswa: {
                             id: siswaId,
-                            full_name: siswaInfo?.full_name || 'Unknown',
-                            email: siswaInfo?.email || 'unknown@email.com'
+                            full_name: profile?.full_name || 'Unknown',
+                            email: profile?.email || 'unknown@email.com'
                         },
-                        totalJawaban: latestAttemptJawaban.length,
+                        status: 'Sudah Mengerjakan',
+                        totalJawaban: latestAttemptJawaban.length, // Hanya hitung yang dijawab
                         jawabanDinilai: scores.length,
                         averageScore,
                         lastAttempt: latestAttemptDate,
-                        jawaban: latestAttemptJawaban.map((j: any) => ({
+                        jawaban: combinedJawaban.map((j: any) => ({
                             id: j.id,
                             soal_id: j.soal_id,
                             answer_text: j.answer_text,
                             score: j.score,
                             ai_feedback: j.ai_feedback,
                             created_at: j.created_at,
-                            soal: j.soal
+                            soal: j.soal,
+                            is_unanswered: j.is_unanswered || false
                         }))
                     }
                 })

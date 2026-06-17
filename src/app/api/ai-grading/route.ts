@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       return apiError('auth/unauthenticated', 'Tidak terautentikasi', undefined, 401)
     }
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'guru') {
+    if (profile?.role !== 'guru' && profile?.role !== 'admin') {
       return apiError('auth/forbidden', 'Akses ditolak', undefined, 403)
     }
 
@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest) {
       return apiError('auth/unauthenticated', 'Tidak terautentikasi', undefined, 401)
     }
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'guru') {
+    if (profile?.role !== 'guru' && profile?.role !== 'admin' && profile?.role !== 'siswa') {
       return apiError('auth/forbidden', 'Akses ditolak', undefined, 403)
     }
 

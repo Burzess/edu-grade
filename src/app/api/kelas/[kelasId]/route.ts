@@ -69,7 +69,8 @@ export async function GET(
                 id,
                 nama_kelas,
                 kode_kelas,
-                created_by
+                created_by,
+                guru_id
             `)
             .eq('id', kelasId)
             .single()
@@ -83,11 +84,12 @@ export async function GET(
 
         // Get guru information separately
         let guruName = 'Tidak diketahui'
-        if (kelasData.created_by) {
+        const guruIdToFetch = kelasData.guru_id || kelasData.created_by
+        if (guruIdToFetch) {
             const { data: guruProfile } = await supabase
                 .from('profiles')
                 .select('full_name')
-                .eq('id', kelasData.created_by)
+                .eq('id', guruIdToFetch)
                 .single()
             
             guruName = guruProfile?.full_name || 'Tidak diketahui'

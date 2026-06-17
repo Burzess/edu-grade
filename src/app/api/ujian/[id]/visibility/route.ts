@@ -94,7 +94,7 @@ export async function PATCH(
     }
 
     // Siswa cannot access this endpoint
-    if (profile.role !== 'guru') {
+    if (profile.role !== 'guru' && profile.role !== 'admin') {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Anda tidak memiliki akses untuk mengubah pengaturan ini' },
         { status: 403 }

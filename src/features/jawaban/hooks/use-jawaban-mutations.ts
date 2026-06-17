@@ -121,10 +121,21 @@ export function useBatchSubmitJawaban() {
         attemptNumber = currentAttempt?.attempt_number || 1
       }
 
-      const jawabanData = jawabans.map(j => ({
-        ujian_id: j.ujian_id, soal_id: j.soal_id, answer_text: j.answer_text,
-        siswa_id: user.id, attempt_number: attemptNumber || 1, updated_at: new Date().toISOString(),
-      }))
+      const { data: existingJawaban } = await supabase
+          .from('jawaban_siswa')
+          .select('id, soal_id')
+          .eq('ujian_id', jawabans[0].ujian_id)
+          .eq('siswa_id', user.id)
+          .eq('attempt_number', attemptNumber || 1)
+
+      const jawabanData = jawabans.map(j => {
+        const existing = existingJawaban?.find(ej => ej.soal_id === j.soal_id)
+        return {
+          ...(existing ? { id: existing.id } : {}),
+          ujian_id: j.ujian_id, soal_id: j.soal_id, answer_text: j.answer_text,
+          siswa_id: user.id, attempt_number: attemptNumber || 1, updated_at: new Date().toISOString(),
+        }
+      })
 
       const { data, error } = await supabase.from('jawaban_siswa').upsert(jawabanData).select()
       if (error) throw error

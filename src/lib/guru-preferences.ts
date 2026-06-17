@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 
 const examDefaultsSchema = z.object({
   defaultDuration: z.number().int().min(1).max(300),
@@ -94,4 +96,100 @@ export function dispatchGuruPreferencesUpdated(): void {
   if (typeof window === 'undefined') return
 
   window.dispatchEvent(new Event(GURU_PREFERENCES_UPDATED_EVENT))
+}
+
+// ---------------------------------------------------------------------------
+// Database persistence
+// ---------------------------------------------------------------------------
+
+type SupabaseInstance = SupabaseClient<Database>
+
+/**
+ * Parse raw preferences JSON from the database into a validated
+ * GuruPreferences object. Returns defaults when the data is missing
+ * or invalid.
+ */
+function parsePreferencesFromDB(
+  raw: Record<string, unknown> | null | undefined
+): GuruPreferences {
+  if (!raw) return getDefaultGuruPreferences()
+
+  const parsed = guruPreferencesSchema.safeParse(raw)
+  if (!parsed.success) return getDefaultGuruPreferences()
+
+  return {
+    ...defaultPreferences,
+    ...parsed.data,
+    examDefaults: {
+      ...defaultPreferences.examDefaults,
+      ...parsed.data.examDefaults,
+    },
+  }
+}
+
+/**
+ * Load guru preferences from the database `profiles.preferences` column.
+ * Also syncs the result into localStorage as a cache.
+ */
+export async function loadGuruPreferencesFromDB(
+  supabase: SupabaseInstance,
+  userId: string
+): Promise<GuruPreferences> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .single()
+
+  if (error || !data) {
+    return loadGuruPreferences() // Fallback ke localStorage
+  }
+
+  const preferences = parsePreferencesFromDB((data as { preferences: Record<string, unknown> | null }).preferences)
+
+  // Sync ke localStorage sebagai cache lokal
+  saveGuruPreferences(preferences)
+
+  return preferences
+}
+
+/**
+ * Save guru preferences to the database `profiles.preferences` column.
+ * Also updates localStorage as a cache.
+ */
+export async function saveGuruPreferencesToDB(
+  supabase: SupabaseInstance,
+  userId: string,
+  preferences: GuruPreferences
+): Promise<{ success: boolean; error?: string }> {
+  // Validasi sebelum simpan
+  const validated = guruPreferencesSchema.safeParse(preferences)
+  if (!validated.success) {
+    return {
+      success: false,
+      error: 'Data preferensi tidak valid',
+    }
+  }
+
+  type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+  const updateData: ProfileUpdate = {
+    preferences: validated.data as unknown as Record<string, unknown>,
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(updateData as never)
+    .eq('id', userId)
+
+  if (error) {
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+
+  // Sync ke localStorage sebagai cache lokal
+  saveGuruPreferences(validated.data)
+
+  return { success: true }
 }

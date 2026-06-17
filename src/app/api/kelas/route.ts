@@ -13,10 +13,12 @@ const kelasUpdateSchema = z.object({
   kelas_id: z.string().uuid('Kelas ID harus UUID valid'),
   nama_kelas: z.string().min(1, 'Nama kelas tidak boleh kosong').trim().optional(),
   is_active: z.boolean().optional(),
+  guru_id: z.string().uuid().nullable().optional(),
 });
 
 const kelasCreateSchema = z.object({
   nama_kelas: z.string().min(1, 'Nama kelas wajib diisi').trim(),
+  guru_id: z.string().uuid().nullable().optional(),
 });
 
 /**
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     let kelasData: Record<string, unknown>[] = [];
 
-    if (role === ROLES.GURU) {
+    if (role === ROLES.GURU || role === ROLES.ADMIN) {
       // Try to get from view with is_active field
       let { data, error } = await supabase
         .from('kelas_with_member_count')
@@ -82,8 +84,9 @@ export async function GET(request: NextRequest) {
           kelas_id,
           joined_at,
           kelas:kelas_id (
-            id, nama_kelas, kode_kelas, is_active, created_at,
-            profiles:created_by ( full_name )
+            id, nama_kelas, kode_kelas, is_active, created_at, guru_id, created_by,
+            admin:profiles!created_by ( full_name ),
+            guru:profiles!guru_id ( full_name )
           )
         `)
         .eq('siswa_id', user.id)
@@ -96,16 +99,15 @@ export async function GET(request: NextRequest) {
 
       // Transform data untuk siswa
       kelasData = (data || []).map((item: Record<string, unknown>) => {
-        const kelasInfo = item.kelas as Record<string, unknown> | null;
-        const profiles = kelasInfo?.profiles;
-        const guruInfo = Array.isArray(profiles) ? profiles[0] : profiles;
+        const kelasInfo = item.kelas as any;
+        const guru_name = kelasInfo?.guru?.full_name || kelasInfo?.admin?.full_name || 'Tidak diketahui';
 
         return {
           id: kelasInfo?.id,
           nama_kelas: kelasInfo?.nama_kelas,
           kode_kelas: kelasInfo?.kode_kelas,
           is_active: kelasInfo?.is_active,
-          guru_name: (guruInfo as Record<string, unknown> | null)?.full_name,
+          guru_name: guru_name,
           joined_at: item.joined_at,
           created_at: kelasInfo?.created_at
         };
@@ -124,11 +126,11 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * PATCH /api/kelas - Update kelas (nama dan status aktif). Guru only.
+ * PATCH /api/kelas - Update kelas (nama dan status aktif). Admin only.
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await requireRole(request, [ROLES.GURU]);
+    const auth = await requireRole(request, [ROLES.ADMIN]);
     if (auth instanceof NextResponse) return auth;
     const { user } = auth;
 
@@ -136,7 +138,7 @@ export async function PATCH(request: NextRequest) {
 
     const body = await parseJsonBody(request, kelasUpdateSchema);
     if ('response' in body) return body.response;
-    const { kelas_id, nama_kelas, is_active } = body.data;
+    const { kelas_id, nama_kelas, is_active, guru_id } = body.data;
 
     // Check ownership
     const { data: existingKelas, error: checkError } = await supabase
@@ -153,13 +155,14 @@ export async function PATCH(request: NextRequest) {
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (nama_kelas !== undefined) updateData.nama_kelas = nama_kelas;
     if (is_active !== undefined) updateData.is_active = is_active;
+    if (guru_id !== undefined) updateData.guru_id = guru_id;
 
     const { data, error } = await supabase
       .from('kelas')
       .update(updateData)
       .eq('id', kelas_id)
       .eq('created_by', user.id)
-      .select('id, nama_kelas, kode_kelas, is_active, created_at, updated_at, profiles:created_by ( full_name )')
+      .select('id, nama_kelas, kode_kelas, is_active, guru_id, created_at, updated_at')
       .single();
 
     if (error) {
@@ -169,12 +172,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Kelas berhasil diperbarui',
-      data: {
-        ...data,
-        guru_name: (data as Record<string, unknown>).profiles
-          ? ((data as Record<string, unknown>).profiles as Record<string, unknown>)?.full_name
-          : 'Unknown'
-      }
+      data: data
     });
 
   } catch (_error: unknown) {
@@ -183,11 +181,11 @@ export async function PATCH(request: NextRequest) {
 }
 
 /**
- * POST /api/kelas - Membuat kelas baru. Guru only.
+ * POST /api/kelas - Membuat kelas baru. Admin only.
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole(request, [ROLES.GURU]);
+    const auth = await requireRole(request, [ROLES.ADMIN]);
     if (auth instanceof NextResponse) return auth;
     const { user } = auth;
 
@@ -195,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     const body = await parseJsonBody(request, kelasCreateSchema);
     if ('response' in body) return body.response;
-    const { nama_kelas } = body.data;
+    const { nama_kelas, guru_id } = body.data;
 
     const kodeKelas = generateKodeKelas();
 
@@ -205,9 +203,10 @@ export async function POST(request: NextRequest) {
         nama_kelas,
         kode_kelas: kodeKelas,
         created_by: user.id,
+        guru_id: guru_id || null,
         is_active: true
       })
-      .select('*, profiles:created_by ( full_name )')
+      .select('*')
       .single();
 
     if (error) {
@@ -219,8 +218,7 @@ export async function POST(request: NextRequest) {
       message: 'Kelas berhasil dibuat',
       data: {
         ...data,
-        jumlah_siswa: 0,
-        guru_name: data.profiles?.full_name
+        jumlah_siswa: 0
       }
     });
 

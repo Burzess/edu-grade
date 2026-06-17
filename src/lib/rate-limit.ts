@@ -95,11 +95,6 @@ export function adminWriteLimiter(userId: string): RateLimitResult {
   return rateLimit(`admin-write:${userId}`, { limit: 1, windowMs: 5 * 1000 })
 }
 
-/** 3 requests per minute per user — for survey submissions */
-export function surveySubmitLimiter(userId: string): RateLimitResult {
-  return rateLimit(`survey-submit:${userId}`, { limit: 3, windowMs: 60 * 1000 })
-}
-
 /** 3 requests per minute per IP — for logout */
 export function logoutLimiter(ip: string): RateLimitResult {
   return rateLimit(`logout:${ip}`, { limit: 3, windowMs: 60 * 1000 })

@@ -12,7 +12,7 @@ export function useKelasGuru() {
     return useQuery({
         queryKey: ['kelas', 'guru', user?.id],
         queryFn: async () => {
-            if (!user?.id || profile?.role !== 'guru') {
+            if (!user?.id || (profile?.role !== 'guru' && profile?.role !== 'admin')) {
                 return []
             }
 
@@ -33,7 +33,7 @@ export function useKelasGuru() {
                 throw new Error(result.error || result.details || 'Failed to fetch kelas data')
             }
         },
-        enabled: !!user?.id && profile?.role === 'guru',
+        enabled: !!user?.id && (profile?.role === 'guru' || profile?.role === 'admin'),
         staleTime: 2 * 60 * 1000,
         refetchOnWindowFocus: true,
         refetchInterval: 5 * 60 * 1000,
@@ -70,7 +70,8 @@ export function useCreateKelas() {
             const insertData = {
                 nama_kelas: kelasData.nama_kelas.trim(),
                 kode_kelas: kodeKelas,
-                created_by: user.id
+                created_by: user.id,
+                guru_id: kelasData.guru_id || null
             }
 
             const { data, error } = await supabase
@@ -141,7 +142,7 @@ export function useUpdateKelasName() {
     const { user } = useAuthStore()
 
     return useMutation({
-        mutationFn: async ({ kelas_id, nama_kelas }: { kelas_id: string; nama_kelas: string }) => {
+        mutationFn: async ({ kelas_id, nama_kelas, guru_id }: { kelas_id: string; nama_kelas: string; guru_id?: string | null }) => {
             if (!user?.id) {
                 throw new Error('User tidak terautentikasi')
             }
@@ -152,7 +153,7 @@ export function useUpdateKelasName() {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
-                body: JSON.stringify({ kelas_id, nama_kelas })
+                body: JSON.stringify({ kelas_id, nama_kelas, guru_id })
             })
 
             if (!response.ok) {

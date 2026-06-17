@@ -13,7 +13,7 @@ export async function POST(_request: NextRequest) {
     }
 
     const { data: profile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'guru') {
+    if (profile?.role !== 'guru' && profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
 
@@ -86,7 +86,7 @@ export async function GET(_request: NextRequest) {
     }
 
     const { data: profile } = await supabaseAuth.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'guru') {
+    if (profile?.role !== 'guru' && profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
 

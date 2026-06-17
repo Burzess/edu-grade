@@ -23,10 +23,10 @@ export async function GET(_request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (userProfile?.role !== 'guru') {
+    if (userProfile?.role !== 'guru' && userProfile?.role !== 'admin') {
       return NextResponse.json({
         success: false,
-        error: 'Hanya guru yang dapat mengakses endpoint ini'
+        error: 'Hanya guru atau admin yang dapat mengakses endpoint ini'
       }, { status: 403 })
     }
 
@@ -37,9 +37,9 @@ export async function GET(_request: NextRequest) {
         id,
         nama_kelas,
         kode_kelas,
+        guru_id,
         created_at
       `)
-      .eq('created_by', user.id)
       .order('nama_kelas', { ascending: true })
 
     if (kelasError) {

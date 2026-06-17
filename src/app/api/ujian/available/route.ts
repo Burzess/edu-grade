@@ -19,9 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build ujian query
-    let query = supabase
-      .from('ujian')
-      .select(`
+    let selectQuery = `
         id,
         name,
         description,
@@ -29,15 +27,22 @@ export async function GET(request: NextRequest) {
         start_time,
         end_time,
         created_by,
+        guru_id,
         created_at,
-        kelas_id,
         allow_remidi,
         max_attempts
-      `)
+      `
+    if (kelasId) {
+      selectQuery += `, ujian_kelas!inner(kelas_id)`
+    }
+
+    let query = supabase
+      .from('ujian')
+      .select(selectQuery)
 
     // Filter by kelas_id if provided
     if (kelasId) {
-      query = query.eq('kelas_id', kelasId)
+      query = query.eq('ujian_kelas.kelas_id', kelasId)
     }
 
     // Parallelize all independent queries
@@ -66,9 +71,11 @@ export async function GET(request: NextRequest) {
       }, { status: 403 })
     }
 
-    const { data: ujianData, error: ujianError } = ujianResult
+    const ujianData = ujianResult.data as any[] | null;
+    const ujianError = ujianResult.error;
 
     if (ujianError) {
+      console.error('[ujian/available] ujianError:', ujianError)
       return NextResponse.json({
         success: false,
         error: 'Gagal mengambil data ujian'
@@ -90,7 +97,7 @@ export async function GET(request: NextRequest) {
     const ujianWithJawaban = new Set(completedUjian?.map(j => j.ujian_id) || []);
 
     // Get guru names for ujian (depends on ujianData, so cannot be parallelized above)
-    const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
+    const guruIds = [...new Set((ujianData || []).map(ujian => ujian.guru_id || ujian.created_by).filter(Boolean))]
     let guruData: { id: string; full_name: string | null }[] = []
     
     if (guruIds.length > 0) {
@@ -116,14 +123,14 @@ export async function GET(request: NextRequest) {
         
         // If exam allows remidi and student hasn't exhausted attempts
         if (ujian.allow_remidi && attemptInfo) {
-          return attemptInfo.completedCount < (ujian.max_attempts || 1)
+          return ujian.max_attempts === 0 || attemptInfo.completedCount < (ujian.max_attempts || 1)
         }
         
         // Otherwise filter out completed exams
         return !hasJawaban && !attemptInfo
       })
       .map(ujian => {
-        const guru = guruData.find(g => g.id === ujian.created_by)
+        const guru = guruData.find(g => g.id === (ujian.guru_id || ujian.created_by))
         const attemptInfo = ujianAttemptMap.get(ujian.id)
         const durationMinutes = ujian.start_time && ujian.end_time 
           ? Math.round((new Date(ujian.end_time).getTime() - new Date(ujian.start_time).getTime()) / (1000 * 60))
@@ -148,7 +155,8 @@ export async function GET(request: NextRequest) {
       data: availableUjian
     })
 
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    console.error('[ujian/available] Unhandled error:', error)
     return NextResponse.json(
       { 
         success: false, 

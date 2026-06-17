@@ -71,11 +71,10 @@ export const useAuthStore = create<AuthState>()(
                 const newState = { 
                     user, 
                     lastUpdated: Date.now(),
-                    error: null // Clear error saat user berubah
+                    error: null 
                 }
                 set(newState)
                 
-                // Cache ke session storage untuk navigasi yang smooth
                 if (typeof window !== 'undefined' && user) {
                     try {
                         sessionStorage.setItem('auth-state-cache', JSON.stringify({

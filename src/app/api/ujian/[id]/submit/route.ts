@@ -48,7 +48,7 @@ export async function POST(
     // Step 3: Validate siswa is registered and in 'in_progress' status
     const { data: ujianSiswa, error: ujianSiswaError } = await supabase
       .from('ujian_siswa')
-      .select('id, status')
+      .select('id, status, attempt_number')
       .eq('ujian_id', ujianId)
       .eq('siswa_id', user.id)
       .single()
@@ -88,18 +88,32 @@ export async function POST(
     const { data: body } = parseResult
 
     // Step 5: Batch upsert jawaban_siswa
-    const jawabanToUpsert = body.jawaban.map((j) => ({
-      ujian_id: ujianId,
-      siswa_id: user.id,
-      soal_id: j.soal_id,
-      answer_text: j.answer_text,
-    }))
-
-    const { error: upsertError } = await supabase
+    // Gunakan admin client untuk membypass RLS update policy yang mungkin belum tersetting
+    const adminSupabase = await createAdminClient()
+    
+    // Fetch existing jawaban first to get their IDs, preventing unique constraint errors
+    const { data: existingJawaban } = await adminSupabase
       .from('jawaban_siswa')
-      .upsert(jawabanToUpsert, {
-        onConflict: 'ujian_id,siswa_id,soal_id',
-      })
+      .select('id, soal_id')
+      .eq('ujian_id', ujianId)
+      .eq('siswa_id', user.id)
+      .eq('attempt_number', ujianSiswa.attempt_number || 1)
+
+    const jawabanToUpsert = body.jawaban.map((j) => {
+      const existing = existingJawaban?.find((ej) => ej.soal_id === j.soal_id)
+      return {
+        ...(existing ? { id: existing.id } : {}),
+        ujian_id: ujianId,
+        siswa_id: user.id,
+        soal_id: j.soal_id,
+        answer_text: j.answer_text,
+        attempt_number: ujianSiswa.attempt_number || 1,
+      }
+    })
+
+    const { error: upsertError } = await adminSupabase
+      .from('jawaban_siswa')
+      .upsert(jawabanToUpsert)
 
     if (upsertError) {
       logger.error('Submit ujian: Failed to upsert jawaban', { ujianId, siswaId: user.id, error: upsertError })
@@ -108,7 +122,7 @@ export async function POST(
 
     // Step 6: Update ujian_siswa status to 'completed'
     const now = new Date().toISOString()
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('ujian_siswa')
       .update({
         status: 'completed',
@@ -127,7 +141,6 @@ export async function POST(
     // Step 7: Auto-grade MC/TF (best-effort, non-blocking on error)
     let gradingResult: SubmitUjianResponse['gradingResult'] | undefined
     try {
-      const adminSupabase = await createAdminClient()
       const result = await gradeMCOnSubmission(adminSupabase, ujianId, user.id)
       gradingResult = {
         autoGradedCount: result.autoGradedCount,

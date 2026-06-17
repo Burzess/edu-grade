@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useBatchSubmitJawaban } from '@/hooks/use-jawaban'
+import { useBatchSubmitJawaban, useBatchAIGrading } from '@/hooks/use-jawaban'
 import { useStartUjianSiswa } from '@/hooks/use-ujian'
 import { toast } from 'sonner'
 
@@ -65,6 +65,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: OrganizedQues
     const [isSubmitted, setIsSubmitted] = useState(false)
 
     const batchSubmit = useBatchSubmitJawaban()
+    const batchAIGrading = useBatchAIGrading()
     const startUjianSiswaMutation = useStartUjianSiswa()
 
     const autoSubmitRef = useRef<(() => void) | null>(null)
@@ -107,15 +108,6 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: OrganizedQues
                 q?.soal?.id && (!answers[q.soal.id] || answers[q.soal.id].trim() === '')
             )
 
-            if (!isAutoSubmit && unansweredQuestions.length > 0) {
-                const confirmSubmit = window.confirm(
-                    `Masih ada ${unansweredQuestions.length} soal yang tidak dijawab dan akan mendapat skor 0. Yakin ingin mengumpulkan ujian?`
-                )
-                if (!confirmSubmit) {
-                    setIsSubmitting(false)
-                    return
-                }
-            }
 
             const uniqueSubmissions = new Map<string, boolean>()
 
@@ -180,6 +172,24 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: OrganizedQues
             setIsSubmitting(false)
             setIsSubmitted(true)
             onSubmitted?.()
+
+            // AUTO AI GRADING: Trigger batch AI grading untuk semua jawaban sekaligus
+            if (result.success) {
+                console.log('🚀 Starting batch AI grading for all answers...')
+                try {
+                    await batchAIGrading.mutateAsync({
+                        ujianId: ujianId,
+                        options: {
+                            useBatching: true,
+                            useOptimized: true,
+                            forceAI: false
+                        }
+                    })
+                    console.log('✅ Batch AI grading completed')
+                } catch (error) {
+                    console.error('❌ Batch AI grading failed:', error)
+                }
+            }
 
             // Display grading result feedback if available
             const gradingResult = (result.data as { gradingResult?: { autoGradedCount?: number; skippedEssayCount?: number; totalJawaban?: number } } | undefined)?.gradingResult

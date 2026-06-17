@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const { data: completedData, error: completedError } = completedResult
 
     if (completedError) {
+      console.error('[ujian/completed] completedError:', completedError)
       return NextResponse.json({
         success: false,
         error: 'Gagal mengambil data ujian yang telah selesai'
@@ -60,13 +61,18 @@ export async function GET(request: NextRequest) {
     const ujianIds = [...new Set(completedData.map(j => j.ujian_id))]
 
     // Build ujian query with optional kelas filter
+    let selectQuery = 'id, name, description, created_by, guru_id, allow_remidi, max_attempts'
+    if (kelasId) {
+      selectQuery += ', ujian_kelas!inner(kelas_id)'
+    }
+
     let ujianQuery = supabase
       .from('ujian')
-      .select('id, name, description, created_by, kelas_id, allow_remidi, max_attempts')
+      .select(selectQuery)
       .in('id', ujianIds)
 
     if (kelasId) {
-      ujianQuery = ujianQuery.eq('kelas_id', kelasId)
+      ujianQuery = ujianQuery.eq('ujian_kelas.kelas_id', kelasId)
     }
 
     // Parallelize independent queries
@@ -90,9 +96,11 @@ export async function GET(request: NextRequest) {
         : Promise.resolve({ data: null }),
     ])
 
-    const { data: ujianData, error: ujianError } = ujianResult
+    const ujianData = ujianResult.data as any[] | null;
+    const ujianError = ujianResult.error;
 
     if (ujianError) {
+      console.error('[ujian/completed] ujianError:', ujianError)
       return NextResponse.json({
         success: false,
         error: 'Gagal mengambil data detail ujian'
@@ -103,7 +111,7 @@ export async function GET(request: NextRequest) {
     const ujianSiswaData: { ujian_id: string; attempt_number: number; status: string; submitted_at: string }[] = ujianSiswaResult.data || []
 
     // Get guru names for ujian (depends on ujianData)
-    const guruIds = [...new Set((ujianData || []).map(ujian => ujian.created_by).filter(Boolean))]
+    const guruIds = [...new Set((ujianData || []).map(ujian => ujian.guru_id || ujian.created_by).filter(Boolean))]
     let guruData: { id: string; full_name: string | null }[] = []
     
     if (guruIds.length > 0) {
@@ -170,7 +178,7 @@ export async function GET(request: NextRequest) {
           bestScore = averageScore
         }
 
-        const guru = guruData.find(g => g.id === ujianDetail.created_by)
+        const guru = guruData.find(g => g.id === (ujianDetail.guru_id || ujianDetail.created_by))
 
         return {
           id: ujianDetail.id,
@@ -186,7 +194,7 @@ export async function GET(request: NextRequest) {
           max_attempts: ujianDetail.max_attempts || 1,
           attempt_count: attemptCount,
           attempt_scores: attemptScores,
-          can_remidi: ujianDetail.allow_remidi && attemptCount < (ujianDetail.max_attempts || 1),
+          can_remidi: ujianDetail.allow_remidi && (ujianDetail.max_attempts === 0 || attemptCount < (ujianDetail.max_attempts || 1)),
         }
       })
       .filter(Boolean)
@@ -200,7 +208,8 @@ export async function GET(request: NextRequest) {
       data: completedUjian
     })
 
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    console.error('[ujian/completed] Unhandled error:', error)
     return NextResponse.json(
       { 
         success: false, 

@@ -24,7 +24,6 @@ export function useUjian(page = 1, limit = 10) {
       await supabase
         .from('ujian')
         .update({ status: 'completed', updated_at: now })
-        .eq('created_by', user.id)
         .eq('status', 'active')
         .lt('end_time', now)
 
@@ -35,11 +34,11 @@ export function useUjian(page = 1, limit = 10) {
         .from('ujian')
         .select(`
           *,
-          kelas:kelas_id(id, nama_kelas, kode_kelas),
+          ujian_kelas(kelas_id, kelas(nama_kelas, kode_kelas)),
+          guru:guru_id(id, full_name),
           ujian_soal(id, soal_id, urutan, soal!inner(id, question_text, question_type, tags, created_at)),
           ujian_siswa(id, status)
         `, { count: 'exact' })
-        .eq('created_by', user.id)
         .order('created_at', { ascending: false })
         .range(from, to)
 
@@ -47,6 +46,8 @@ export function useUjian(page = 1, limit = 10) {
 
       const processedData = data?.map(ujian => ({
         ...ujian,
+        kelas_ids: ujian.ujian_kelas?.map((uk: any) => uk.kelas_id) || [],
+        kelas_names: ujian.ujian_kelas?.map((uk: any) => uk.kelas?.nama_kelas).join(', ') || 'Global',
         totalPeserta: ujian.ujian_siswa?.length || 0,
         pesertaAktif: ujian.ujian_siswa?.filter((us: any) => us.status === 'in_progress').length || 0,
         pesertaSelesai: ujian.ujian_siswa?.filter((us: any) => us.status === 'completed').length || 0,
@@ -74,7 +75,6 @@ export function useUjianDetail(id: string) {
           ujian_soal(id, soal_id, urutan, soal!inner(id, question_text, question_type, options, correct_answer, tags, difficulty_level, created_at))
         `)
         .eq('id', id)
-        .eq('created_by', user.id)
         .single()
 
       if (error) throw error
@@ -88,25 +88,28 @@ export function useCreateUjian() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   return useMutation({
-    mutationFn: async ({ name, description, duration_minutes, selected_soal, kelas_id, allow_remidi, max_attempts }: {
-      name: string; description?: string; duration_minutes: number; selected_soal: string[]
-      kelas_id?: string | null; allow_remidi?: boolean; max_attempts?: number
+    mutationFn: async ({ name, description, duration_minutes, start_time, end_time, kelas_ids, guru_id, allow_remidi, max_attempts }: {
+      name: string; description?: string; duration_minutes: number; start_time: string; end_time: string;
+      kelas_ids?: string[]; guru_id: string; allow_remidi?: boolean; max_attempts?: number
     }) => {
       if (!user?.id) throw new Error('User not authenticated')
       if (duration_minutes < 1 || duration_minutes > 480) throw new Error('Durasi ujian harus antara 1-480 menit')
 
       const { data: ujian, error: ujianError } = await supabase
         .from('ujian')
-        .insert({ name, description, duration_minutes, created_by: user.id, kelas_id: kelas_id || null, allow_remidi: allow_remidi || false, max_attempts: allow_remidi ? (max_attempts || 2) : 1 })
+        .insert({ name, description, duration_minutes, start_time, end_time, created_by: user.id, guru_id, allow_remidi: allow_remidi || false, max_attempts: allow_remidi ? (max_attempts !== undefined ? max_attempts : 2) : 1 })
         .select()
         .single()
 
       if (ujianError) throw ujianError
 
-      if (selected_soal && selected_soal.length > 0) {
-        const ujianSoalData = selected_soal.map((soal_id: string, index: number) => ({ ujian_id: ujian.id, soal_id, urutan: index + 1 }))
-        const { error: ujianSoalError } = await supabase.from('ujian_soal').insert(ujianSoalData)
-        if (ujianSoalError) throw ujianSoalError
+      if (kelas_ids && kelas_ids.length > 0) {
+        const ujianKelasData = kelas_ids.map(kid => ({
+          ujian_id: ujian.id,
+          kelas_id: kid
+        }))
+        const { error: ukError } = await supabase.from('ujian_kelas').insert(ujianKelasData)
+        if (ukError) throw ukError
       }
 
       return ujian
@@ -119,25 +122,27 @@ export function useUpdateUjian() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
   return useMutation({
-    mutationFn: async ({ id, name, description, duration_minutes, selected_soal, kelas_id, allow_remidi, max_attempts }: {
-      id: string; name: string; description?: string; duration_minutes: number; selected_soal: string[]
-      kelas_id?: string | null; allow_remidi?: boolean; max_attempts?: number
+    mutationFn: async ({ id, name, description, duration_minutes, start_time, end_time, kelas_ids, guru_id, allow_remidi, max_attempts }: {
+      id: string; name: string; description?: string; duration_minutes: number; start_time: string; end_time: string;
+      kelas_ids?: string[]; guru_id: string; allow_remidi?: boolean; max_attempts?: number
     }) => {
       if (!user?.id) throw new Error('User not authenticated')
       if (duration_minutes < 1 || duration_minutes > 480) throw new Error('Durasi ujian harus antara 1-480 menit')
 
-      const ujianData: UjianUpdate = { name, description, duration_minutes, kelas_id, allow_remidi: allow_remidi || false, max_attempts: allow_remidi ? (max_attempts || 2) : 1 }
+      const ujianData: UjianUpdate = { name, description, duration_minutes, start_time, end_time, guru_id, allow_remidi: allow_remidi || false, max_attempts: allow_remidi ? (max_attempts !== undefined ? max_attempts : 2) : 1 }
 
-      const { data: ujian, error: ujianError } = await supabase.from('ujian').update(ujianData).eq('id', id).eq('created_by', user.id).select().single()
+      const { data: ujian, error: ujianError } = await supabase.from('ujian').update(ujianData).eq('id', id).select().single()
       if (ujianError) throw ujianError
 
-      const { error: deleteError } = await supabase.from('ujian_soal').delete().eq('ujian_id', id)
-      if (deleteError) throw deleteError
+      await supabase.from('ujian_kelas').delete().eq('ujian_id', id)
 
-      if (selected_soal.length > 0) {
-        const ujianSoalData = selected_soal.map((soal_id: string, index: number) => ({ ujian_id: id, soal_id, urutan: index + 1 }))
-        const { error: insertError } = await supabase.from('ujian_soal').insert(ujianSoalData)
-        if (insertError) throw insertError
+      if (kelas_ids && kelas_ids.length > 0) {
+        const ujianKelasData = kelas_ids.map(kid => ({
+          ujian_id: id,
+          kelas_id: kid
+        }))
+        const { error: ukError } = await supabase.from('ujian_kelas').insert(ujianKelasData)
+        if (ukError) throw ukError
       }
 
       return ujian
@@ -155,7 +160,7 @@ export function useDeleteUjian() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (!user?.id) throw new Error('User not authenticated')
-      const { error } = await supabase.from('ujian').delete().eq('id', id).eq('created_by', user.id)
+      const { error } = await supabase.from('ujian').delete().eq('id', id)
       if (error) throw error
       return id
     },
@@ -181,6 +186,59 @@ export function useSoalForUjian(searchQuery?: string) {
   })
 }
 
+export function useAddSoalToUjian() {
+  const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+
+  return useMutation({
+    mutationFn: async ({ ujian_id, soal_id, urutan }: { ujian_id: string, soal_id: string, urutan: number }) => {
+      if (!user?.id) throw new Error('User not authenticated')
+
+      const { data, error } = await supabase
+        .from('ujian_soal')
+        .insert({ ujian_id, soal_id, urutan })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Auto-publish: ubah status ke active jika masih draft setelah menambah soal
+      const { data: ujianData } = await supabase.from('ujian').select('status').eq('id', ujian_id).single()
+      if (ujianData && ujianData.status === 'draft') {
+        await supabase.from('ujian').update({ status: 'active' }).eq('id', ujian_id)
+      }
+
+      return data
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ujian', variables.ujian_id] })
+    },
+  })
+}
+
+export function useRemoveSoalFromUjian() {
+  const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+
+  return useMutation({
+    mutationFn: async ({ ujian_id, soal_id }: { ujian_id: string, soal_id: string }) => {
+      if (!user?.id) throw new Error('User not authenticated')
+
+      const { error } = await supabase
+        .from('ujian_soal')
+        .delete()
+        .eq('ujian_id', ujian_id)
+        .eq('soal_id', soal_id)
+
+      if (error) throw error
+      return { ujian_id, soal_id }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ujian', variables.ujian_id] })
+    },
+  })
+}
+
 export function useStartUjian() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
@@ -198,7 +256,7 @@ export function useStartUjian() {
       const { data: ujian, error } = await supabase
         .from('ujian')
         .update({ status: 'active', start_time: startTime.toISOString(), end_time: endTime.toISOString() })
-        .eq('id', id).eq('created_by', user.id).eq('status', 'draft')
+        .eq('id', id).eq('status', 'draft')
         .select().single()
 
       if (error) throw error
@@ -217,7 +275,7 @@ export function useCompleteUjian() {
       const now = new Date().toISOString()
       const { data: ujian, error } = await supabase
         .from('ujian').update({ status: 'completed', updated_at: now })
-        .eq('id', id).eq('created_by', user.id).eq('status', 'active')
+        .eq('id', id).eq('status', 'active')
         .select().single()
       if (error) throw error
       return ujian
@@ -235,7 +293,7 @@ export function useAutoCompleteExpiredUjian() {
       const now = new Date().toISOString()
       const { data, error } = await supabase
         .from('ujian').update({ status: 'completed', updated_at: now })
-        .eq('created_by', user.id).eq('status', 'active').lt('end_time', now).select()
+        .or(`created_by.eq.${user.id},guru_id.eq.${user.id}`).eq('status', 'active').lt('end_time', now).select()
       if (error) throw error
       return data || []
     },
@@ -323,12 +381,13 @@ export function useStartUjianSiswa() {
           ujian = cachedUjianData as any
         } else {
           const { data: ujianData, error: ujianError } = await supabase
-            .from('ujian').select('id, name, status, end_time, allow_remidi, max_attempts')
+            .from('ujian').select('id, name, status, start_time, end_time, allow_remidi, max_attempts')
             .eq('id', ujianId).eq('status', 'active').single()
           if (ujianError) throw new Error('Ujian tidak ditemukan atau sudah tidak aktif')
           ujian = ujianData
         }
 
+        if (ujian.start_time && new Date(ujian.start_time) > new Date()) throw new Error('Ujian belum dimulai')
         if (ujian.end_time && new Date(ujian.end_time) <= new Date()) throw new Error('Ujian sudah berakhir')
 
         const { data: existingAttempts } = await supabase
@@ -468,7 +527,7 @@ export function useUjianStatistics(ujianId: string) {
 
       const { data: ujian, error: ujianError } = await supabase
         .from('ujian').select(`*, ujian_siswa(id, siswa_id, status, started_at, submitted_at, profiles!inner(full_name, email))`)
-        .eq('id', ujianId).eq('created_by', user.id).single()
+        .eq('id', ujianId).or(`created_by.eq.${user.id},guru_id.eq.${user.id}`).single()
       if (ujianError) throw ujianError
 
       const totalSiswa = ujian.ujian_siswa?.length || 0

@@ -141,6 +141,7 @@ export function useMiddlewareAuth(): MiddlewareAuth {
         email: email ?? '',
         full_name: (email ?? '').split('@')[0],
         role,
+        preferences: null,
         created_at: new Date().toISOString(),
       }
 
