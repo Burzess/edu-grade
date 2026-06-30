@@ -92,19 +92,28 @@ export async function gradeMCOnSubmission(
 
     // Resolve correct answer (handle option ID → text mapping for MC)
     let correctAnswer = jawaban.soal.correct_answer
+    let studentAnswer = jawaban.answer_text || ''
+    
     if (questionType === 'multiple_choice' && jawaban.soal.options) {
       const correctOption = jawaban.soal.options.find(
-        (opt) => opt.id === jawaban.soal.correct_answer
+        (opt) => String(opt.id) === String(jawaban.soal.correct_answer)
       )
       if (correctOption) {
         correctAnswer = correctOption.text
+      }
+      
+      const studentOption = jawaban.soal.options.find(
+        (opt) => String(opt.id) === String(jawaban.answer_text)
+      )
+      if (studentOption) {
+        studentAnswer = studentOption.text
       }
     }
 
     // Grade the answer
     const result = autoGradeQuestion(
       questionType,
-      jawaban.answer_text || '',
+      studentAnswer,
       correctAnswer || '',
       jawaban.soal.question_text
     )

@@ -133,10 +133,16 @@ function buildAnswerData(jawaban: Record<string, unknown>): AnswerData {
     studentAnswer: (jawaban.answer_text as string) || '',
     question: soal.question_text as string,
   }
-  if (soal.question_type === 'multiple_choice' && soal.correct_answer) {
+  if (soal.question_type === 'multiple_choice' && soal.options) {
     const options = soal.options as Array<{ id: string; text: string }> | null
-    const correct = options?.find(o => o.id === soal.correct_answer)
-    ad.correctAnswer = correct?.text || (soal.correct_answer as string)
+    if (soal.correct_answer) {
+      const correct = options?.find(o => String(o.id) === String(soal.correct_answer))
+      ad.correctAnswer = correct?.text || (soal.correct_answer as string)
+    }
+    if (ad.studentAnswer) {
+      const studentOpt = options?.find(o => String(o.id) === String(ad.studentAnswer))
+      if (studentOpt) ad.studentAnswer = studentOpt.text
+    }
   } else if (soal.correct_answer) {
     ad.correctAnswer = soal.correct_answer as string
   }

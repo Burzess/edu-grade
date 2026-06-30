@@ -3,7 +3,7 @@
 import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Send, CheckCircle, BookOpen } from 'lucide-react'
+import { Clock, Send, CheckCircle, BookOpen, Loader2 } from 'lucide-react'
 
 interface UjianHeaderProps {
     ujian: any
@@ -89,8 +89,14 @@ export const UjianHeader = memo(({
                             disabled={isSubmitting}
                             className="text-xs h-8 px-3 sm:px-4 bg-green-600 hover:bg-green-700 text-white shadow-sm"
                         >
-                            <Send className="h-3.5 w-3.5 sm:mr-1.5" />
-                            <span className="hidden sm:inline">Kumpulkan</span>
+                            {isSubmitting ? (
+                                <Loader2 className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
+                            ) : (
+                                <Send className="h-3.5 w-3.5 sm:mr-1.5" />
+                            )}
+                            <span className="hidden sm:inline">
+                                {isSubmitting ? 'Loading...' : 'Kumpulkan'}
+                            </span>
                         </Button>
                     </div>
                 </div>

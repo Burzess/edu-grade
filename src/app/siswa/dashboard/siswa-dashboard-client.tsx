@@ -1,17 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useKelasSiswa, useJoinKelas } from '@/hooks/use-kelas'
+import { useKelasSiswa } from '@/hooks/use-kelas'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from '@/components/ui/skeleton'
-import { JoinKelasModal } from '@/components/kelas/join-kelas-modal-widget'
-import { toastSuccess, toastError } from '@/lib/toast'
 import {
   BookOpen,
-  Plus,
   ChevronRight,
   GraduationCap,
   Calendar,
@@ -107,12 +103,10 @@ function KelasSkeleton() {
 }
 
 export default function SiswaDashboardClient() {
-  const [showJoinModal, setShowJoinModal] = useState(false)
   const router = useRouter()
   const { user } = useAuthStore()
   
   const { data: rawKelasList = [], isLoading, refetch } = useKelasSiswa()
-  const joinKelasMutation = useJoinKelas()
 
   // Filter hanya kelas aktif sebagai double-check (API sudah filter tapi ini untuk safety)
   const kelasList = rawKelasList.filter((kelas: any) => {
@@ -123,45 +117,6 @@ export default function SiswaDashboardClient() {
   const handleViewKelas = (kelasId: string) => {
     router.push(`/siswa/kelas/${kelasId}`)
   }
-
-  const handleJoinKelas = async (kodeKelas: string) => {
-    try {
-      if (!user?.id) {
-        toastError('Error', 'Session expired, silakan login ulang');
-        router.push('/login');
-        return;
-      }
-
-      const result = await joinKelasMutation.mutateAsync(kodeKelas);
-      
-      if (result && typeof result === 'object' && 'success' in result) {
-        if (result.success === false) {
-          throw new Error(result.message || 'Join kelas gagal');
-        }
-      }
-      
-      toastSuccess('Berhasil!', 'Berhasil bergabung ke kelas!');
-      setShowJoinModal(false);
-      
-      // Refresh data
-      await refetch();
-      
-    } catch (error: any) {
-      let errorMessage = 'Gagal bergabung ke kelas';
-      const errorMsg = error?.message || '';
-      
-      if (errorMsg.includes('KELAS_NOT_FOUND') || errorMsg.includes('tidak ditemukan')) {
-        errorMessage = 'Kode kelas tidak ditemukan. Periksa kembali kode yang Anda masukkan.';
-      } else if (errorMsg.includes('ALREADY_JOINED') || errorMsg.includes('sudah terdaftar')) {
-        errorMessage = 'Anda sudah terdaftar di kelas ini.';
-      } else if (errorMsg.includes('session') || errorMsg.includes('authentication')) {
-        errorMessage = 'Session expired, silakan login ulang';
-        router.push('/login');
-      }
-
-      toastError('Error', errorMessage);
-    }
-  };
 
   return (
     <>
@@ -201,38 +156,11 @@ export default function SiswaDashboardClient() {
               Belum Ada Kelas
             </h3>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Anda belum bergabung ke kelas manapun. Mulai dengan bergabung ke kelas pertama Anda menggunakan kode kelas dari guru.
+              Anda belum dimasukkan ke kelas manapun. Harap hubungi admin atau guru Anda.
             </p>
-            <Button 
-              onClick={() => setShowJoinModal(true)}
-              size="lg"
-              className="px-8"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Gabung Kelas Pertama
-            </Button>
           </div>
         ) : (
           <>
-          {/* Quick Action Card */}
-            <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
-              <CardContent className="flex flex-col items-center justify-center py-8">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <Plus className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Bergabung Kelas Baru
-                </h3>
-                <p className="text-muted-foreground text-center mb-4 max-w-md">
-                  Masukkan kode kelas untuk bergabung dan mulai ujian.
-                </p>
-                <Button onClick={() => setShowJoinModal(true)} className="px-6">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Masukkan Kode Kelas
-                </Button>
-              </CardContent>
-            </Card>
-
             {/* Kelas Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {kelasList.map((kelas: any, index: number) => (
@@ -246,13 +174,6 @@ export default function SiswaDashboardClient() {
           </>
         )}
       </div>
-
-      {/* Join Kelas Modal */}
-      <JoinKelasModal 
-        isOpen={showJoinModal}
-        onClose={() => setShowJoinModal(false)}
-        onSubmit={handleJoinKelas}
-      />
     </>
   )
 }

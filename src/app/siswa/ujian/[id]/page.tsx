@@ -131,7 +131,10 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
         registerToUjian,
         setupTimer,
         batchSubmit
-    } = useUjianLogic(ujianId, organizedQuestions, ujian, onSubmitted)
+    } = useUjianLogic(ujianId, organizedQuestions, ujian, () => {
+        setShowSubmitDialog(false)
+        if (onSubmitted) onSubmitted()
+    })
 
     const currentQuestion = organizedQuestions[currentQuestionIndex]
     const currentSectionType = (currentQuestion?.soal?.question_type || 'multiple_choice') as 'multiple_choice' | 'essay'
@@ -425,7 +428,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                     totalQuestions={organizedQuestions.length}
                     timeLeft={timeLeft}
                     onSubmit={handleShowSubmitDialog}
-                    isSubmitting={batchSubmit.isPending}
+                    isSubmitting={isSubmitting || batchSubmit.isPending}
                     formatTime={formatTime}
                 />
             </div>

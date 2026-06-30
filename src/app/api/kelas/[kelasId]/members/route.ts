@@ -11,6 +11,10 @@ const deleteMemberSchema = z.object({
   siswa_id: z.string().uuid('Format ID siswa tidak valid'),
 });
 
+const addMembersSchema = z.object({
+  siswa_ids: z.array(z.string().uuid('Format ID siswa tidak valid')),
+});
+
 /**
  * GET /api/kelas/[kelasId]/members - Mendapatkan daftar anggota kelas (guru only)
  */
@@ -96,6 +100,90 @@ export async function GET(
         members: transformedMembers,
         total_members: transformedMembers.length
       }
+    });
+
+  } catch (_error: unknown) {
+    return NextResponse.json(
+      { error: 'Terjadi kesalahan pada server' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/kelas/[kelasId]/members - Menambahkan siswa ke kelas (admin/guru only)
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ kelasId: string }> }
+) {
+  try {
+    const supabase = await createClient();
+    const resolvedParams = await params;
+    const kelasId = resolvedParams.kelasId;
+
+    const kelasIdParsed = uuidSchema.safeParse(kelasId);
+    if (!kelasIdParsed.success) {
+      return NextResponse.json({ error: 'ID kelas tidak valid' }, { status: 400 });
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Tidak terautentikasi' },
+        { status: 401 }
+      );
+    }
+
+    const { data: kelas, error: kelasError } = await supabase
+      .from('kelas')
+      .select('id')
+      .eq('id', kelasId)
+      .single();
+
+    if (kelasError || !kelas) {
+        return NextResponse.json(
+          { error: 'Kelas tidak ditemukan' },
+          { status: 404 }
+        );
+    }
+
+    const parsed = await parseJsonBody(request, addMembersSchema);
+    if ('response' in parsed) return parsed.response;
+    const { siswa_ids } = parsed.data;
+
+    if (siswa_ids.length === 0) {
+        return NextResponse.json(
+            { error: 'Pilih setidaknya satu siswa' },
+            { status: 400 }
+        );
+    }
+
+    const insertData = siswa_ids.map((id) => ({
+        kelas_id: kelasId,
+        siswa_id: id,
+    }));
+
+    const { error } = await supabase
+        .from('kelas_members')
+        .insert(insertData);
+
+    if (error) {
+        if (error.code === '23505') {
+             return NextResponse.json(
+                { error: 'Satu atau lebih siswa sudah ada di kelas ini' },
+                { status: 400 }
+             );
+        }
+        return NextResponse.json(
+          { error: 'Gagal menambahkan siswa ke kelas' },
+          { status: 400 }
+        );
+    }
+
+    return NextResponse.json({
+        success: true,
+        message: 'Berhasil menambahkan siswa ke kelas',
     });
 
   } catch (_error: unknown) {

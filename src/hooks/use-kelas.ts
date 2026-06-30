@@ -307,3 +307,47 @@ export function useRemoveKelasMember(kelasId: string) {
         },
     })
 }
+
+// Hook untuk mendapatkan siswa yang belum ada di kelas ini
+export function useAvailableStudents(kelasId: string) {
+    return useQuery({
+        queryKey: ['kelas', 'available-students', kelasId],
+        queryFn: async () => {
+            const response = await fetch(`/api/kelas/${kelasId}/available-students`, {
+                credentials: 'include',
+            })
+            if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
+            const result = await response.json()
+            if (!result.success) throw new Error('Failed to fetch available students')
+            return result.data as { id: string; full_name: string; email: string }[]
+        },
+        enabled: !!kelasId,
+    })
+}
+
+// Hook untuk menambahkan anggota kelas
+export function useAddKelasMembers(kelasId: string) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (siswaIds: string[]) => {
+            const response = await fetch(`/api/kelas/${kelasId}/members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ siswa_ids: siswaIds }),
+            })
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}))
+                throw new Error(result.error || `Add failed: ${response.status}`)
+            }
+            const result = await response.json()
+            if (!result.success) throw new Error(result.error || 'Failed to add members')
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'members', kelasId] })
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'available-students', kelasId] })
+        },
+    })
+}

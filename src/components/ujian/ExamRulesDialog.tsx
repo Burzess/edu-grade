@@ -48,12 +48,12 @@ const ExamRulesDialog: React.FC<ExamRulesDialogProps> = ({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed top-0 left-0 w-screen h-[100dvh] z-[9999] flex items-center justify-center p-4">
       {/* Background overlay */}
       <div className="absolute inset-0 bg-black/60 dark:bg-black/80" />
 
-      {/* Dialog — full width bottom sheet on mobile, centered card on sm+ */}
-      <div className="relative bg-white dark:bg-gray-900 shadow-lg w-full sm:max-w-md sm:mx-auto overflow-hidden border-t sm:border border-border animate-in slide-in-from-bottom-4 sm:fade-in sm:zoom-in-95 duration-200 max-h-[95dvh] sm:max-h-[90vh] flex flex-col rounded-t-xl sm:rounded-lg">
+      {/* Dialog */}
+      <div className="relative bg-white dark:bg-gray-900 shadow-lg w-full max-w-md mx-auto overflow-hidden border border-border animate-in zoom-in-95 duration-200 max-h-[85dvh] flex flex-col rounded-xl">
         {/* Header */}
         <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">

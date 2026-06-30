@@ -11,7 +11,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { AlertTriangle, CheckCircle, FileText, Info } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Info, Loader2 } from 'lucide-react'
 
 interface SubmitDialogProps {
     isOpen: boolean
@@ -92,11 +92,19 @@ export const SubmitDialog = memo(({
                 <AlertDialogFooter>
                     <AlertDialogCancel className="text-sm">Batal</AlertDialogCancel>
                     <AlertDialogAction
-                        onClick={onConfirm}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            onConfirm();
+                        }}
                         disabled={isSubmitting}
                         className="text-sm"
                     >
-                        {isSubmitting ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Mengumpulkan...
+                            </>
+                        ) : 'Ya, Kumpulkan'}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

@@ -25,8 +25,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useAuthStore } from '@/store/auth';
+import { useUserRole } from '@/store/auth';
 import { useKelasMembers, useRemoveKelasMember } from '@/hooks/use-kelas';
+import { AddMemberDialog } from './add-member-dialog';
 
 interface AnggotaKelasPageProps {
   kelasId: string;
@@ -35,7 +36,7 @@ interface AnggotaKelasPageProps {
 export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user } = useAuthStore();
+  const userRole = useUserRole();
   const router = useRouter();
   const { data: kelasData, isLoading } = useKelasMembers(kelasId);
   const removeMember = useRemoveKelasMember(kelasId);
@@ -88,24 +89,30 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 -ml-4"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Kembali
+          </Button>
 
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Anggota Kelas
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
-            {kelasData.kelas.nama_kelas}
-          </p>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              Anggota Kelas
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 mt-1">
+              {kelasData.kelas.nama_kelas}
+            </p>
+          </div>
         </div>
+
+        {(userRole === 'admin' || userRole === 'guru') && (
+          <AddMemberDialog kelasId={kelasId} />
+        )}
       </div>
 
       {/* Stats Card */}

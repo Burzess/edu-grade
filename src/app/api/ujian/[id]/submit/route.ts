@@ -127,8 +127,6 @@ export async function POST(
       .update({
         status: 'completed',
         submitted_at: now,
-        auto_submit_reason: body.autoSubmitReason || 'manual',
-        updated_at: now,
       })
       .eq('id', ujianSiswa.id)
       .eq('status', 'in_progress') // Atomic check to prevent concurrent submissions

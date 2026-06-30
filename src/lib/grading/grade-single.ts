@@ -98,11 +98,17 @@ export async function gradeSingleJawaban(
 
 function tryAutoGrade(j: JawabanWithSoal) {
   let correctAnswer = j.soal.correct_answer
+  let studentAnswer = j.answer_text || ''
   if (j.soal.question_type === 'multiple_choice' && j.soal.options) {
-    const correctOption = j.soal.options.find(opt => opt.id === j.soal.correct_answer)
+    const correctOption = j.soal.options.find(opt => String(opt.id) === String(j.soal.correct_answer))
     correctAnswer = correctOption?.text || j.soal.correct_answer
+    
+    const studentOption = j.soal.options.find(opt => String(opt.id) === String(j.answer_text))
+    if (studentOption) {
+      studentAnswer = studentOption.text
+    }
   }
-  return autoGradeQuestion(j.soal.question_type, j.answer_text!, correctAnswer || '', j.soal.question_text)
+  return autoGradeQuestion(j.soal.question_type, studentAnswer, correctAnswer || '', j.soal.question_text)
 }
 
 async function triggerEssayGrading(
