@@ -91,6 +91,7 @@ export function SiswaKelasWidget() {
                   onClick={() => router.push('/siswa/kelas')}
                 >
                   Lihat Semua Kelas ({kelasList.length})
+                </Button>
               </div>
             </>
           )}
