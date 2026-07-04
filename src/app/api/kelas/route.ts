@@ -42,21 +42,31 @@ export async function GET(request: NextRequest) {
 
     if (role === ROLES.GURU || role === ROLES.ADMIN) {
       // Try to get from view with is_active field
-      let { data, error } = await supabase
+      let query = supabase
         .from('kelas_with_member_count')
         .select('*, is_active')
-        .eq('created_by', user.id)
         .order('created_at', { ascending: false });
+
+      if (role !== ROLES.ADMIN) {
+        query = query.eq('created_by', user.id);
+      }
+
+      let { data, error } = await query;
 
       // If view doesn't have is_active field, fallback to direct table query
       // _Bug_Condition (1.23): N+1 per-row count replaced with single grouped query.
       // _Expected_Behavior (2.23): single query using PostgREST embedded count.
       if (error && error.message?.includes('is_active')) {
-        const { data: kelasRaw, error: kelasError } = await supabase
+        let fallbackQuery = supabase
           .from('kelas')
           .select('id, nama_kelas, kode_kelas, created_by, is_active, created_at, updated_at, kelas_members(count)')
-          .eq('created_by', user.id)
           .order('created_at', { ascending: false });
+
+        if (role !== ROLES.ADMIN) {
+          fallbackQuery = fallbackQuery.eq('created_by', user.id);
+        }
+
+        const { data: kelasRaw, error: kelasError } = await fallbackQuery;
 
         if (kelasError) {
           return NextResponse.json({ error: 'Gagal mengambil data kelas' }, { status: 400 });
@@ -130,9 +140,9 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await requireRole(request, [ROLES.ADMIN]);
+    const auth = await requireRole(request, [ROLES.ADMIN, ROLES.GURU]);
     if (auth instanceof NextResponse) return auth;
-    const { user } = auth;
+    const { user, role } = auth;
 
     const supabase = await createClient();
 
@@ -141,12 +151,16 @@ export async function PATCH(request: NextRequest) {
     const { kelas_id, nama_kelas, is_active, guru_id } = body.data;
 
     // Check ownership
-    const { data: existingKelas, error: checkError } = await supabase
+    let checkQuery = supabase
       .from('kelas')
       .select('id, nama_kelas, is_active')
-      .eq('id', kelas_id)
-      .eq('created_by', user.id)
-      .single();
+      .eq('id', kelas_id);
+
+    if (role !== ROLES.ADMIN) {
+      checkQuery = checkQuery.eq('created_by', user.id);
+    }
+
+    const { data: existingKelas, error: checkError } = await checkQuery.single();
 
     if (checkError || !existingKelas) {
       return NextResponse.json({ error: 'Kelas tidak ditemukan atau Anda tidak memiliki akses' }, { status: 404 });
@@ -157,11 +171,16 @@ export async function PATCH(request: NextRequest) {
     if (is_active !== undefined) updateData.is_active = is_active;
     if (guru_id !== undefined) updateData.guru_id = guru_id;
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from('kelas')
       .update(updateData)
-      .eq('id', kelas_id)
-      .eq('created_by', user.id)
+      .eq('id', kelas_id);
+
+    if (role !== ROLES.ADMIN) {
+      updateQuery = updateQuery.eq('created_by', user.id);
+    }
+
+    const { data, error } = await updateQuery
       .select('id, nama_kelas, kode_kelas, is_active, guru_id, created_at, updated_at')
       .single();
 
@@ -185,7 +204,7 @@ export async function PATCH(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole(request, [ROLES.ADMIN]);
+    const auth = await requireRole(request, [ROLES.ADMIN, ROLES.GURU]);
     if (auth instanceof NextResponse) return auth;
     const { user } = auth;
 
