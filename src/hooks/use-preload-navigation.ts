@@ -24,9 +24,7 @@ const ADMIN_ROUTES = [
   '/admin/dashboard',
   '/admin/users',
   '/admin/monitoring',
-  '/admin/audit-logs',
-  '/admin/reports',
-  '/admin/settings'
+  '/admin/audit-logs'
 ]
 
 interface PreloadOptions {

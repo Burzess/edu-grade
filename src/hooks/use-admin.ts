@@ -15,10 +15,6 @@ export const adminKeys = {
     all: ['admin', 'monitoring'] as const,
     list: (filters: object) => [...adminKeys.monitoring.all, 'list', filters] as const,
   },
-  settings: {
-    all: ['admin', 'settings'] as const,
-    list: (filters: object) => [...adminKeys.settings.all, 'list', filters] as const,
-  },
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -152,37 +148,3 @@ export function useAdminMonitoring(params?: UseAdminMonitoringParams) {
   })
 }
 
-// ─── Settings ─────────────────────────────────────────────────────────────────
-
-interface UseAdminSettingsParams {
-  page?: number
-}
-
-interface AdminSettingsResponse {
-  success: boolean
-  data: Array<{
-    setting_key: string
-    value: Record<string, unknown>
-    description: string | null
-    updated_by: string | null
-    updated_at: string | null
-  }>
-  count: number
-  page: number
-  limit: number
-  totalPages: number
-}
-
-export function useAdminSettings(params?: UseAdminSettingsParams) {
-  return useQuery({
-    queryKey: adminKeys.settings.list(params || {}),
-    queryFn: async (): Promise<AdminSettingsResponse> => {
-      const searchParams = new URLSearchParams()
-      if (params?.page) searchParams.set('page', String(params.page))
-
-      const res = await fetch(`/api/admin/settings?${searchParams.toString()}`)
-      if (!res.ok) throw new Error('Failed to fetch settings')
-      return res.json()
-    },
-  })
-}

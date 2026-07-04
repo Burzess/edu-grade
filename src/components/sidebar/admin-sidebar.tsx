@@ -11,11 +11,9 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { usePreloadNavigation, useHoverPreload } from '@/hooks/use-preload-navigation'
 import {
   Activity,
-  BarChart3,
   Home,
   LogOut,
   Menu,
-  Settings,
   Shield,
   User,
   Users,
@@ -65,12 +63,6 @@ const navigationItems: NavigationItem[] = [
     href: '/admin/monitoring',
     icon: Activity,
     description: 'Pantau pelanggaran ujian'
-  },
-  {
-    name: 'Laporan',
-    href: '/admin/reports',
-    icon: BarChart3,
-    description: 'Analitik global'
   }
 ]
 
@@ -103,7 +95,7 @@ export function AdminSidebar({ className }: SidebarProps) {
         signOut(),
         new Promise(resolve => setTimeout(resolve, 800))
       ])
-    } catch (error: unknown) {
+    } catch (_error: unknown) {
       window.location.href = '/login'
     }
   }
@@ -196,24 +188,6 @@ export function AdminSidebar({ className }: SidebarProps) {
       </nav>
 
       <div className="p-2 border-t border-sidebar-border space-y-1">
-        <Link
-          href="/admin/settings"
-          className={cn(
-            'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-            pathname === '/admin/settings'
-              ? 'bg-sidebar-primary/15 text-sidebar-primary font-semibold'
-              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-          )}
-          title={isCollapsed ? 'Pengaturan' : undefined}
-        >
-          <Settings className={cn(
-            'flex-shrink-0 h-5 w-5',
-            pathname === '/admin/settings' ? 'text-sidebar-primary' : 'text-sidebar-foreground/70',
-            !isCollapsed && 'mr-3'
-          )} />
-          {!isCollapsed && <span>Pengaturan</span>}
-        </Link>
-
         <Button
           variant="ghost"
           onClick={handleLogout}
@@ -274,7 +248,7 @@ export function MobileAdminSidebar({
         signOut(),
         new Promise(resolve => setTimeout(resolve, 800))
       ])
-    } catch (error: unknown) {
+    } catch (_error: unknown) {
       window.location.href = '/login'
     }
   }
@@ -364,23 +338,6 @@ export function MobileAdminSidebar({
           </nav>
 
           <div className="p-2 border-t border-sidebar-border space-y-1">
-            <Link
-              href="/admin/settings"
-              onClick={onClose}
-              className={cn(
-                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                pathname === '/admin/settings'
-                  ? 'bg-sidebar-primary/15 text-sidebar-primary font-semibold'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-              )}
-            >
-              <Settings className={cn(
-                'flex-shrink-0 h-5 w-5 mr-3',
-                pathname === '/admin/settings' ? 'text-sidebar-primary' : 'text-sidebar-foreground/70'
-              )} />
-              <span>Pengaturan</span>
-            </Link>
-
             <Button
               variant="ghost"
               onClick={handleLogout}

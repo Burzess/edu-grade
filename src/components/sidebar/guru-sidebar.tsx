@@ -19,8 +19,6 @@ import {
   BookOpen,
   BarChart3,
   FileText,
-  Users,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -223,24 +221,6 @@ export function GuruSidebar({ className }: SidebarProps) {
       {/* Bottom Section */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
         
-        <Link
-          href="/guru/settings"
-          className={cn(
-            "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-            pathname === '/guru/settings'
-              ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold"
-              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )}
-          title={isCollapsed ? 'Pengaturan' : undefined}
-        >
-          <Settings className={cn(
-            "flex-shrink-0 h-5 w-5",
-            pathname === '/guru/settings' ? "text-sidebar-primary" : "text-sidebar-foreground/70",
-            !isCollapsed && "mr-3"
-          )} />
-          {!isCollapsed && <span>Pengaturan</span>}
-        </Link>
-
         <Button
           variant="ghost"
           onClick={handleLogout}
@@ -404,23 +384,6 @@ export function MobileGuruSidebar({
 
           {/* Bottom Section */}
           <div className="p-2 border-t border-sidebar-border space-y-1">
-
-            <Link
-              href="/guru/settings"
-              onClick={onClose}
-              className={cn(
-                "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                pathname === '/guru/settings'
-                  ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <Settings className={cn(
-                "flex-shrink-0 h-5 w-5 mr-3",
-                pathname === '/guru/settings' ? "text-sidebar-primary" : "text-sidebar-foreground/70"
-              )} />
-              <span>Pengaturan</span>
-            </Link>
 
             <Button
               variant="ghost"
