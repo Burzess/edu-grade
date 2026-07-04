@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select"
 import {
   Dialog,
@@ -24,8 +23,12 @@ import {
   School,
   Users,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ChevronsUpDown,
+  Search,
+  X
 } from 'lucide-react'
+import { cn } from "@/lib/utils"
 
 interface Kelas {
   id: string
@@ -283,6 +286,23 @@ export function MultiKelasSelector({
 }) {
   const [kelasList, setKelasList] = useState<Kelas[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) setSearchQuery('')
+  }, [isOpen])
 
   useEffect(() => {
     fetchKelasList()
@@ -302,29 +322,138 @@ export function MultiKelasSelector({
     }
   }
 
-  if (isLoading) return <Skeleton className="h-20 w-full" />
+  const filteredKelasList = kelasList.filter(k => {
+    const q = searchQuery.toLowerCase()
+    return k.nama_kelas?.toLowerCase().includes(q) || k.kode_kelas?.toLowerCase().includes(q)
+  })
+
+  if (isLoading) return <Skeleton className="h-10 w-full" />
 
   return (
-    <div className="space-y-3 max-h-[200px] overflow-y-auto border rounded-md p-4 bg-background">
-      {kelasList.map(kelas => (
-        <div key={kelas.id} className="flex items-center space-x-2">
-          <Checkbox 
-            id={`kelas-${kelas.id}`} 
-            checked={value.includes(kelas.id)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                onValueChange([...value, kelas.id])
-              } else {
-                onValueChange(value.filter(id => id !== kelas.id))
-              }
-            }}
-          />
-          <label htmlFor={`kelas-${kelas.id}`} className="text-sm font-medium leading-none cursor-pointer">
-            {kelas.nama_kelas} <span className="text-muted-foreground ml-1">({kelas.kode_kelas})</span>
-          </label>
+    <div className="relative w-full" ref={containerRef}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full justify-between font-normal min-h-[40px] h-auto py-2 px-3 bg-background hover:bg-accent/50"
+      >
+        <div className="flex flex-wrap gap-1.5 items-center text-left flex-1 min-w-0 mr-2">
+          {value.length === 0 ? (
+            <span className="text-muted-foreground">Pilih kelas target (opsional / global)...</span>
+          ) : (
+            <>
+              {kelasList
+                .filter(k => value.includes(k.id))
+                .slice(0, 3)
+                .map(k => (
+                  <Badge 
+                    key={k.id} 
+                    variant="secondary" 
+                    className="text-xs font-normal px-2 py-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onValueChange(value.filter(id => id !== k.id))
+                    }}
+                  >
+                    {k.nama_kelas}
+                    <span className="ml-1 text-muted-foreground hover:text-foreground">×</span>
+                  </Badge>
+                ))}
+              {value.length > 3 && (
+                <Badge variant="outline" className="text-xs px-2 py-0.5">
+                  +{value.length - 3} lainnya
+                </Badge>
+              )}
+            </>
+          )}
         </div>
-      ))}
-      {kelasList.length === 0 && <span className="text-sm text-muted-foreground">Belum ada kelas yang dibuat.</span>}
+        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 max-h-[300px] rounded-md border bg-popover text-popover-foreground shadow-md flex flex-col overflow-hidden">
+          <div className="p-2 border-b bg-muted/30 sticky top-0 z-10 flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              placeholder="Cari kelas atau kode..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              autoFocus
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          
+          {kelasList.length > 0 && (
+            <div className="flex items-center justify-between py-1.5 px-3 border-b bg-muted/10 text-xs text-muted-foreground">
+              <span>{value.length} dari {kelasList.length} terpilih</span>
+              <div className="space-x-3 font-medium">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onValueChange(kelasList.map(k => k.id))
+                  }}
+                  className="hover:underline text-primary"
+                >
+                  Pilih Semua
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onValueChange([])
+                  }}
+                  className="hover:underline text-destructive"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-y-auto max-h-[220px] p-1 space-y-1">
+            {filteredKelasList.map(kelas => {
+              const isChecked = value.includes(kelas.id)
+              return (
+                <label 
+                  key={kelas.id} 
+                  htmlFor={`kelas-${kelas.id}`}
+                  className={cn(
+                    "flex items-center space-x-2 p-2 rounded-sm cursor-pointer transition-colors w-full",
+                    isChecked ? "bg-accent/60" : "hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <Checkbox 
+                    id={`kelas-${kelas.id}`} 
+                    checked={isChecked}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onValueChange([...value, kelas.id])
+                      } else {
+                        onValueChange(value.filter(id => id !== kelas.id))
+                      }
+                    }}
+                  />
+                  <span className="text-sm font-medium leading-none flex-1">
+                    {kelas.nama_kelas} <span className="text-muted-foreground ml-1 font-normal">({kelas.kode_kelas})</span>
+                  </span>
+                </label>
+              )
+            })}
+            {filteredKelasList.length === 0 && (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                Kelas tidak ditemukan.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

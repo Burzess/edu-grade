@@ -71,7 +71,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
 
   // Update form values when ujian data is loaded
   useEffect(() => {
-    if (ujian) {
+    if (ujian && !form.formState.isDirty) {
       form.reset({
         name: ujian.name,
         description: ujian.description || '',
@@ -84,7 +84,7 @@ export default function EditUjianPage({ params }: EditUjianPageProps) {
         max_attempts: ujian.max_attempts || 2,
       })
     }
-  }, [ujian, form])
+  }, [ujian, form, form.formState.isDirty])
 
   const onSubmit = async (data: UjianForm) => {
     try {
