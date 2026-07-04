@@ -32,11 +32,10 @@ function KelasCard({ kelas, onViewKelas }: KelasCardProps) {
     <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20" 
           onClick={() => onViewKelas(kelas.id)}>
       <CardHeader className="pb-3">
-          <div className="space-y-1 flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
-              {kelas.nama_kelas}
-            </CardTitle>
-          </div>
+        <div className="space-y-1 flex-1">
+          <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+            {kelas.nama_kelas}
+          </CardTitle>
         </div>
       </CardHeader>
 

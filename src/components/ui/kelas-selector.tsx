@@ -314,6 +314,7 @@ export function MultiKelasSelector({
       console.error(error)
     } finally {
       setIsLoading(false)
+    }
   }
 
   const filteredKelasList = kelasList.filter(k => {
