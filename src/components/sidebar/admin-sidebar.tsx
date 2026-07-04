@@ -19,7 +19,8 @@ import {
   Users,
   X,
   Loader2,
-  BookOpen
+  BookOpen,
+  GraduationCap
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -49,7 +50,7 @@ const navigationItems: NavigationItem[] = [
   {
     name: 'Kelola Kelas',
     href: '/admin/kelas',
-    icon: Users,
+    icon: GraduationCap,
     description: 'Kelola kelas dan siswa'
   },
   {

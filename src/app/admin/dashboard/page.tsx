@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
-import { Activity, Shield, Users, BookOpen } from 'lucide-react'
+import { Activity } from 'lucide-react'
 import AdminLayout from '@/components/layout/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,21 @@ const formatDate = (value: string | null) =>
 
 const formatId = (value: string | null) =>
   value ? `${value.slice(0, 8)}...` : '-'
+
+const eventLabel = (eventType: string) => {
+  const labels: Record<string, string> = {
+    tab_switch: 'Beralih Tab',
+    screenshot_attempt: 'Percobaan Screenshot',
+    split_screen: 'Layar Terbagi',
+    copy_paste: 'Copy Paste',
+    right_click: 'Klik Kanan',
+    dev_tools: 'Developer Tools',
+    window_blur: 'Jendela Tidak Aktif',
+    window_focus: 'Jendela Aktif',
+    text_selection: 'Seleksi Teks',
+  }
+  return labels[eventType] ?? eventType
+}
 
 const getSeverityBadge = (severity: string | null) => {
   const normalized = severity || 'info'
@@ -66,6 +81,12 @@ export default async function AdminDashboardPage() {
     .limit(5)
 
   const securityEvents = (securityData ?? []) as SecurityEventRow[]
+
+  const userIds = [...new Set(securityEvents.map(e => e.user_id).filter(Boolean))] as string[]
+  const { data: profilesData } = userIds.length > 0
+    ? await adminSupabase.from('profiles').select('id, full_name').in('id', userIds)
+    : { data: [] }
+  const profileMap = new Map((profilesData ?? []).map(p => [p.id, p.full_name]))
 
   const totalUsers = totalUsersResult.count ?? 0
   const totalGuru = guruUsersResult.count ?? 0
@@ -130,79 +151,44 @@ export default async function AdminDashboardPage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Aksi Cepat Admin
-              </CardTitle>
-              <CardDescription>Akses cepat ke modul utama.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Button asChild>
-                  <Link href="/admin/users">
-                    <Users className="h-4 w-4" />
-                    Kelola Akun
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/kelas">
-                    <Users className="h-4 w-4" />
-                    Kelola Kelas
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/ujian">
-                    <BookOpen className="h-4 w-4" />
-                    Kelola Ujian
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/monitoring">
-                    <Activity className="h-4 w-4" />
-                    Monitoring
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Monitoring Keamanan
-              </CardTitle>
-              <CardDescription>Event keamanan terbaru dari sesi ujian.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {securityEvents.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Belum ada event keamanan.</div>
-              ) : (
-                <div className="space-y-3">
-                  {securityEvents.map(event => (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Monitoring Keamanan
+            </CardTitle>
+            <CardDescription>Event keamanan terbaru dari sesi ujian.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {securityEvents.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Belum ada event keamanan.</div>
+            ) : (
+              <div className="space-y-3">
+                {securityEvents.map(event => {
+                  const userName = event.user_id
+                    ? (profileMap.get(event.user_id) || `User ${formatId(event.user_id)}`)
+                    : '-'
+                  return (
                     <div key={event.id} className="flex items-center justify-between">
                       <div className="space-y-1">
                         <div className="text-sm font-medium text-foreground">
-                          {event.event_type}
+                          {eventLabel(event.event_type)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          User {formatId(event.user_id)} · {formatDate(event.created_at)}
+                          {userName} · {formatDate(event.created_at)}
                         </div>
                       </div>
                       {getSeverityBadge(event.severity)}
                     </div>
-                  ))}
-                </div>
-              )}
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/admin/monitoring">Lihat Semua Monitoring</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+                  )
+                })}
+              </div>
+            )}
+            <Button variant="outline" asChild className="w-full">
+              <Link href="/admin/monitoring">Lihat Semua Monitoring</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   )
