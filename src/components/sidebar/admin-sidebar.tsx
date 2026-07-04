@@ -117,12 +117,12 @@ export function AdminSidebar({ className }: SidebarProps) {
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Shield className="h-5 w-5 text-primary-foreground" />
+            <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
+              <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">Edu-Grade</h1>
-              <p className="text-xs text-muted-foreground">Panel Admin</p>
+              <h1 className="text-lg font-bold text-sidebar-foreground">Edu-Grade</h1>
+              <p className="text-xs text-sidebar-foreground/80">Panel Admin</p>
             </div>
           </div>
         )}
@@ -130,7 +130,7 @@ export function AdminSidebar({ className }: SidebarProps) {
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2"
+          className="p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
         </Button>
@@ -297,14 +297,14 @@ export function MobileAdminSidebar({
               </div>
               <div>
                 <h1 className="text-lg font-bold text-sidebar-foreground">Edu-Grade</h1>
-                <p className="text-xs text-sidebar-foreground/70">Panel Admin</p>
+                <p className="text-xs text-sidebar-foreground/80">Panel Admin</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="p-2 text-sidebar-foreground hover:bg-sidebar-accent"
+              className="p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <X className="h-4 w-4" />
             </Button>

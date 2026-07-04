@@ -153,7 +153,7 @@ export function GuruSidebar({ className }: SidebarProps) {
           variant="ghost"
           size="sm"
           onClick={handleToggleCollapse}
-          className="p-2"
+          className="p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
         </Button>
@@ -334,14 +334,14 @@ export function MobileGuruSidebar({
               </div>
               <div>
                 <h1 className="text-lg font-bold text-sidebar-foreground">Edu-Grade</h1>
-                <p className="text-xs text-sidebar-foreground/70">Panel Guru</p>
+                <p className="text-xs text-sidebar-foreground/80">Panel Guru</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="p-2 text-sidebar-foreground hover:bg-sidebar-accent"
+              className="p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <X className="h-4 w-4" />
             </Button>
