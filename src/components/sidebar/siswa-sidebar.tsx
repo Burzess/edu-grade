@@ -17,7 +17,6 @@ import {
   Menu,
   X,
   Home,
-  Trophy,
   User,
   Loader2,
   GraduationCap,
@@ -215,12 +214,12 @@ export function SiswaSidebar({ className }: SidebarProps) {
           onClick={handleLogout}
           disabled={isLoggingOut}
           className={cn(
-            "w-full justify-start px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            "group w-full justify-start px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 transition-colors",
             !isCollapsed && "space-x-3"
           )}
           title={isCollapsed ? 'Keluar' : undefined}
         >
-          <LogOut className="flex-shrink-0 h-5 w-5 text-muted-foreground" />
+          <LogOut className="flex-shrink-0 h-5 w-5 text-muted-foreground group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
           {!isCollapsed && <span>Keluar</span>}
         </Button>
       </div>
@@ -395,9 +394,9 @@ export function MobileSiswaSidebar({
               variant="ghost"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full justify-start px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="group w-full justify-start px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 transition-colors"
             >
-              <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-muted-foreground" />
+              <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-muted-foreground group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
               <span>Keluar</span>
             </Button>
           </div>

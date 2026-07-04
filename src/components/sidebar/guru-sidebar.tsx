@@ -226,12 +226,12 @@ export function GuruSidebar({ className }: SidebarProps) {
           onClick={handleLogout}
           disabled={isLoggingOut}
           className={cn(
-            "w-full justify-start px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            "group w-full justify-start px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 transition-colors",
             !isCollapsed && "space-x-3"
           )}
           title={isCollapsed ? 'Keluar' : undefined}
         >
-          <LogOut className="flex-shrink-0 h-5 w-5 text-sidebar-foreground/70" />
+          <LogOut className="flex-shrink-0 h-5 w-5 text-sidebar-foreground/70 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
           {!isCollapsed && <span>Keluar</span>}
         </Button>
       </div>
@@ -389,9 +389,9 @@ export function MobileGuruSidebar({
               variant="ghost"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full justify-start px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="group w-full justify-start px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/20 dark:hover:text-red-400 transition-colors"
             >
-              <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-sidebar-foreground/70" />
+              <LogOut className="flex-shrink-0 h-5 w-5 mr-3 text-sidebar-foreground/70 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
               <span>Keluar</span>
             </Button>
           </div>
