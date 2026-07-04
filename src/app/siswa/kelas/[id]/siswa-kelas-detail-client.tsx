@@ -503,16 +503,10 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
             </div>
           </div>
 
-          <div className="flex items-center gap-6 pt-4">
             <div className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">Guru:</span>
               <span>{kelasDetail.guru_name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm font-mono">
-                Kode: {kelasDetail.kode_kelas}
-              </Badge>
             </div>
           </div>
         </CardHeader>

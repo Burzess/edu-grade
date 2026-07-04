@@ -234,11 +234,6 @@ export function KelasSelector({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">{selectedKelas.nama_kelas}</CardTitle>
-                <CardDescription>
-                  <Badge variant="outline" className="w-fit">
-                    {selectedKelas.kode_kelas}
-                  </Badge>
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -319,12 +314,11 @@ export function MultiKelasSelector({
       console.error(error)
     } finally {
       setIsLoading(false)
-    }
   }
 
   const filteredKelasList = kelasList.filter(k => {
     const q = searchQuery.toLowerCase()
-    return k.nama_kelas?.toLowerCase().includes(q) || k.kode_kelas?.toLowerCase().includes(q)
+    return k.nama_kelas?.toLowerCase().includes(q)
   })
 
   if (isLoading) return <Skeleton className="h-10 w-full" />
@@ -441,7 +435,7 @@ export function MultiKelasSelector({
                     }}
                   />
                   <span className="text-sm font-medium leading-none flex-1">
-                    {kelas.nama_kelas} <span className="text-muted-foreground ml-1 font-normal">({kelas.kode_kelas})</span>
+                    {kelas.nama_kelas}
                   </span>
                 </label>
               )

@@ -160,8 +160,8 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
                 Belum Ada Siswa
               </h3>
               <p className="text-gray-500 dark:text-gray-300">
-                Belum ada siswa yang bergabung ke kelas ini.
-                Bagikan kode kelas kepada siswa untuk bergabung.
+                Belum ada siswa di kelas ini.
+                Gunakan tombol Undang Siswa di atas untuk menambahkan siswa.
               </p>
             </div>
           ) : (

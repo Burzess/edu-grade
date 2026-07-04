@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, Copy, MoreVertical, Calendar, Edit3, Settings } from 'lucide-react';
+import { Plus, Users, MoreVertical, Calendar, Edit3, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -61,11 +61,6 @@ export function KelolaKelasPage() {
       }
       toastError('Error', errorMessage);
     }
-  };
-
-  const copyKodeKelas = (kodeKelas: string) => {
-    navigator.clipboard.writeText(kodeKelas);
-    toastSuccess('Berhasil!', 'Kode kelas berhasil disalin ke clipboard');
   };
 
   const formatDate = (dateString: string) => {
@@ -158,7 +153,7 @@ export function KelolaKelasPage() {
         <div>
           <h1 className="text-2xl font-bold">Kelola Kelas</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Manage kelas virtual Anda dan undang siswa dengan kode unik
+            Manage kelas virtual Anda dan kelola siswa yang terdaftar
           </p>
         </div>
         
@@ -218,10 +213,6 @@ export function KelolaKelasPage() {
                       <Users className="mr-2 h-4 w-4" />
                       Lihat Anggota
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyKodeKelas(kelas.kode_kelas)}>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Salin Kode
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </CardHeader>
@@ -235,9 +226,6 @@ export function KelolaKelasPage() {
                         {kelas.jumlah_siswa} siswa
                       </span>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {kelas.kode_kelas}
-                    </Badge>
                   </div>
 
                   {/* Status Toggle */}
@@ -263,19 +251,10 @@ export function KelolaKelasPage() {
                     <span>Dibuat {formatDate(kelas.created_at)}</span>
                   </div>
                   
-                  <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => copyKodeKelas(kelas.kode_kelas)}
-                    >
-                      <Copy className="h-3 w-3 mr-1" />
-                      Salin Kode
-                    </Button>
+                  <div className="pt-2">
                     <Button 
                       size="sm" 
-                      className="flex-1"
+                      className="w-full"
                       onClick={() => handleViewMembers(kelas.id)}
                     >
                       <Users className="h-3 w-3 mr-1" />

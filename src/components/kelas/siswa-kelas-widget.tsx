@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Plus, Users, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { useKelasSiswa } from '@/hooks/use-kelas';
@@ -76,9 +75,6 @@ export function SiswaKelasWidget() {
                         {kelas.guru_name} • {formatDate(kelas.joined_at)}
                       </p>
                     </div>
-                    <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
-                      {kelas.kode_kelas}
-                    </Badge>
                   </div>
                 ))}
               </div>

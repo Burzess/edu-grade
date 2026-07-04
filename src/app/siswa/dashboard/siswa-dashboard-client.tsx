@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useKelasSiswa } from '@/hooks/use-kelas'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   BookOpen,
@@ -33,16 +32,11 @@ function KelasCard({ kelas, onViewKelas }: KelasCardProps) {
     <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20" 
           onClick={() => onViewKelas(kelas.id)}>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
           <div className="space-y-1 flex-1">
             <CardTitle className="text-lg font-semibold line-clamp-2 group-hover:text-primary transition-colors">
               {kelas.nama_kelas}
             </CardTitle>
-            
           </div>
-          <Badge variant="outline" className="ml-2 flex-shrink-0 text-xs">
-            {kelas.kode_kelas}
-          </Badge>
         </div>
       </CardHeader>
 

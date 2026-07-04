@@ -226,43 +226,6 @@ export function useToggleKelasStatus() {
     })
 }
 
-// Hook untuk join kelas dengan kode
-export function useJoinKelas() {
-    const queryClient = useQueryClient()
-    const { user } = useAuthStore()
-
-    return useMutation({
-        mutationFn: async (kodeKelas: string) => {
-            if (!user?.id) {
-                throw new Error('User tidak terautentikasi')
-            }
-
-            const { data, error } = await supabase
-                .rpc('join_kelas_by_code', {
-                    p_kode_kelas: kodeKelas,
-                    p_siswa_id: user.id
-                })
-
-            if (error) {
-                throw error
-            }
-
-            // Check if the function returned success
-            if (data && typeof data === 'object' && 'success' in data) {
-                if (data.success === false) {
-                    const errorMsg = data.message || 'Join kelas gagal'
-                    throw new Error(errorMsg)
-                }
-            }
-
-            return data
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['kelas', 'siswa', user?.id] })
-        },
-    })
-}
-
 // Hook untuk mendapatkan anggota kelas
 export function useKelasMembers(kelasId: string) {
     return useQuery({

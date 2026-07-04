@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, Copy, MoreVertical } from 'lucide-react';
+import { Plus, Users, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,11 +32,6 @@ export function GuruKelasWidget() {
       console.error('Error creating kelas:', error);
       toastError('Error', 'Gagal membuat kelas');
     }
-  };
-
-  const copyKodeKelas = (kodeKelas: string) => {
-    navigator.clipboard.writeText(kodeKelas);
-    toastSuccess('Berhasil!', 'Kode kelas berhasil disalin ke clipboard');
   };
 
   const handleViewMembers = (kelasId: string) => {
@@ -111,9 +106,6 @@ export function GuruKelasWidget() {
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Users className="h-3 w-3" />
                         <span>{kelas.jumlah_siswa} siswa</span>
-                        <Badge variant="outline" className="text-xs">
-                          {kelas.kode_kelas}
-                        </Badge>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -126,10 +118,6 @@ export function GuruKelasWidget() {
                         <DropdownMenuItem onClick={() => handleViewMembers(kelas.id)}>
                           <Users className="mr-2 h-3 w-3" />
                           Lihat Anggota
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => copyKodeKelas(kelas.kode_kelas)}>
-                          <Copy className="mr-2 h-3 w-3" />
-                          Salin Kode
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Plus, Users, BookOpen, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useKelasSiswa } from '@/hooks/use-kelas';
 import { useRouter } from 'next/navigation';
@@ -86,9 +85,6 @@ export function SiswaKelasPage() {
                   <CardTitle className="text-lg font-semibold line-clamp-2">
                     {kelas.nama_kelas}
                   </CardTitle>
-                  <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
-                    {kelas.kode_kelas}
-                  </Badge>
                 </div>
               </CardHeader>
               
