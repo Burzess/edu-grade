@@ -52,11 +52,22 @@
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
+  --color-brand-cyan-50: #e0f7fa;
+  --color-brand-cyan-100: #b2ebf2;
+  --color-brand-cyan-200: #80deea;
+  --color-brand-cyan-300: #4dd0e1;
+  --color-brand-cyan-400: #26c6da;
+  --color-brand-cyan-500: #00b8d4;
+  --color-brand-cyan-600: #00a0b7;
+  --color-brand-cyan-700: #008799;
+  --color-brand-cyan-800: #006e7c;
+  --color-brand-cyan-900: #00555f;
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -77,82 +88,79 @@
 
 :root {
   --radius: 0.625rem;
-  /* SMK Muhammadiyah 1 Surabaya - Color Scheme */
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.16 0.05 258);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.05 258);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.05 258);
-  /* Primary: Deep Royal Blue (badge body) */
-  --primary: oklch(0.42 0.16 258);
-  --primary-foreground: oklch(0.99 0 0);
-  /* Secondary: Gold/Yellow (sun rays & brand text) */
-  --secondary: oklch(0.92 0.04 88);
-  --secondary-foreground: oklch(0.30 0.10 258);
-  --muted: oklch(0.96 0.01 250);
-  --muted-foreground: oklch(0.50 0.03 258);
-  /* Accent: Light cyan/blue tint (inner ring) */
-  --accent: oklch(0.94 0.03 230);
-  --accent-foreground: oklch(0.28 0.10 258);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0.02 250);
-  --input: oklch(0.91 0.02 250);
-  --ring: oklch(0.42 0.16 258);
-  /* Chart colors using brand palette */
-  --chart-1: oklch(0.42 0.16 258);
-  --chart-2: oklch(0.80 0.16 88);
-  --chart-3: oklch(0.65 0.14 210);
-  --chart-4: oklch(0.55 0.20 25);
-  --chart-5: oklch(0.60 0.17 150);
-  /* Sidebar: Dark Navy (outer border of logo) */
-  --sidebar: oklch(0.25 0.08 258);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.80 0.16 88);
-  --sidebar-primary-foreground: oklch(0.18 0.05 258);
-  --sidebar-accent: oklch(0.30 0.08 258);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.35 0.06 258);
-  --sidebar-ring: oklch(0.42 0.16 258);
+  /* SMK Muhammadiyah 1 Surabaya - Figma Light Mode */
+  --background: #f7f8fc;
+  --foreground: #1a1d2e;
+  --card: #ffffff;
+  --card-foreground: #1a1d2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d2e;
+  --primary: #1B4F9E;
+  --primary-foreground: #fcfcfc;
+  --secondary: #ece8d5;
+  --secondary-foreground: #2b3564;
+  --muted: #f2f3f7;
+  --muted-foreground: #707899;
+  --accent: #e8f0f5;
+  --accent-foreground: #252e5c;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e4e6f0;
+  --input: #e4e6f0;
+  --ring: #1B4F9E;
+  /* Chart colors from Figma */
+  --chart-1: #1B4F9E;
+  --chart-2: #c9a800;
+  --chart-3: #0095b5;
+  --chart-4: #c44b2a;
+  --chart-5: #2a9960;
+  /* Sidebar colors from Figma (Dark Navy with Gold accent) */
+  --sidebar: #1e275c;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-primary: #d4a80f;
+  --sidebar-primary-foreground: #151b38;
+  --sidebar-accent: #252e62;
+  --sidebar-accent-foreground: #f2f2f2;
+  --sidebar-border: #2e3970;
+  --sidebar-ring: #1B4F9E;
 }
 
 .dark {
-  /* SMK Muhammadiyah 1 Surabaya - Dark Mode */
-  --background: oklch(0.16 0.02 258);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.20 0.03 258);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.20 0.03 258);
-  --popover-foreground: oklch(0.95 0 0);
-  /* Primary: Lighter blue for dark mode readability */
-  --primary: oklch(0.62 0.18 258);
-  --primary-foreground: oklch(0.12 0.02 258);
-  /* Secondary: Muted gold */
-  --secondary: oklch(0.24 0.04 258);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.24 0.03 258);
-  --muted-foreground: oklch(0.65 0.03 258);
-  --accent: oklch(0.24 0.04 230);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.18 258);
-  /* Chart colors - brighter for dark mode */
-  --chart-1: oklch(0.62 0.20 258);
-  --chart-2: oklch(0.78 0.14 88);
-  --chart-3: oklch(0.70 0.14 210);
-  --chart-4: oklch(0.65 0.18 25);
-  --chart-5: oklch(0.65 0.17 150);
-  /* Sidebar: Very dark navy */
-  --sidebar: oklch(0.18 0.06 258);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.78 0.14 88);
-  --sidebar-primary-foreground: oklch(0.12 0.02 258);
-  --sidebar-accent: oklch(0.24 0.06 258);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.18 258);
+  /* SMK Muhammadiyah 1 Surabaya - Figma Dark Mode */
+  --background: #1a1d2e;
+  --foreground: #f2f2f2;
+  --card: #1e2235;
+  --card-foreground: #f2f2f2;
+  --popover: #1e2235;
+  --popover-foreground: #f2f2f2;
+  --primary: #4a7fcc;
+  --primary-foreground: #101420;
+  --secondary: #20253c;
+  --secondary-foreground: #f2f2f2;
+  --muted: #1f2338;
+  --muted-foreground: #9099b5;
+  --accent: #1e2638;
+  --accent-foreground: #f2f2f2;
+  --destructive: #e06040;
+  --destructive-foreground: #ffffff;
+  --border: #2a2f4a;
+  --input: #2f3550;
+  --ring: #4a7fcc;
+  /* Chart colors - Dark mode */
+  --chart-1: #4a80d4;
+  --chart-2: #c8a810;
+  --chart-3: #00a8c4;
+  --chart-4: #d4622e;
+  --chart-5: #3cac6c;
+  /* Sidebar colors - Dark mode */
+  --sidebar: #171c38;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-primary: #c8a810;
+  --sidebar-primary-foreground: #101420;
+  --sidebar-accent: #1d2444;
+  --sidebar-accent-foreground: #f2f2f2;
+  --sidebar-border: #222847;
+  --sidebar-ring: #4a7fcc;
 }
 
 @layer base {
