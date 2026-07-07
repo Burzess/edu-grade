@@ -142,8 +142,8 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
             <AuthGuard requiredRole="admin">
             <AdminLayout>
                 <div className="p-6 space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <Link href="/admin/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center space-x-4">
+                        <Link href="/admin/ujian" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4 mr-1" />
                             Kembali ke Daftar Ujian
                         </Link>
@@ -190,12 +190,12 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
             <AuthGuard requiredRole="admin">
             <AdminLayout>
                 <div className="p-6 space-y-6">
-                    <div className="flex items-center space-x-4">
-                        <Link href="/admin/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center space-x-4">
+                        <Link href="/admin/ujian" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4 mr-1" />
                             Kembali ke Daftar Ujian
                         </Link>
-                        <h1 className="text-xl font-semibold text-gray-900">
+                        <h1 className="text-xl font-semibold text-foreground">
                             Detail Ujian
                         </h1>
                     </div>
@@ -239,13 +239,13 @@ export default function UjianDetailPage({ params }: UjianDetailPageProps) {
         <AuthGuard requiredRole="admin">
         <AdminLayout>
             <div className="p-6 space-y-6">
-                <div className="flex justify-between items-start">
+                <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex justify-between items-start">
                     <div className="flex items-center space-x-4">
-                        <Link href="/admin/ujian" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+                        <Link href="/admin/ujian" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4 mr-1" />
                             Kembali ke Daftar Ujian
                         </Link>
-                        <h1 className="text-xl font-semibold text-gray-900">
+                        <h1 className="text-xl font-semibold text-foreground">
                             {ujian.name}
                         </h1>
                     </div>

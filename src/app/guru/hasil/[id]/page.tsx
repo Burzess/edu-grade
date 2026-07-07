@@ -457,7 +457,7 @@ export default function HasilUjianDetail() {
     <GuruLayout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={() => router.back()}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -465,19 +465,8 @@ export default function HasilUjianDetail() {
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-foreground">{ujian.name}</h1>
-              <p className="text-muted-foreground">{ujian.description || 'Tidak ada deskripsi'}</p>
+              <p className="text-muted-foreground mt-1">{ujian.description || 'Tidak ada deskripsi'}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Nilai dengan AI button dihilangkan */}
-            <Button
-              onClick={async () => exportHasilUjianToExcel(ujian.name, siswaResults)}
-              disabled={siswaResults.length === 0}
-              variant="outline"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export Excel
-            </Button>
           </div>
         </div>
 
@@ -541,7 +530,7 @@ export default function HasilUjianDetail() {
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <h2 className="text-lg font-medium">Hasil Siswa</h2>
             
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-center">
               <div className="relative w-full sm:w-[250px]">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -565,6 +554,15 @@ export default function HasilUjianDetail() {
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                onClick={async () => exportHasilUjianToExcel(ujian.name, siswaResults)}
+                disabled={siswaResults.length === 0}
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
             </div>
           </div>
           

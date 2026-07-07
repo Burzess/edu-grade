@@ -89,30 +89,26 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => router.back()}
-            className="flex items-center gap-2 -ml-4"
+            className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Kembali
           </Button>
 
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-3xl font-bold text-foreground">
               Anggota Kelas
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
+            <p className="text-muted-foreground mt-1">
               {kelasData.kelas.nama_kelas}
             </p>
           </div>
         </div>
-
-        {(userRole === 'admin' || userRole === 'guru') && (
-          <AddMemberDialog kelasId={kelasId} />
-        )}
       </div>
 
       {/* Stats Card */}
@@ -140,15 +136,20 @@ export function AnggotaKelasPage({ kelasId }: AnggotaKelasPageProps) {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Daftar Anggota Kelas</CardTitle>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari nama atau email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
+                />
+              </div>
+              {(userRole === 'admin' || userRole === 'guru') && (
+                <AddMemberDialog kelasId={kelasId} />
+              )}
             </div>
           </div>
         </CardHeader>

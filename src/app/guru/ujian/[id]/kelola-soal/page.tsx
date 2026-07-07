@@ -119,14 +119,14 @@ export default function KelolaSoalPage({ params }: PageProps) {
   return (
     <GuruLayout>
       <div className="flex flex-col space-y-6 max-w-7xl mx-auto p-6 pb-10">
-        <div className="flex items-center justify-between">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" onClick={() => router.push('/guru/ujian')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Assign Soal Ujian</h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mt-1">
                 Ujian: {ujian.name}
               </p>
             </div>

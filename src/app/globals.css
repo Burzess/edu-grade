@@ -114,14 +114,14 @@
   --chart-3: #0095b5;
   --chart-4: #c44b2a;
   --chart-5: #2a9960;
-  /* Sidebar colors from Figma (Dark Navy with Gold accent) */
-  --sidebar: #1e275c;
-  --sidebar-foreground: #f2f2f2;
-  --sidebar-primary: #d4a80f;
-  --sidebar-primary-foreground: #151b38;
-  --sidebar-accent: #252e62;
-  --sidebar-accent-foreground: #f2f2f2;
-  --sidebar-border: #2e3970;
+  /* Sidebar colors (Plain white background with blue primary) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1d2e;
+  --sidebar-primary: #1B4F9E;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f2f3f7;
+  --sidebar-accent-foreground: #1a1d2e;
+  --sidebar-border: #e4e6f0;
   --sidebar-ring: #1B4F9E;
 }
 
@@ -152,14 +152,14 @@
   --chart-3: #00a8c4;
   --chart-4: #d4622e;
   --chart-5: #3cac6c;
-  /* Sidebar colors - Dark mode */
-  --sidebar: #171c38;
+  /* Sidebar colors - Dark mode (Plain card background) */
+  --sidebar: #1e2235;
   --sidebar-foreground: #f2f2f2;
-  --sidebar-primary: #c8a810;
+  --sidebar-primary: #4a7fcc;
   --sidebar-primary-foreground: #101420;
-  --sidebar-accent: #1d2444;
+  --sidebar-accent: #20253c;
   --sidebar-accent-foreground: #f2f2f2;
-  --sidebar-border: #222847;
+  --sidebar-border: #2a2f4a;
   --sidebar-ring: #4a7fcc;
 }
 

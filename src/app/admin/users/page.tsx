@@ -66,29 +66,12 @@ function UsersContent() {
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
-        <div className="flex items-start justify-between">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <div>
             <h2 className="text-2xl font-semibold text-foreground">Kelola Akun</h2>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground mt-1">
               Pantau dan atur akun guru, siswa, dan admin.
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              disabled={isLoading}
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Buat Akun
-            </Button>
-            <Button
-              onClick={() => setImportModalOpen(true)}
-              disabled={isLoading}
-              variant="outline"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Import Akun
-            </Button>
           </div>
         </div>
 
@@ -134,12 +117,31 @@ function UsersContent() {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Daftar Pengguna
-            </CardTitle>
-            <CardDescription>Gunakan filter untuk mencari akun tertentu.</CardDescription>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Daftar Pengguna
+              </CardTitle>
+              <CardDescription className="mt-1">Gunakan filter untuk mencari akun tertentu.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setCreateModalOpen(true)}
+                disabled={isLoading}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Buat Akun
+              </Button>
+              <Button
+                onClick={() => setImportModalOpen(true)}
+                disabled={isLoading}
+                variant="outline"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import Akun
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

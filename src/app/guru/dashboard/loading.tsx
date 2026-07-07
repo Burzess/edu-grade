@@ -4,9 +4,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function DashboardLoading() {
   return (
     <div className="p-6 space-y-6">
-      <div className="bg-gradient-to-r from-blue-700 to-blue-500 rounded-lg p-6">
-        <Skeleton className="h-8 w-1/3 mb-2 bg-blue-600" />
-        <Skeleton className="h-4 w-1/2 bg-blue-600" />
+      <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+        <Skeleton className="h-8 w-1/3 mb-2" />
+        <Skeleton className="h-4 w-1/2" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

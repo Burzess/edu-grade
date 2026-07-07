@@ -110,7 +110,7 @@ export default function AdminCreateUjianPage() {
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
-        <div className="flex items-center space-x-4">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center space-x-4">
           <Link href="/admin/ujian" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Kembali ke Daftar Ujian

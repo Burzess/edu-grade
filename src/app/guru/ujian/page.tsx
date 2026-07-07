@@ -229,10 +229,10 @@ function UjianPageContent() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Daftar Ujian</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-1">
             Kelola soal untuk ujian yang dijadwalkan oleh admin
           </p>
         </div>

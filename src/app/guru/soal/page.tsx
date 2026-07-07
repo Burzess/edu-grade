@@ -66,20 +66,14 @@ function SoalListPageContent() {
 
     return (
         <div className="p-6 space-y-6">
-            {/* Header & Create Button */}
-            <div className="flex justify-between items-center">
+            {/* Header */}
+            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold">Bank Soal</h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">
+                    <p className="text-muted-foreground mt-1">
                         Kelola bank soal untuk ujian
                     </p>
                 </div>
-                <Link href="/guru/soal/new">
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Buat Soal Baru
-                    </Button>
-                </Link>
             </div>
 
             {/* Filters */}
@@ -133,13 +127,21 @@ function SoalListPageContent() {
 
             {/* Soal Table */}
             <Card>
-                <CardHeader>
-                    <CardTitle>
-                        {soalData ? `${soalData.count} Soal` : 'Memuat...'}
-                    </CardTitle>
-                    <CardDescription>
-                        Daftar semua soal yang telah Anda buat
-                    </CardDescription>
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <CardTitle>
+                            {soalData ? `${soalData.count} Soal` : 'Memuat...'}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                            Daftar semua soal yang telah Anda buat
+                        </CardDescription>
+                    </div>
+                    <Link href="/guru/soal/new">
+                        <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Buat Soal Baru
+                        </Button>
+                    </Link>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (

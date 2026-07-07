@@ -149,14 +149,17 @@ export function KelolaKelasPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-sm mb-8">
         <div>
           <h1 className="text-2xl font-bold">Kelola Kelas</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
+          <p className="text-muted-foreground mt-1">
             Manage kelas virtual Anda dan kelola siswa yang terdaftar
           </p>
         </div>
-        
+      </div>
+
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-semibold text-foreground">Daftar Kelas</h2>
         <Button 
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2"

@@ -166,11 +166,11 @@ export default function GuruHasilDashboard() {
     <GuruLayout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-2xl font-bold">
             Hasil Ujian Siswa
           </h2>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
+          <p className="text-muted-foreground mt-1">
             Lihat dan kelola hasil ujian yang telah dikerjakan siswa
           </p>
         </div>

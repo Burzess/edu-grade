@@ -83,9 +83,9 @@ function MonitoringContent() {
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
-        <div>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-2xl font-semibold text-foreground">Monitoring Keamanan Ujian</h2>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-1">
             Pantau aktivitas mencurigakan dari sesi ujian secara real-time.
           </p>
         </div>

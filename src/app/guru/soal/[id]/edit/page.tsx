@@ -203,10 +203,10 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
     return (
       <GuruLayout>
         <div className="p-6 space-y-6">
-          <div className="flex items-center space-x-4">
+          <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center space-x-4">
             <Link href="/guru/soal" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Kembali ke Daftar Soalllllll
+              Kembali ke Daftar Soal
             </Link>
             <h1 className="text-xl font-semibold text-foreground">
               Edit Soal
@@ -248,12 +248,12 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
     return (
       <GuruLayout>
         <div className="p-6 space-y-6">
-          <div className="flex items-center space-x-4">
-            <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+          <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center space-x-4">
+            <Link href="/guru/soal" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4 mr-1" />
               Kembali ke Daftar Soal
             </Link>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-foreground">
               Edit Soal
             </h1>
           </div>
@@ -271,12 +271,12 @@ export default function EditSoalPage({ params }: EditSoalPageProps) {
   return (
     <GuruLayout>
       <div className="p-6 space-y-6">
-        <div className="flex items-center space-x-4">
-          <Link href="/guru/soal" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center space-x-4">
+          <Link href="/guru/soal" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Kembali ke Daftar Soal
           </Link>
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-foreground">
             Edit Soal
           </h1>
         </div>

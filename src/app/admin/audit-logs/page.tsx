@@ -35,9 +35,9 @@ function AuditLogsContent() {
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
-        <div>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h2 className="text-2xl font-semibold text-foreground">Audit Log</h2>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-1">
             Riwayat aktivitas admin dan perubahan sistem.
           </p>
         </div>

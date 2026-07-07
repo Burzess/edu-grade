@@ -325,19 +325,13 @@ function UjianPageContent() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold">Kelola Ujian</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-1">
             Kelola ujian yang akan diberikan kepada siswa
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/ujian/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Buat Ujian
-          </Link>
-        </Button>
       </div>
 
       {/* Search and Filters */}
@@ -352,7 +346,7 @@ function UjianPageContent() {
           />
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-muted-foreground">Filter:</span>
           <Select value={filterKelas} onValueChange={setFilterKelas}>
             <SelectTrigger className="w-48">
@@ -382,6 +376,12 @@ function UjianPageContent() {
               Reset Filter
             </Button>
           )}
+          <Button asChild>
+            <Link href="/admin/ujian/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Ujian
+            </Link>
+          </Button>
         </div>
       </div>
 
