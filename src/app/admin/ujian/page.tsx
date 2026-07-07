@@ -334,56 +334,84 @@ function UjianPageContent() {
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari ujian..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-muted-foreground">Filter:</span>
-          <Select value={filterKelas} onValueChange={setFilterKelas}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Semua Kelas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Ujian</SelectItem>
-              <SelectItem value="global">Ujian Global</SelectItem>
-              {kelasData?.map((kelas) => (
-                <SelectItem key={kelas.id} value={kelas.id}>
-                  {kelas.nama_kelas}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {(searchQuery || filterKelas !== 'all') && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearchQuery('')
-                setFilterKelas('all')
-              }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Reset Filter
-            </Button>
-          )}
+      {/* Search, Filters, and Actions Card */}
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Daftar Ujian
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Gunakan filter dan pencarian untuk menemukan ujian tertentu
+            </CardDescription>
+          </div>
           <Button asChild>
             <Link href="/admin/ujian/new">
               <Plus className="h-4 w-4 mr-2" />
               Buat Ujian
             </Link>
           </Button>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari ujian..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-full"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-muted-foreground">Filter:</span>
+              <Select value={filterKelas} onValueChange={setFilterKelas}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Semua Kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Ujian</SelectItem>
+                  <SelectItem value="global">Ujian Global</SelectItem>
+                  {kelasData?.map((kelas) => (
+                    <SelectItem key={kelas.id} value={kelas.id}>
+                      {kelas.nama_kelas}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {(searchQuery || filterKelas !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setFilterKelas('all')
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Reset Filter
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {!isLoading && (
+            <div className="text-sm text-muted-foreground pt-3 border-t border-border flex items-center justify-between">
+              <div>
+                Menampilkan {filteredUjian.length} dari {ujianData?.count || 0} ujian
+                {(searchQuery || filterKelas !== 'all') && (
+                  <span className="ml-2 text-primary font-medium">
+                    (dengan filter aktif)
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Content */}
       {isLoading ? (
@@ -393,45 +421,37 @@ function UjianPageContent() {
           ))}
         </div>
       ) : filteredUjian.length === 0 ? (
-        <div className="text-center py-12">
-          {searchQuery ? (
-            <>
-              <p className="text-muted-foreground text-lg mb-4">
-                Tidak ada ujian yang cocok dengan pencarian &quot;{searchQuery}&quot;
-              </p>
-              <Button 
-                variant="outline" 
-                onClick={() => setSearchQuery('')}
-              >
-                Hapus Filter
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-muted-foreground text-lg mb-4">
-                Belum ada ujian yang dibuat
-              </p>
-              <Button asChild>
-                <Link href="/admin/ujian/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Buat Ujian Pertama
-                </Link>
-              </Button>
-            </>
-          )}
-        </div>
+        <Card className="text-center py-12">
+          <CardContent className="pt-6">
+            {searchQuery ? (
+              <>
+                <p className="text-muted-foreground text-lg mb-4">
+                  Tidak ada ujian yang cocok dengan pencarian &quot;{searchQuery}&quot;
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSearchQuery('')}
+                >
+                  Hapus Filter
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground text-lg mb-4">
+                  Belum ada ujian yang dibuat
+                </p>
+                <Button asChild>
+                  <Link href="/admin/ujian/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Buat Ujian Pertama
+                  </Link>
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         <>
-          {/* Results info */}
-          <div className="text-sm text-muted-foreground">
-            Menampilkan {filteredUjian.length} dari {ujianData?.count || 0} ujian
-            {(searchQuery || filterKelas !== 'all') && (
-              <span className="ml-2 text-primary">
-                (dengan filter aktif)
-              </span>
-            )}
-          </div>
-
           {/* Ujian Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredUjian.map((ujian) => (
