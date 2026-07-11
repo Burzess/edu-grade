@@ -1,22 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, MoreVertical, Calendar, Edit3, Settings } from 'lucide-react';
+import { Plus, Users, MoreVertical, Calendar, Edit3, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toastSuccess, toastError } from '@/lib/toast';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
+  DropdownMenuSeparator,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CreateKelasModal } from './create-kelas-modal';
 import { EditKelasModal } from './edit-kelas-modal';
 import { KelasStatusToggle } from './kelas-status-toggle';
-import { useKelasGuru, useCreateKelas, useUpdateKelasName, useToggleKelasStatus } from '@/hooks/use-kelas';
+import { useKelasGuru, useCreateKelas, useUpdateKelasName, useToggleKelasStatus, useDeleteKelas } from '@/hooks/use-kelas';
 import { useAuthStore } from '@/store/auth';
 import { KelasWithMemberCount } from '@/types/kelas';
 import { useRouter } from 'next/navigation';
@@ -24,17 +34,21 @@ import { useRouter } from 'next/navigation';
 export function KelolaKelasPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedKelas, setSelectedKelas] = useState<any>(null);
+  const [kelasToDelete, setKelasToDelete] = useState<{ id: string; nama_kelas: string; jumlah_siswa: number } | null>(null);
   const router = useRouter();
   
   // Initialize auth
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
+  const isAdmin = profile?.role === 'admin';
   
   // Use hooks dengan mutation untuk real-time updates
   const { data: kelasList = [], isLoading } = useKelasGuru();
   const createKelasMutation = useCreateKelas();
   const updateKelasNameMutation = useUpdateKelasName();
   const toggleStatusMutation = useToggleKelasStatus();
+  const deleteKelasMutation = useDeleteKelas();
 
 
 
@@ -122,6 +136,28 @@ export function KelolaKelasPage() {
       toastError('Error', errorMessage);
       
       throw error; // Re-throw untuk di-handle oleh toggle component
+    }
+    };
+
+  const handleDeleteKelas = (kelas: KelasWithMemberCount) => {
+    setKelasToDelete({ id: kelas.id, nama_kelas: kelas.nama_kelas, jumlah_siswa: kelas.jumlah_siswa });
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteKelas = async () => {
+    if (!kelasToDelete) return;
+    
+    try {
+      await deleteKelasMutation.mutateAsync(kelasToDelete.id);
+      toastSuccess('Berhasil!', `Kelas "${kelasToDelete.nama_kelas}" berhasil dihapus`);
+      setShowDeleteDialog(false);
+      setKelasToDelete(null);
+    } catch (error: unknown) {
+      let errorMessage = 'Gagal menghapus kelas';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toastError('Error', errorMessage);
     }
   };
 
@@ -216,6 +252,18 @@ export function KelolaKelasPage() {
                       <Users className="mr-2 h-4 w-4" />
                       Lihat Anggota
                     </DropdownMenuItem>
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteKelas(kelas)}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Hapus Kelas
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </CardHeader>
@@ -290,6 +338,50 @@ export function KelolaKelasPage() {
         kelas={selectedKelas}
         isLoading={updateKelasNameMutation.isPending}
       />
+
+      {/* Delete Kelas Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Kelas</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Apakah Anda yakin ingin menghapus kelas{' '}
+                  <span className="font-semibold text-foreground">
+                    &quot;{kelasToDelete?.nama_kelas}&quot;
+                  </span>
+                  ?
+                </p>
+                {(kelasToDelete?.jumlah_siswa ?? 0) > 0 && (
+                  <p className="text-red-600 dark:text-red-400 font-medium">
+                    ⚠️ Kelas ini memiliki {kelasToDelete?.jumlah_siswa} siswa yang akan dikeluarkan.
+                  </p>
+                )}
+                <p className="text-sm">
+                  Tindakan ini bersifat permanen dan tidak dapat dibatalkan. Semua data anggota 
+                  dan relasi ujian pada kelas ini akan dihapus.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleteKelasMutation.isPending}
+              onClick={() => setKelasToDelete(null)}
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteKelas}
+              disabled={deleteKelasMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+            >
+              {deleteKelasMutation.isPending ? 'Menghapus...' : 'Ya, Hapus Kelas'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

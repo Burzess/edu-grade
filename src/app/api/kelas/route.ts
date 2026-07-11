@@ -245,3 +245,77 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }
+
+const kelasDeleteSchema = z.object({
+  kelas_id: z.string().uuid('Kelas ID harus UUID valid'),
+});
+
+/**
+ * DELETE /api/kelas - Menghapus kelas secara permanen. Admin only.
+ *
+ * Menghapus kelas beserta semua relasi terkait (kelas_members, ujian_kelas).
+ * Hanya admin yang dapat menghapus kelas.
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireRole(request, [ROLES.ADMIN]);
+    if (auth instanceof NextResponse) return auth;
+
+    const supabase = await createClient();
+
+    const body = await parseJsonBody(request, kelasDeleteSchema);
+    if ('response' in body) return body.response;
+    const { kelas_id } = body.data;
+
+    // Verify kelas exists
+    const { data: existingKelas, error: checkError } = await supabase
+      .from('kelas')
+      .select('id, nama_kelas, is_active')
+      .eq('id', kelas_id)
+      .single();
+
+    if (checkError || !existingKelas) {
+      return NextResponse.json({ error: 'Kelas tidak ditemukan' }, { status: 404 });
+    }
+
+    // Delete related kelas_members first (FK constraint)
+    const { error: membersDeleteError } = await supabase
+      .from('kelas_members')
+      .delete()
+      .eq('kelas_id', kelas_id);
+
+    if (membersDeleteError) {
+      return NextResponse.json({ error: 'Gagal menghapus anggota kelas' }, { status: 400 });
+    }
+
+    // Delete related ujian_kelas (FK constraint — ujian_kelas has ON DELETE CASCADE
+    // on kelas side, but we explicitly clean up for safety)
+    const { error: ujianKelasDeleteError } = await supabase
+      .from('ujian_kelas')
+      .delete()
+      .eq('kelas_id', kelas_id);
+
+    if (ujianKelasDeleteError) {
+      // ujian_kelas table might not exist in older schemas, treat as non-fatal
+      console.warn('Warning: Failed to delete ujian_kelas records:', ujianKelasDeleteError.message);
+    }
+
+    // Delete the kelas itself
+    const { error: deleteError } = await supabase
+      .from('kelas')
+      .delete()
+      .eq('id', kelas_id);
+
+    if (deleteError) {
+      return NextResponse.json({ error: 'Gagal menghapus kelas' }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Kelas "${existingKelas.nama_kelas}" berhasil dihapus`,
+    });
+
+  } catch (_error: unknown) {
+    return NextResponse.json({ error: 'Terjadi kesalahan pada server' }, { status: 500 });
+  }
+}

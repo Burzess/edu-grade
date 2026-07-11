@@ -219,9 +219,44 @@ export function useToggleKelasStatus() {
                 )
             })
 
-            // Invalidate siswa kelas queries karena perubahan status mempengaruhi visibility
+        // Invalidate siswa kelas queries karena perubahan status mempengaruhi visibility
             queryClient.invalidateQueries({ queryKey: ['kelas', 'siswa'] })
             queryClient.refetchQueries({ queryKey: ['kelas', 'siswa'] })
+        },
+    })
+}
+
+// Hook untuk menghapus kelas (admin only)
+export function useDeleteKelas() {
+    const queryClient = useQueryClient()
+    const { user } = useAuthStore()
+
+    return useMutation({
+        mutationFn: async (kelasId: string) => {
+            if (!user?.id) {
+                throw new Error('User tidak terautentikasi')
+            }
+
+            const response = await fetch('/api/kelas', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ kelas_id: kelasId })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || errorData.message || 'Gagal menghapus kelas')
+            }
+
+            const result = await response.json()
+            return result
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'guru', user?.id] })
+            queryClient.invalidateQueries({ queryKey: ['kelas', 'siswa'] })
         },
     })
 }
