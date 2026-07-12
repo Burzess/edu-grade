@@ -39,7 +39,7 @@ export function TagInput({ value, onChange, placeholder = "Tambah tag...", maxTa
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border rounded-md">
+      <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border rounded-md bg-white dark:bg-input/30">
         {value.map((tag) => (
           <Badge key={tag} variant="secondary" className="flex items-center gap-1">
             {tag}
