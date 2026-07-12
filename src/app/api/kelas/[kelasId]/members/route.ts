@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { requireRole } from '@/lib/auth/require-role';
+import { ROLES } from '@/types/auth';
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +21,7 @@ const addMembersSchema = z.object({
  * GET /api/kelas/[kelasId]/members - Mendapatkan daftar anggota kelas (guru only)
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ kelasId: string }> }
 ) {
   try {
@@ -32,23 +34,26 @@ export async function GET(
       return NextResponse.json({ error: 'ID kelas tidak valid' }, { status: 400 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Tidak terautentikasi' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireRole(request, [ROLES.GURU, ROLES.ADMIN]);
+    if (auth instanceof NextResponse) return auth;
+    const { user, role } = auth;
 
-    // Validate user is guru and owns the kelas
+    // Validate access based on role
     const { data: kelas, error: kelasError } = await supabase
       .from('kelas')
-      .select('id, nama_kelas, created_by')
+      .select('id, nama_kelas, created_by, guru_id')
       .eq('id', kelasId)
-      .eq('created_by', user.id)
       .single();
 
     if (kelasError || !kelas) {
+      return NextResponse.json(
+        { error: 'Kelas tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+
+    // Block if not admin AND not creator AND not assigned guru
+    if (role !== ROLES.ADMIN && kelas.created_by !== user.id && kelas.guru_id !== user.id) {
       return NextResponse.json(
         { error: 'Kelas tidak ditemukan atau akses ditolak' },
         { status: 404 }
