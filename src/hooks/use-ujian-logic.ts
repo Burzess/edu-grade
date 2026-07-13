@@ -169,25 +169,29 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: OrganizedQues
                 // Ignore storage errors
             }
 
-            setIsSubmitting(false)
+            // Tetap pertahankan isSubmitting = true dan isSubmitted = true agar semua tombol di halaman dinonaktifkan
             setIsSubmitted(true)
             onSubmitted?.()
 
-            // AUTO AI GRADING: Trigger batch AI grading untuk semua jawaban sekaligus
+            // AUTO AI GRADING: Trigger batch AI grading di latar belakang (non-blocking dengan keepalive)
             if (result.success) {
-                console.log('🚀 Starting batch AI grading for all answers...')
+                console.log('Triggering background batch AI grading...')
                 try {
-                    await batchAIGrading.mutateAsync({
-                        ujianId: ujianId,
-                        options: {
-                            useBatching: true,
+                    fetch('/api/ai-grading', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ujianId: ujianId,
                             useOptimized: true,
+                            useBatching: true,
                             forceAI: false
-                        }
+                        }),
+                        keepalive: true
+                    }).catch(error => {
+                        console.error('Background AI grading failed:', error)
                     })
-                    console.log('✅ Batch AI grading completed')
                 } catch (error) {
-                    console.error('❌ Batch AI grading failed:', error)
+                    console.error('Failed triggering background AI grading:', error)
                 }
             }
 
@@ -209,7 +213,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: OrganizedQues
                     isAutoSubmit
                         ? 'Waktu habis! Ujian berhasil dikumpulkan otomatis!'
                         : 'Ujian berhasil dikumpulkan!',
-                    { description: gradingDescription }
+                    { description: gradingDescription || 'Anda akan diarahkan ke beranda...' }
                 )
             }
 
@@ -219,7 +223,7 @@ export const useUjianLogic = (ujianId: string, organizedQuestions: OrganizedQues
                 } else {
                     window.location.href = '/siswa/dashboard'
                 }
-            }, isAutoSubmit ? 2000 : 1000)
+            }, 800)
 
         } catch (error: unknown) {
             setIsSubmitting(false)

@@ -90,7 +90,7 @@ export const SubmitDialog = memo(({
                 </div>
                 
                 <AlertDialogFooter>
-                    <AlertDialogCancel className="text-sm">Batal</AlertDialogCancel>
+                    <AlertDialogCancel className="text-sm" disabled={isSubmitting}>Batal</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={(e) => {
                             e.preventDefault();

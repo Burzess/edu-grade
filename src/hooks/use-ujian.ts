@@ -394,12 +394,17 @@ export function useStartUjianSiswa() {
           .from('ujian_siswa').select('id, status, attempt_number')
           .eq('ujian_id', ujianId).eq('siswa_id', user.id).order('attempt_number', { ascending: false })
 
-        const hasInProgress = existingAttempts?.some(a => a.status === 'in_progress')
-        const completedAttempts = existingAttempts?.filter(a => a.status === 'completed') || []
-        const maxAttemptNumber = existingAttempts?.length ? Math.max(...existingAttempts.map(a => a.attempt_number || 1)) : 0
+        const inProgressAttempt = existingAttempts?.find(a => a.status === 'in_progress')
+        if (inProgressAttempt) {
+          return inProgressAttempt
+        }
 
-        if (hasInProgress) throw new Error('Anda masih memiliki ujian yang sedang berlangsung')
-        if (existingAttempts && existingAttempts.length > 0 && !isRemidi) throw new Error('Anda sudah terdaftar untuk ujian ini')
+        const completedAttempts = existingAttempts?.filter(a => a.status === 'completed') || []
+        if (completedAttempts.length > 0 && !isRemidi) {
+          throw new Error('Anda sudah menyelesaikan ujian ini sebelumnya')
+        }
+
+        const maxAttemptNumber = existingAttempts?.length ? Math.max(...existingAttempts.map(a => a.attempt_number || 0)) : 0
 
         if (isRemidi) {
           if (!ujian.allow_remidi) throw new Error('Ujian ini tidak mengizinkan remidi')

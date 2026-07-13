@@ -206,14 +206,9 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
     useEffect(() => {
         if (!ujian || !ujianId || ujianLoading || isRegistered || !user?.id) return
 
-        // Hanya register sekali saja
+        // Mendaftarkan siswa ke ujian
         registerToUjian(ujian, isRemidi)
-
-        // Mark sebagai sudah register di state dan localStorage
-        setIsRegistered(true)
-        const registrationKey = `ujian_registered_${ujianId}_${user.id}`
-        localStorage.setItem(registrationKey, 'true')
-    }, [ujian?.id, ujianId, ujianLoading, registerToUjian, isRegistered, user?.id, isRemidi]) // Dependency lebih spesifik
+    }, [ujian?.id, ujianId, ujianLoading, registerToUjian, isRegistered, user?.id, isRemidi])
 
     // Fetch ujian_siswa record untuk mendapatkan started_at & auto-resume on page refresh
     useEffect(() => {
@@ -226,12 +221,17 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                 .select('id, status, started_at, attempt_number')
                 .eq('ujian_id', ujianId)
                 .eq('siswa_id', user.id)
-                .eq('status', 'in_progress')
                 .order('attempt_number', { ascending: false })
                 .limit(1)
                 .maybeSingle()
 
-            if (data?.started_at) {
+            if (data?.status === 'completed' && !isRemidi) {
+                toast.error('Anda sudah menyelesaikan ujian ini sebelumnya')
+                router.push('/siswa/dashboard')
+                return
+            }
+
+            if (data?.status === 'in_progress' && data?.started_at) {
                 setStudentStartedAt(data.started_at)
 
                 // Auto-resume: jika sudah in_progress, skip rules dialog dan mulai timer
@@ -241,7 +241,7 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
         }
 
         fetchUjianSiswa()
-    }, [ujianId, user?.id, ujianLoading])
+    }, [ujianId, user?.id, ujianLoading, isRemidi, router])
 
     // Setup timer ujian - hanya dimulai setelah siswa konfirmasi rules popup
     useEffect(() => {
@@ -402,14 +402,45 @@ function UjianSiswaPageContent({ onSubmitted }: { onSubmitted?: () => void }) {
                     if (user?.id) {
                         try {
                             const supabase = createClient()
-                            await supabase
+                            // Cek status attempt terbaru siswa
+                            const { data: latestAttempt } = await supabase
                                 .from('ujian_siswa')
-                                .update({ started_at: now })
+                                .select('id, status, attempt_number')
                                 .eq('ujian_id', ujianId)
                                 .eq('siswa_id', user.id)
-                                .eq('status', 'in_progress')
-                        } catch (_err: unknown) {
-                            // Failed to update started_at - non-critical
+                                .order('attempt_number', { ascending: false })
+                                .limit(1)
+                                .maybeSingle()
+
+                            if (latestAttempt?.status === 'completed' && !isRemidi) {
+                                toast.error('Anda sudah menyelesaikan ujian ini sebelumnya')
+                                router.push('/siswa/dashboard')
+                                return
+                            }
+
+                            if (latestAttempt?.status === 'in_progress') {
+                                await supabase
+                                    .from('ujian_siswa')
+                                    .update({ started_at: now })
+                                    .eq('id', latestAttempt.id)
+                            } else {
+                                const nextAttemptNum = (latestAttempt?.attempt_number || 0) + 1
+                                await supabase
+                                    .from('ujian_siswa')
+                                    .insert({
+                                        ujian_id: ujianId,
+                                        siswa_id: user.id,
+                                        status: 'in_progress',
+                                        started_at: now,
+                                        attempt_number: nextAttemptNum,
+                                    })
+                            }
+
+                            setIsRegistered(true)
+                            const registrationKey = `ujian_registered_${ujianId}_${user.id}`
+                            localStorage.setItem(registrationKey, 'true')
+                        } catch (err: unknown) {
+                            console.error('Failed to ensure ujian_siswa record:', err)
                         }
                     }
 

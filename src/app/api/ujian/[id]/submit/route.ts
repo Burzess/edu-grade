@@ -56,6 +56,7 @@ export async function POST(
       .maybeSingle()
 
     if (ujianSiswaError || !ujianSiswa) {
+      logger.error('Submit ujian: Error fetching ujian_siswa or not found', { ujianSiswaError, user_id: user.id, ujianId })
       return apiError(
         'exam/not-registered',
         'Siswa tidak terdaftar pada ujian ini',
