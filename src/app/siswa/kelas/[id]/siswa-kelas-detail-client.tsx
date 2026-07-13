@@ -101,7 +101,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
 
   if (type === 'active') {
     return (
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="bg-white dark:bg-card hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1">
@@ -249,7 +249,7 @@ function UjianCard({ ujian, type }: UjianCardProps) {
     }
 
     return (
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="bg-white dark:bg-card hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1">
@@ -542,12 +542,12 @@ export default function SiswaKelasDetailClient({ kelasId }: SiswaKelasDetailClie
 
       {/* Ujian Tabs */}
       <Tabs defaultValue="active" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="active">
+        <TabsList className="bg-white dark:bg-card border shadow-sm p-1 rounded-lg">
+          <TabsTrigger value="active" className="data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-gray-800">
             <BookOpen className="h-4 w-4 mr-2" />
             Ujian Aktif ({availableUjian.filter(u => u.status === 'active').length})
           </TabsTrigger>
-          <TabsTrigger value="completed">
+          <TabsTrigger value="completed" className="data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-gray-800">
             <CheckCircle className="h-4 w-4 mr-2" />
             Ujian Dikerjakan ({completedUjian.length})
           </TabsTrigger>

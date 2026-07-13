@@ -129,7 +129,29 @@ export function useUpdateUjian() {
       if (!user?.id) throw new Error('User not authenticated')
       if (duration_minutes < 1 || duration_minutes > 480) throw new Error('Durasi ujian harus antara 1-480 menit')
 
-      const ujianData: UjianUpdate = { name, description, duration_minutes, start_time, end_time, guru_id, allow_remidi: allow_remidi || false, max_attempts: allow_remidi ? (max_attempts !== undefined ? max_attempts : 2) : 1 }
+      // Cek status saat ini dan update status berdasarkan end_time
+      const { data: existingUjian } = await supabase.from('ujian').select('status').eq('id', id).single()
+      const now = new Date()
+      const end = new Date(end_time)
+
+      let newStatus: 'draft' | 'active' | 'completed' = (existingUjian?.status as 'draft' | 'active' | 'completed') || 'draft'
+      if (existingUjian?.status === 'completed' || existingUjian?.status === 'active') {
+        newStatus = end <= now ? 'completed' : 'active'
+      } else if (existingUjian?.status === 'draft' && end <= now) {
+        newStatus = 'completed'
+      }
+
+      const ujianData: UjianUpdate = {
+        name,
+        description,
+        duration_minutes,
+        start_time,
+        end_time,
+        guru_id,
+        allow_remidi: allow_remidi || false,
+        max_attempts: allow_remidi ? (max_attempts !== undefined ? max_attempts : 2) : 1,
+        status: newStatus,
+      }
 
       const { data: ujian, error: ujianError } = await supabase.from('ujian').update(ujianData).eq('id', id).select().single()
       if (ujianError) throw ujianError
