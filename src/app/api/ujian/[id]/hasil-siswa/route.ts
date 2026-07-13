@@ -71,6 +71,7 @@ export async function GET(
         answer_text,
         score,
         ai_feedback,
+        attempt_number,
         soal:soal_id (
           question_text,
           question_type
@@ -86,8 +87,35 @@ export async function GET(
       )
     }
 
+    // Group answers by attempt_number (default to 1) and pick the highest scoring attempt
+    const attemptsMap = new Map<number, typeof jawabanData>()
+    ;(jawabanData || []).forEach((item) => {
+      const attemptNum = (item as any).attempt_number || 1
+      if (!attemptsMap.has(attemptNum)) {
+        attemptsMap.set(attemptNum, [])
+      }
+      attemptsMap.get(attemptNum)!.push(item)
+    })
+
+    let bestAttemptAnswers = jawabanData || []
+    if (attemptsMap.size > 1) {
+      let highestAvg = -1
+      attemptsMap.forEach((items) => {
+        const scoredItems = items.filter((j) => j.score !== null && j.score !== undefined)
+        const avg = scoredItems.length > 0
+          ? scoredItems.reduce((sum, j) => sum + (j.score ?? 0), 0) / scoredItems.length
+          : 0
+        if (avg >= highestAvg) {
+          highestAvg = avg
+          bestAttemptAnswers = items
+        }
+      })
+    } else if (attemptsMap.size === 1) {
+      bestAttemptAnswers = Array.from(attemptsMap.values())[0]
+    }
+
     // Transform jawaban data to match expected interface
-    const jawaban = (jawabanData || []).map((item) => {
+    const jawaban = (bestAttemptAnswers || []).map((item) => {
       const soal = item.soal as unknown as {
         question_text: string
         question_type: 'essay' | 'multiple_choice'

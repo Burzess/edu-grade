@@ -51,7 +51,7 @@ export function useUjianGuru() {
                 // Single query: fetch all jawaban for all ujian at once (with scores)
                 const { data: allJawabanData } = await supabase
                     .from('jawaban_siswa')
-                    .select('ujian_id, siswa_id, score, created_at')
+                    .select('ujian_id, siswa_id, score, created_at, attempt_number')
                     .in('ujian_id', ujianIds)
                     .order('created_at', { ascending: false })
 
@@ -62,8 +62,8 @@ export function useUjianGuru() {
                 })
 
                 // Client-side aggregation: group jawaban by ujian_id
-                const jawabanByUjian = new Map<string, Array<{ siswa_id: string; score: number | null; created_at: string }>>()
-                allJawabanData?.forEach((jawaban: { ujian_id: string; siswa_id: string; score: number | null; created_at: string }) => {
+                const jawabanByUjian = new Map<string, Array<{ siswa_id: string; score: number | null; created_at: string; attempt_number?: number }>>()
+                allJawabanData?.forEach((jawaban: any) => {
                     if (!jawabanByUjian.has(jawaban.ujian_id)) {
                         jawabanByUjian.set(jawaban.ujian_id, [])
                     }
@@ -80,8 +80,8 @@ export function useUjianGuru() {
                     jawabanForUjian.forEach(j => siswaSet.add(j.siswa_id))
                     const totalSiswa = siswaSet.size
 
-                    // Compute average score from latest attempt per siswa
-                    const siswaScoreMap = new Map<string, Array<{ score: number | null; created_at: string }>>()
+                    // Compute average score from highest scoring attempt per siswa
+                    const siswaScoreMap = new Map<string, Array<{ score: number | null; created_at: string; attempt_number?: number }>>()
                     jawabanForUjian.forEach(jawaban => {
                         if (!siswaScoreMap.has(jawaban.siswa_id)) {
                             siswaScoreMap.set(jawaban.siswa_id, [])
@@ -93,23 +93,26 @@ export function useUjianGuru() {
                     let siswaWithScores = 0
 
                     siswaScoreMap.forEach((scores) => {
-                        // Sort by created_at descending and filter to latest attempt window
-                        const sorted = scores
-                            .filter(s => s.score !== null)
-                            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-                        if (sorted.length === 0) return
-
-                        // Ambil jawaban dalam rentang 1 menit dari attempt terakhir
-                        const latestDate = new Date(sorted[0].created_at)
-                        const latestScores = sorted.filter(s => {
-                            const currentDate = new Date(s.created_at)
-                            return Math.abs(latestDate.getTime() - currentDate.getTime()) < 60000
+                        const attemptsMap = new Map<number, typeof scores>()
+                        scores.forEach((s) => {
+                            const att = s.attempt_number || 1
+                            if (!attemptsMap.has(att)) attemptsMap.set(att, [])
+                            attemptsMap.get(att)!.push(s)
                         })
 
-                        if (latestScores.length > 0) {
-                            const siswaAverage = latestScores.reduce((sum, s) => sum + (s.score as number), 0) / latestScores.length
-                            totalAverage += siswaAverage
+                        let bestAttemptScore: number | null = null
+                        attemptsMap.forEach((attemptItems) => {
+                            const validScores = attemptItems.filter(s => s.score !== null).map(s => s.score as number)
+                            if (validScores.length > 0) {
+                                const attemptAvg = validScores.reduce((sum, s) => sum + s, 0) / validScores.length
+                                if (bestAttemptScore === null || attemptAvg > bestAttemptScore) {
+                                    bestAttemptScore = attemptAvg
+                                }
+                            }
+                        })
+
+                        if (bestAttemptScore !== null) {
+                            totalAverage += bestAttemptScore
                             siswaWithScores++
                         }
                     })
@@ -189,6 +192,7 @@ export function useHasilUjianDetail(ujianId: string) {
                         score,
                         ai_feedback,
                         created_at,
+                        attempt_number,
                         profiles!siswa_id (
                             id,
                             full_name,
@@ -264,22 +268,35 @@ export function useHasilUjianDetail(ujianId: string) {
                         }
                     }
 
-                    // Sort by created_at dan ambil attempt terakhir
-                    const sortedJawaban = jawabans.sort((a: any, b: any) => 
-                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                    )
-                    
-                    // Ambil tanggal attempt terakhir
-                    const latestAttemptDate = sortedJawaban[0].created_at
-                    
-                    // Filter jawaban dari attempt terakhir (dalam rentang 1 menit)
-                    const latestAttemptJawaban = sortedJawaban.filter((j: any) => {
-                        const diff = new Date(j.created_at).getTime() - new Date(latestAttemptDate).getTime()
-                        return Math.abs(diff) < 60000
+                    // Group by attempt_number and pick the attempt with the highest average score (Remidi policy)
+                    const attemptsMap = new Map<number, any[]>()
+                    jawabans.forEach((j: any) => {
+                        const att = j.attempt_number || 1
+                        if (!attemptsMap.has(att)) attemptsMap.set(att, [])
+                        attemptsMap.get(att)!.push(j)
                     })
 
+                    let bestAttemptJawaban = jawabans
+                    if (attemptsMap.size > 1) {
+                        let highestAvg = -1
+                        attemptsMap.forEach((items) => {
+                            const scoredItems = items.filter((j: any) => j.score !== null && j.score !== undefined)
+                            const avg = scoredItems.length > 0
+                                ? scoredItems.reduce((sum: number, j: any) => sum + (j.score ?? 0), 0) / scoredItems.length
+                                : 0
+                            if (avg >= highestAvg) {
+                                highestAvg = avg
+                                bestAttemptJawaban = items
+                            }
+                        })
+                    } else if (attemptsMap.size === 1) {
+                        bestAttemptJawaban = Array.from(attemptsMap.values())[0]
+                    }
+
+                    const bestAttemptDate = bestAttemptJawaban[0]?.created_at || jawabans[0].created_at
+
                     // Tambahkan soal yang tidak dijawab
-                    const answeredSoalIds = new Set(latestAttemptJawaban.map((j: any) => j.soal_id))
+                    const answeredSoalIds = new Set(bestAttemptJawaban.map((j: any) => j.soal_id))
                     const unansweredSoal = allSoalData?.filter((s: any) => !answeredSoalIds.has(s.id)) || []
                     
                     const unansweredJawaban = unansweredSoal.map((s: any) => ({
@@ -288,15 +305,15 @@ export function useHasilUjianDetail(ujianId: string) {
                         answer_text: null,
                         score: 0,
                         ai_feedback: 'Tidak dijawab',
-                        created_at: latestAttemptDate,
+                        created_at: bestAttemptDate,
                         soal: s,
                         is_unanswered: true
                     }))
 
-                    const combinedJawaban = [...latestAttemptJawaban, ...unansweredJawaban]
+                    const combinedJawaban = [...bestAttemptJawaban, ...unansweredJawaban]
 
                     // Hitung statistik siswa (hanya dari yang benar-benar dijawab dan dinilai)
-                    const scores = latestAttemptJawaban.filter((j: any) => j.score !== null).map((j: any) => j.score)
+                    const scores = bestAttemptJawaban.filter((j: any) => j.score !== null).map((j: any) => j.score)
                     const averageScore = scores.length > 0 
                         ? Math.round(scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length)
                         : null
@@ -308,10 +325,10 @@ export function useHasilUjianDetail(ujianId: string) {
                             email: profile?.email || 'unknown@email.com'
                         },
                         status: 'Sudah Mengerjakan',
-                        totalJawaban: latestAttemptJawaban.length, // Hanya hitung yang dijawab
+                        totalJawaban: bestAttemptJawaban.length, // Hanya hitung yang dijawab
                         jawabanDinilai: scores.length,
                         averageScore,
-                        lastAttempt: latestAttemptDate,
+                        lastAttempt: bestAttemptDate,
                         jawaban: combinedJawaban.map((j: any) => ({
                             id: j.id,
                             soal_id: j.soal_id,
