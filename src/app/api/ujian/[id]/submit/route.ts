@@ -51,7 +51,9 @@ export async function POST(
       .select('id, status, attempt_number')
       .eq('ujian_id', ujianId)
       .eq('siswa_id', user.id)
-      .single()
+      .order('attempt_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     if (ujianSiswaError || !ujianSiswa) {
       return apiError(
