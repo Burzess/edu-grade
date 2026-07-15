@@ -18,40 +18,83 @@ export function useCompletedUjianSiswa() {
 
       const { data: allJawaban, error: jawabanError } = await supabase
         .from('jawaban_siswa')
-        .select('id, ujian_id, siswa_id, score, created_at')
+        .select('id, ujian_id, siswa_id, score, created_at, soal_id, attempt_number')
         .eq('siswa_id', user.id)
         .order('created_at', { ascending: false })
 
       if (jawabanError) throw jawabanError
       if (!allJawaban || allJawaban.length === 0) return []
 
-      // Group by ujian, keep latest attempt per ujian
-      type JawabanData = { id: string; ujian_id: string; siswa_id: string; score: number | null; created_at: string };
-      const latestMap = new Map<string, JawabanData[]>()
+      // Group by ujian
+      type JawabanData = { id: string; ujian_id: string; siswa_id: string; score: number | null; created_at: string; soal_id?: string; attempt_number?: number };
+      const ujianJawabanMap = new Map<string, JawabanData[]>()
       allJawaban.forEach((j) => {
         const jawaban = j as JawabanData;
-        if (!latestMap.has(jawaban.ujian_id)) latestMap.set(jawaban.ujian_id, [])
-        latestMap.get(jawaban.ujian_id)!.push(jawaban)
+        if (!ujianJawabanMap.has(jawaban.ujian_id)) ujianJawabanMap.set(jawaban.ujian_id, [])
+        ujianJawabanMap.get(jawaban.ujian_id)!.push(jawaban)
       })
 
-      // For each ujian, filter to latest session (within 1 min window)
+      // For each ujian, pick best attempt answers deduplicated by soal_id
       const latestAttemptJawaban: JawabanData[] = []
-      latestMap.forEach((jawabans) => {
-        const sorted = jawabans.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        const latestDate = sorted[0].created_at
-        const sessionJawaban = sorted.filter((j) => Math.abs(new Date(j.created_at).getTime() - new Date(latestDate).getTime()) < 60000)
-        latestAttemptJawaban.push(...sessionJawaban)
+      ujianJawabanMap.forEach((jawabans) => {
+        const attemptsMap = new Map<number, JawabanData[]>()
+        jawabans.forEach((j) => {
+          const att = j.attempt_number || 1
+          if (!attemptsMap.has(att)) attemptsMap.set(att, [])
+          attemptsMap.get(att)!.push(j)
+        })
+
+        let bestAttemptItems = jawabans
+        if (attemptsMap.size > 1) {
+          let highestAvg = -1
+          attemptsMap.forEach((items) => {
+            const scored = items.filter(j => j.score !== null && j.score !== undefined)
+            const avg = scored.length > 0 ? scored.reduce((acc, j) => acc + (j.score ?? 0), 0) / scored.length : 0
+            if (avg >= highestAvg) {
+              highestAvg = avg
+              bestAttemptItems = items
+            }
+          })
+        } else if (attemptsMap.size === 1) {
+          bestAttemptItems = Array.from(attemptsMap.values())[0]
+        }
+
+        const uniqueSoalMap = new Map<string, JawabanData>()
+        bestAttemptItems.forEach((j) => {
+          if (j.soal_id) {
+            const existing = uniqueSoalMap.get(j.soal_id)
+            if (!existing || new Date(j.created_at) > new Date(existing.created_at)) {
+              uniqueSoalMap.set(j.soal_id, j)
+            }
+          }
+        })
+        const deduplicated = uniqueSoalMap.size > 0 ? Array.from(uniqueSoalMap.values()) : bestAttemptItems
+        latestAttemptJawaban.push(...deduplicated)
       })
 
       const ujianIds = [...new Set(latestAttemptJawaban.map(j => j.ujian_id))]
 
-      const { data: ujianData, error: ujianError } = await supabase
-        .from('ujian')
-        .select(`id, name, description, status, duration_minutes, start_time, end_time, created_by, guru_id, created_at`)
-        .in('id', ujianIds)
+      const [ujianRes, ujianSoalRes] = await Promise.all([
+        supabase
+          .from('ujian')
+          .select(`id, name, description, status, duration_minutes, start_time, end_time, created_by, guru_id, created_at`)
+          .in('id', ujianIds),
+        supabase
+          .from('ujian_soal')
+          .select('ujian_id, soal_id')
+          .in('ujian_id', ujianIds)
+      ])
+
+      const ujianData = ujianRes.data
+      const ujianError = ujianRes.error
 
       if (ujianError) throw ujianError
       if (!ujianData || ujianData.length === 0) return []
+
+      const soalCountMap = new Map<string, number>()
+      ;(ujianSoalRes.data || []).forEach(item => {
+        soalCountMap.set(item.ujian_id, (soalCountMap.get(item.ujian_id) || 0) + 1)
+      })
 
       const profileIds = [...new Set(ujianData.map(u => u.guru_id || u.created_by).filter(Boolean))];
       const profilesMap: Record<string, string> = {};
@@ -64,11 +107,12 @@ export function useCompletedUjianSiswa() {
 
       return ujianData.map(ujian => {
         const jawabanForUjian = latestAttemptJawaban.filter(j => j.ujian_id === ujian.id)
-        const scores = jawabanForUjian.filter(j => j.score !== null).map(j => j.score as number)
+        const scores = jawabanForUjian.filter(j => j.score !== null && j.score !== undefined).map(j => j.score as number)
         const averageScore = scores.length > 0 ? Math.round(scores.reduce((s, sc) => s + sc, 0) / scores.length) : null
         const lastAttempt = jawabanForUjian.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]?.created_at
         const guru_name = profilesMap[ujian.guru_id || ujian.created_by] || 'Tidak diketahui'
-        return { ...ujian, totalAnswers: jawabanForUjian.length, gradedAnswers: scores.length, averageScore, lastAttempt, guru_name, profiles: { full_name: guru_name } }
+        const totalAnswers = soalCountMap.get(ujian.id) || jawabanForUjian.length
+        return { ...ujian, totalAnswers, gradedAnswers: scores.length, averageScore, lastAttempt, guru_name, profiles: { full_name: guru_name } }
       }).sort((a, b) => new Date(b.lastAttempt).getTime() - new Date(a.lastAttempt).getTime())
     },
     enabled: !!user?.id,

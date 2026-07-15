@@ -76,12 +76,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Parallelize independent queries
-    const [ujianResult, scoresResult, ujianSiswaResult] = await Promise.all([
+    const [ujianResult, scoresResult, ujianSiswaResult, ujianSoalResult] = await Promise.all([
       ujianQuery,
       ujianIds.length > 0
         ? supabase
             .from('jawaban_siswa')
-            .select('ujian_id, score, ai_feedback, attempt_number')
+            .select('ujian_id, soal_id, score, ai_feedback, attempt_number, created_at')
             .eq('siswa_id', user.id)
             .in('ujian_id', ujianIds)
         : Promise.resolve({ data: null }),
@@ -93,6 +93,12 @@ export async function GET(request: NextRequest) {
             .in('ujian_id', ujianIds)
             .eq('status', 'completed')
             .order('attempt_number', { ascending: true })
+        : Promise.resolve({ data: null }),
+      ujianIds.length > 0
+        ? supabase
+            .from('ujian_soal')
+            .select('ujian_id, soal_id')
+            .in('ujian_id', ujianIds)
         : Promise.resolve({ data: null }),
     ])
 
@@ -107,8 +113,13 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const scoresData: { ujian_id: string; score: number | null; ai_feedback: string | null; attempt_number: number | null }[] = scoresResult.data || []
+    const scoresData: { ujian_id: string; soal_id?: string; score: number | null; ai_feedback: string | null; attempt_number: number | null; created_at?: string }[] = scoresResult.data || []
     const ujianSiswaData: { ujian_id: string; attempt_number: number; status: string; submitted_at: string }[] = ujianSiswaResult.data || []
+    const ujianSoalData: { ujian_id: string; soal_id: string }[] = ujianSoalResult.data || []
+    const soalCountMap = new Map<string, number>()
+    ujianSoalData.forEach(item => {
+      soalCountMap.set(item.ujian_id, (soalCountMap.get(item.ujian_id) || 0) + 1)
+    })
 
     // Get guru names for ujian (depends on ujianData)
     const guruIds = [...new Set((ujianData || []).map(ujian => ujian.guru_id || ujian.created_by).filter(Boolean))]
@@ -135,9 +146,11 @@ export async function GET(request: NextRequest) {
 
         // Calculate score per attempt
         const attemptScores: { attempt: number; score: number | null; date: string }[] = []
+        let bestAttemptNum = attempts[attempts.length - 1]?.attempt_number || 1
         
         if (attemptCount > 1) {
           // Multiple attempts - calculate per attempt
+          let maxScore = -1
           for (const attempt of attempts) {
             const attemptAnswers = ujianScores.filter(s => 
               (s.attempt_number || 1) === attempt.attempt_number
@@ -151,12 +164,33 @@ export async function GET(request: NextRequest) {
               score: avgScore,
               date: attempt.submitted_at
             })
+            if (avgScore !== null && avgScore >= maxScore) {
+              maxScore = avgScore
+              bestAttemptNum = attempt.attempt_number
+            }
           }
+        } else if (attempts.length === 1) {
+          bestAttemptNum = attempts[0].attempt_number
         }
 
-        // Overall score calculation
-        const gradedAnswers = ujianScores.filter(s => s.score !== null && s.score !== undefined).length
-        const totalAnswers = ujianScores.length
+        // Filter answers for the best (or only/latest) attempt and deduplicate by soal_id
+        const bestAttemptAnswersRaw = ujianScores.filter(s => (s.attempt_number || 1) === bestAttemptNum)
+        const bestAttemptAnswersMap = new Map<string, typeof ujianScores[0]>()
+        bestAttemptAnswersRaw.forEach(s => {
+          if (s.soal_id) {
+            const existing = bestAttemptAnswersMap.get(s.soal_id)
+            if (!existing || new Date(s.created_at || 0) > new Date(existing.created_at || 0)) {
+              bestAttemptAnswersMap.set(s.soal_id, s)
+            }
+          }
+        })
+        const bestAttemptAnswers = bestAttemptAnswersMap.size > 0 
+          ? Array.from(bestAttemptAnswersMap.values())
+          : bestAttemptAnswersRaw
+
+        // Overall score calculation (for best attempt only, bounded by unique questions)
+        const gradedAnswers = bestAttemptAnswers.filter(s => s.score !== null && s.score !== undefined).length
+        const totalAnswers = soalCountMap.get(item.ujian_id as string) || bestAttemptAnswers.length
 
         // For remidi exams, take the best score across attempts
         let bestScore: number | null

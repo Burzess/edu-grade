@@ -118,7 +118,7 @@ export default function KelolaSoalPage({ params }: PageProps) {
 
   return (
     <GuruLayout>
-      <div className="flex flex-col space-y-6 max-w-7xl mx-auto p-6 pb-10">
+      <div className="flex flex-col space-y-6 p-6 pb-10">
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" onClick={() => router.push('/guru/ujian')}>

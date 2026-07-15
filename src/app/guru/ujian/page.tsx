@@ -195,7 +195,7 @@ function UjianPageContent() {
 
   if (error) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="p-6">
         <div className="text-center py-12">
           <p className="text-red-600">Terjadi kesalahan: {error.message}</p>
           <Button 

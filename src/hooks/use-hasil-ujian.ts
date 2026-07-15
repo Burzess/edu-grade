@@ -293,6 +293,15 @@ export function useHasilUjianDetail(ujianId: string) {
                         bestAttemptJawaban = Array.from(attemptsMap.values())[0]
                     }
 
+                    // Deduplicate bestAttemptJawaban by soal_id to guarantee 1 row per question
+                    const uniqueSoalMap = new Map<string, any>()
+                    bestAttemptJawaban.forEach((j: any) => {
+                        if (!uniqueSoalMap.has(j.soal_id) || new Date(j.created_at) > new Date(uniqueSoalMap.get(j.soal_id)!.created_at)) {
+                            uniqueSoalMap.set(j.soal_id, j)
+                        }
+                    })
+                    bestAttemptJawaban = Array.from(uniqueSoalMap.values())
+
                     const bestAttemptDate = bestAttemptJawaban[0]?.created_at || jawabans[0].created_at
 
                     // Tambahkan soal yang tidak dijawab
