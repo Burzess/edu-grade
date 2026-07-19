@@ -86,6 +86,7 @@ export const gradeEssayJob = inngest.createFunction(
   {
     id: 'grade-essay',
     name: 'Grade Essay with AI',
+    retries: 3,
     // TAHAP 2: Rate limiting - maksimal 2 concurrent requests
     concurrency: [
       {
@@ -93,7 +94,19 @@ export const gradeEssayJob = inngest.createFunction(
         key: 'event.data.jawabanId'
       }
     ],
-    triggers: [{ event: 'essay/grade.requested' }]
+    triggers: [{ event: 'essay/grade.requested' }],
+    onFailure: async ({ event }) => {
+      const jawabanId = event.data.event.data.jawabanId
+      const supabase = await createClient()
+      await supabase
+        .from('jawaban_siswa')
+        .update({
+          score: null,
+          ai_feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jawabanId)
+    }
   },
   async ({ event, step }) => {
     // Step 1: Validate data against the shared schema
@@ -109,33 +122,48 @@ export const gradeEssayJob = inngest.createFunction(
 
     // Step 2: Call AI with generateObject (Tahap 3: Structured JSON output)
     const gradingResult = await step.run('call-ai-grading', async () => {
-      try {
-        const { systemPrompt, userPrompt } = buildGradingPrompt({
-          question,
-          answer,
-          correctAnswer,
-          rubric
-        });
+      let lastError: unknown = null
+      const maxAttempts = 3
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const { systemPrompt, userPrompt } = buildGradingPrompt({
+            question,
+            answer,
+            correctAnswer,
+            rubric
+          });
 
-        // TAHAP 3: Gunakan generateObject untuk structured output
-        const { object } = await generateObject({
-          model: google('gemini-3-flash-preview'),
-          schema: GradingResultSchema,
-          system: systemPrompt,
-          prompt: userPrompt,
-          temperature: 0.3
-        })
+          // TAHAP 3: Gunakan generateObject untuk structured output
+          const { object } = await generateObject({
+            model: google('gemini-3-flash-preview'),
+            schema: GradingResultSchema,
+            system: systemPrompt,
+            prompt: userPrompt,
+            temperature: 0.3
+          })
 
-        return object
-      } catch (_error: unknown) {
-        // Fallback scoring
-        return {
-          skor_akhir: 50,
-          analisis_rubrik: 'Sistem penilaian AI mengalami gangguan. Jawaban akan dinilai manual oleh guru.',
-          kriteria_terpenuhi: [],
-          kekurangan: ['Penilaian otomatis gagal'],
-          saran_perbaikan: 'Hubungi guru untuk penilaian manual.'
-        } satisfies GradingResult
+          return {
+            skor_akhir: object.skor_akhir as number | null,
+            analisis_rubrik: object.analisis_rubrik,
+            kriteria_terpenuhi: object.kriteria_terpenuhi,
+            kekurangan: object.kekurangan,
+            saran_perbaikan: object.saran_perbaikan
+          }
+        } catch (err: unknown) {
+          lastError = err
+          if (attempt < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+          }
+        }
+      }
+
+      // Kegagalan permanen setelah 3 kali percobaan
+      return {
+        skor_akhir: null,
+        analisis_rubrik: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+        kriteria_terpenuhi: [],
+        kekurangan: ['Penilaian otomatis gagal setelah 3 kali percobaan'],
+        saran_perbaikan: 'Hubungi guru untuk penilaian manual.'
       }
     })
 
@@ -143,11 +171,15 @@ export const gradeEssayJob = inngest.createFunction(
     await step.run('update-database', async () => {
       const supabase = await createClient()
 
+      const feedbackText = gradingResult.skor_akhir === null
+        ? gradingResult.analisis_rubrik
+        : `${gradingResult.analisis_rubrik}\n\nKriteria terpenuhi:\n${gradingResult.kriteria_terpenuhi.join('\n')}\n\nKekurangan:\n${gradingResult.kekurangan.join('\n')}\n\nSaran:\n${gradingResult.saran_perbaikan}`
+
       const { error } = await supabase
         .from('jawaban_siswa')
         .update({
           score: gradingResult.skor_akhir,
-          ai_feedback: `${gradingResult.analisis_rubrik}\n\nKriteria terpenuhi:\n${gradingResult.kriteria_terpenuhi.join('\n')}\n\nKekurangan:\n${gradingResult.kekurangan.join('\n')}\n\nSaran:\n${gradingResult.saran_perbaikan}`,
+          ai_feedback: feedbackText,
           updated_at: new Date().toISOString()
         })
         .eq('id', validatedData.jawabanId)

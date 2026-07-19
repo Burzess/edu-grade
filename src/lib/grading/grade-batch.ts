@@ -36,7 +36,7 @@ interface AnswerData {
 
 const DEFAULT_PROMPT_CONFIG: PromptConfig = {
   mode: 'detailed',
-  maxOutputTokens: 1500,
+  maxOutputTokens: 2000,
   temperature: 0.3,
 }
 
@@ -150,7 +150,7 @@ function buildAnswerData(jawaban: Record<string, unknown>): AnswerData {
   return ad
 }
 
-async function updateScore(supabase: SupabaseClient, id: string, score: number, feedback: string): Promise<boolean> {
+async function updateScore(supabase: SupabaseClient, id: string, score: number | null, feedback: string): Promise<boolean> {
   const { error } = await supabase
     .from('jawaban_siswa')
     .update({ score, ai_feedback: feedback, updated_at: new Date().toISOString() })
@@ -199,7 +199,7 @@ async function gradeEssays(
   return { graded, errors }
 }
 
-async function runOptimizedBatch(answers: AnswerData[]) {
+async function runOptimizedBatch(answers: AnswerData[]): Promise<Array<{ id: string; score: number | null; feedback: string }>> {
   const essayAnswers = answers.map(a => ({
     id: a.id, question: a.question, studentAnswer: a.studentAnswer,
     questionType: a.questionType as 'essay' | 'multiple_choice',
@@ -209,7 +209,7 @@ async function runOptimizedBatch(answers: AnswerData[]) {
   return results.map(r => ({ id: r.id, score: r.result.score, feedback: r.result.feedback }))
 }
 
-async function runTraditionalBatch(answers: AnswerData[]) {
+async function runTraditionalBatch(answers: AnswerData[]): Promise<Array<{ id: string; score: number | null; feedback: string }>> {
   const { smartBatchGradeAnswers } = await import('@/lib/ai-grading')
   const essayAnswers = answers.map(a => ({
     id: a.id, question: a.question, studentAnswer: a.studentAnswer,
@@ -223,8 +223,8 @@ async function runTraditionalBatch(answers: AnswerData[]) {
 async function gradeIndividual(
   answers: AnswerData[],
   useOptimized: boolean
-): Promise<{ results: Array<{ id: string; score: number; feedback: string }>; errors: number }> {
-  const results: Array<{ id: string; score: number; feedback: string }> = []
+): Promise<{ results: Array<{ id: string; score: number | null; feedback: string }>; errors: number }> {
+  const results: Array<{ id: string; score: number | null; feedback: string }> = []
   let errors = 0
 
   for (const ad of answers) {

@@ -392,7 +392,7 @@ export default function HasilUjianDetail() {
       await batchAIGrading.mutateAsync({
         ujianId,
         options: {
-          useOptimized: true,
+          useOptimized: false,
           useBatching: true,
           forceAI: false
         }

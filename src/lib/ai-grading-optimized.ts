@@ -15,7 +15,7 @@ const openai = new OpenAI({
 })
 
 export interface AIGradingResponse {
-  score: number // 0-100
+  score: number | null // 0-100 or null if pending manual grading
   feedback: string
   reasoning: string
 }
@@ -29,7 +29,7 @@ export interface PromptConfig {
 
 const defaultConfig: PromptConfig = {
   mode: 'detailed',
-  maxOutputTokens: 1500,
+  maxOutputTokens: 2000,
   temperature: 0.3
 }
 
@@ -167,24 +167,21 @@ export async function gradeEssayAnswerOptimized(
       retryAttempt: retryCount
     })
     
-    // ENHANCED: Retry mechanism for parsing errors
-    if (retryCount < maxRetries && 
-        error instanceof Error && 
-        (error.message.includes('Invalid JSON') || error.message.includes('Invalid AI response'))) {
-      
+    // ENHANCED: Retry mechanism for any AI errors up to maxRetries (3 attempts total)
+    if (retryCount < maxRetries) {
       if (isDebug) {
         logger.debug(`Retrying AI grading (attempt ${retryCount + 1}/${maxRetries + 1})...`)
       }
       
       // Use more conservative config for retry
       const retryConfig: PromptConfig = {
-        mode: 'concise',
-        maxOutputTokens: Math.min(config.maxOutputTokens, 300),
+        mode: 'detailed',
+        maxOutputTokens: Math.min(config.maxOutputTokens, 1500),
         temperature: Math.max(config.temperature - 0.1, 0.1) // Lower temperature for more consistency
       }
       
       // Wait a bit before retry
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)))
       
       return gradeEssayAnswerOptimized(
         question, 
@@ -192,27 +189,21 @@ export async function gradeEssayAnswerOptimized(
         questionType, 
         correctAnswer, 
         retryConfig, 
-        retryCount + 1
+        retryCount + 1,
+        rubric
       )
     }
     
-    // Fallback ke implementasi ai-grading.ts agar feedback tetap berasal dari AI,
-    // bukan dari template hardcoded di optimized mode.
-    if (isDebug) {
-      logger.debug('Optimized grading failed, falling back to gradeEssayAnswer from ai-grading.ts')
+    // Kegagalan permanen setelah 3 kali percobaan
+    return {
+      score: null,
+      feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+      reasoning: `Sistem penilaian AI mengalami gangguan setelah 3 kali percobaan: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
-    return gradeEssayAnswer(
-      question,
-      studentAnswer,
-      questionType,
-      correctAnswer
-    )
   }
 }
 /**
- * OPTIMIZED: Essay Prompt (Concise)
- * Token reduction: ~45% vs original
- * ENHANCED: Better JSON format specification
+ * Essay Prompt without token/character truncation
  */
 function getOptimizedEssayPrompt(question: string, answer: string): string {
   return `Nilai essay berikut dalam format JSON:
@@ -225,8 +216,8 @@ PENTING: Berikan HANYA JSON yang valid tanpa teks tambahan!
 Format JSON yang HARUS digunakan:
 {
   "score": [0-100],
-  "feedback": "feedback singkat maksimal 100 karakter",
-  "reasoning": "alasan singkat maksimal 50 karakter"
+  "feedback": "feedback lengkap, jelas, dan konstruktif dalam bahasa Indonesia",
+  "reasoning": "penjelasan mendalam mengapa jawaban siswa mendapat nilai tersebut"
 }
 
 Kriteria: Akurasi (40%), Kelengkapan (30%), Struktur (20%), Bahasa (10%).
@@ -234,9 +225,7 @@ Nilai: 90-100=Sangat baik, 70-89=Baik, 50-69=Cukup, <50=Kurang.`
 }
 
 /**
- * OPTIMIZED: Essay with Reference Answer (Concise) 
- * Token reduction: ~50% vs original
- * ENHANCED: Better JSON format specification
+ * Essay with Reference Answer Prompt without token/character truncation
  */
 function getOptimizedEssayWithKeyPrompt(question: string, key: string, answer: string): string {
   return `Nilai essay dengan kunci jawaban dalam format JSON:
@@ -250,8 +239,8 @@ PENTING: Berikan HANYA JSON yang valid tanpa teks tambahan!
 Format JSON yang HARUS digunakan:
 {
   "score": [0-100],
-  "feedback": "feedback singkat maksimal 100 karakter",
-  "reasoning": "alasan singkat maksimal 50 karakter"
+  "feedback": "feedback lengkap, jelas, dan konstruktif dalam bahasa Indonesia",
+  "reasoning": "penjelasan mendalam membandingkan jawaban siswa dengan kunci jawaban"
 }
 
 Kriteria: Sesuai kunci (50%), Kelengkapan (25%), Struktur (15%), Bahasa (10%).
@@ -403,9 +392,9 @@ export async function optimizedBatchGradeAnswers(
       })
       
       const fallbackResult = {
-        score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
-        feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
-        reasoning: 'AI grading error'
+        score: null,
+        feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+        reasoning: 'AI grading error after 3 attempts'
       }
       
       if (isDebug) logger.debug(`Batch item ${results.length + 1} - Using fallback result`)

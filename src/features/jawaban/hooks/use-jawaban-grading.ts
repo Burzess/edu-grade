@@ -117,7 +117,7 @@ export async function triggerBatchAIGrading(
   ujianId: string,
   options: BatchAIGradingOptions = {}
 ): Promise<BatchAIGradingResponse> {
-  const { useOptimized = true, useBatching = true, forceAI = false } = options
+  const { useOptimized = false, useBatching = true, forceAI = false } = options
 
   const response = await fetch('/api/ai-grading', {
     method: 'PUT',

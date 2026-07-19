@@ -14,7 +14,7 @@ const openai = new OpenAI({
 });
 
 export interface AIGradingResponse {
-  score: number // 0-100
+  score: number | null // 0-100 or null if pending manual grading
   feedback: string
   reasoning: string
 }
@@ -151,84 +151,95 @@ export async function gradeEssayAnswer(
       }
     }
 
-    const result = await openai.chat.completions.create({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        {
-          role: "user",
-          content: prompt
+    let lastError: unknown = null
+    const maxAttempts = 3
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await openai.chat.completions.create({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000,
+        })
+
+        const text = result.choices[0]?.message?.content || ''
+
+        if (isDebug) {
+          logger.debug('Raw AI response:', text.substring(0, 200) + '...')
         }
-      ],
-      temperature: 0.3,
-      max_tokens: 1000,
-    })
 
-    const text = result.choices[0]?.message?.content || ''
+        // Cari JSON dalam response dengan lebih fleksibel
+        let jsonMatch = text.match(/\{[\s\S]*?\}/)
+        
+        // Jika tidak ada JSON, coba bersihkan dan cari lagi
+        if (!jsonMatch) {
+          const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
+          jsonMatch = cleanedText.match(/\{[\s\S]*\}/)
+        }
 
-    if (isDebug) {
-      logger.debug('Raw AI response:', text.substring(0, 200) + '...')
+        if (!jsonMatch) {
+          logger.error('No valid JSON found in AI response', { code: 'AI_PARSE_NO_JSON', responseLength: text.length })
+          throw new Error('Invalid AI response format - no JSON found')
+        }
+
+        let aiResponse: AIGradingResponse
+        try {
+          aiResponse = JSON.parse(jsonMatch[0])
+        } catch (parseError) {
+          logger.error('Failed to parse JSON from AI response', { code: 'AI_PARSE_INVALID_JSON', message: parseError instanceof Error ? parseError.message : 'Unknown parse error' })
+          throw new Error('Invalid JSON in AI response', { cause: parseError })
+        }
+        
+        // Validate response structure
+        if (typeof aiResponse.score !== 'number' || 
+            aiResponse.score < 0 || 
+            aiResponse.score > 100 ||
+            !aiResponse.feedback ||
+            typeof aiResponse.feedback !== 'string' ||
+            !aiResponse.reasoning ||
+            typeof aiResponse.reasoning !== 'string') {
+          
+          logger.error('Invalid AI response structure', { code: 'AI_RESPONSE_INVALID_STRUCTURE' })
+          throw new Error('Invalid AI response structure')
+        }
+
+        // Ensure score is integer
+        aiResponse.score = Math.round(aiResponse.score)
+
+        if (isDebug) {
+          logger.debug('AI grading completed:', {
+            score: aiResponse.score,
+            feedbackLength: aiResponse.feedback.length,
+            reasoningLength: aiResponse.reasoning.length
+          })
+        }
+
+        return aiResponse
+      } catch (err: unknown) {
+        lastError = err
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+        }
+      }
     }
 
-    // Cari JSON dalam response dengan lebih fleksibel
-    let jsonMatch = text.match(/\{[\s\S]*?\}/)
-    
-    // Jika tidak ada JSON, coba bersihkan dan cari lagi
-    if (!jsonMatch) {
-      const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim()
-      jsonMatch = cleanedText.match(/\{[\s\S]*\}/)
-    }
-
-    if (!jsonMatch) {
-      logger.error('No valid JSON found in AI response', { code: 'AI_PARSE_NO_JSON', responseLength: text.length })
-      throw new Error('Invalid AI response format - no JSON found')
-    }
-
-    let aiResponse: AIGradingResponse
-    try {
-      aiResponse = JSON.parse(jsonMatch[0])
-    } catch (parseError) {
-      logger.error('Failed to parse JSON from AI response', { code: 'AI_PARSE_INVALID_JSON', message: parseError instanceof Error ? parseError.message : 'Unknown parse error' })
-      throw new Error('Invalid JSON in AI response', { cause: parseError })
-    }
-    
-    // Validate response structure
-    if (typeof aiResponse.score !== 'number' || 
-        aiResponse.score < 0 || 
-        aiResponse.score > 100 ||
-        !aiResponse.feedback ||
-        typeof aiResponse.feedback !== 'string' ||
-        !aiResponse.reasoning ||
-        typeof aiResponse.reasoning !== 'string') {
-      
-      logger.error('Invalid AI response structure', { code: 'AI_RESPONSE_INVALID_STRUCTURE' })
-      throw new Error('Invalid AI response structure')
-    }
-
-    // Ensure score is integer
-    aiResponse.score = Math.round(aiResponse.score)
-
-    if (isDebug) {
-      logger.debug('AI grading completed:', {
-        score: aiResponse.score,
-        feedbackLength: aiResponse.feedback.length,
-        reasoningLength: aiResponse.reasoning.length
-      })
-    }
-
-    return aiResponse
+    throw lastError
 
   } catch (error: unknown) {
-    logger.error('AI grading error', {
+    logger.error('AI grading error after 3 attempts', {
       code: 'AI_GRADING_FAILED',
       message: error instanceof Error ? error.message : 'Unknown error'
     })
     
-    // Fallback scoring
-    const fallbackScore = studentAnswer.trim().length > 0 ? 50 : 0
     return {
-      score: fallbackScore,
-      feedback: 'Sistem penilaian AI mengalami gangguan. Jawaban Anda telah tersimpan dan akan dinilai manual oleh guru.',
-      reasoning: `Fallback scoring due to AI service error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      score: null,
+      feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+      reasoning: `Sistem penilaian AI mengalami gangguan setelah 3 kali percobaan: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
 }
@@ -280,9 +291,9 @@ export async function batchGradeAnswers(
         return {
           id: answer.id,
           result: {
-            score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
-            feedback: 'Terjadi kesalahan dalam penilaian otomatis. Jawaban akan dinilai manual.',
-            reasoning: 'AI grading error'
+            score: null,
+            feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+            reasoning: 'AI grading error after 3 attempts'
           }
         }
       } finally {
@@ -360,9 +371,9 @@ export async function smartBatchGradeAnswers(
                 fallbackResults.push({
                   id: answer.id,
                   result: {
-                    score: 50,
-                    feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
-                    reasoning: 'Fallback scoring'
+                    score: null,
+                    feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+                    reasoning: 'Fallback scoring after error'
                   }
                 })
               }
@@ -392,9 +403,9 @@ export async function smartBatchGradeAnswers(
             return [{
               id: answer.id,
               result: {
-                score: answer.studentAnswer.trim().length > 0 ? 50 : 0,
-                feedback: 'Terjadi kesalahan dalam penilaian otomatis.',
-                reasoning: 'AI grading error'
+                score: null,
+                feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
+                reasoning: 'AI grading error after attempts'
               }
             }]
           } finally {
@@ -526,8 +537,8 @@ async function gradeMultipleEssaysInOneRequest(
       formattedResults.push({
         id: answer.id,
         result: {
-          score: 50,
-          feedback: 'Penilaian batch tidak berhasil, menggunakan penilaian fallback.',
+          score: null,
+          feedback: 'Pending Manual Grading - Sistem penilaian AI mengalami gangguan, jawaban akan di nilai oleh guru',
           reasoning: 'Batch grading fallback'
         }
       })

@@ -7,7 +7,7 @@ const supabase = createClient()
 
 interface GradingStatus {
   jawabanId: string
-  status: 'PENDING' | 'GRADED' | 'ERROR'
+  status: 'PENDING' | 'GRADED' | 'ERROR' | 'PENDING_MANUAL_GRADING'
   score: number | null
   feedback: string | null
 }
@@ -42,9 +42,11 @@ export function useGradingStatus(jawabanId: string | null, enabled: boolean = tr
       
       if (data.score !== null) {
         status = 'GRADED'
+      } else if (data.ai_feedback && (data.ai_feedback.includes('Pending Manual Grading') || data.ai_feedback.includes('Sistem penilaian AI mengalami gangguan'))) {
+        status = 'PENDING_MANUAL_GRADING'
       } else if (data.ai_feedback && data.ai_feedback.includes('PENDING')) {
         status = 'PENDING'
-      } else if (data.ai_feedback && data.ai_feedback.includes('error')) {
+      } else if (data.ai_feedback && (data.ai_feedback.includes('error') || data.ai_feedback.includes('gangguan') || data.ai_feedback.includes('gagal'))) {
         status = 'ERROR'
       }
 
@@ -57,8 +59,8 @@ export function useGradingStatus(jawabanId: string | null, enabled: boolean = tr
     },
     enabled: enabled && !!jawabanId,
     refetchInterval: (query) => {
-      // Stop polling jika sudah selesai atau error
-      if (query.state.data?.status === 'GRADED' || query.state.data?.status === 'ERROR') {
+      // Stop polling jika sudah selesai atau error atau butuh manual grading
+      if (query.state.data?.status === 'GRADED' || query.state.data?.status === 'ERROR' || query.state.data?.status === 'PENDING_MANUAL_GRADING') {
         return false
       }
       // Polling setiap 5 detik untuk status PENDING
@@ -95,9 +97,11 @@ export function useBatchGradingStatus(jawabanIds: string[], enabled: boolean = t
         
         if (item.score !== null) {
           status = 'GRADED'
+        } else if (item.ai_feedback && (item.ai_feedback.includes('Pending Manual Grading') || item.ai_feedback.includes('Sistem penilaian AI mengalami gangguan'))) {
+          status = 'PENDING_MANUAL_GRADING'
         } else if (item.ai_feedback && item.ai_feedback.includes('PENDING')) {
           status = 'PENDING'
-        } else if (item.ai_feedback && item.ai_feedback.includes('error')) {
+        } else if (item.ai_feedback && (item.ai_feedback.includes('error') || item.ai_feedback.includes('gangguan') || item.ai_feedback.includes('gagal'))) {
           status = 'ERROR'
         }
 
@@ -113,7 +117,7 @@ export function useBatchGradingStatus(jawabanIds: string[], enabled: boolean = t
     refetchInterval: (query) => {
       // Stop polling jika semua sudah selesai
       const allCompleted = query.state.data?.every(
-        item => item.status === 'GRADED' || item.status === 'ERROR'
+        item => item.status === 'GRADED' || item.status === 'ERROR' || item.status === 'PENDING_MANUAL_GRADING'
       )
       
       if (allCompleted) {

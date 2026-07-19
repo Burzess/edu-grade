@@ -8,7 +8,7 @@ import { z } from 'zod'
  */
 export const aiGradingPostSchema = z.object({
   jawabanId: z.string().min(1, 'jawabanId is required'),
-  useOptimized: z.boolean().optional().default(true),
+  useOptimized: z.boolean().optional().default(false),
   forceAI: z.boolean().optional().default(false),
 })
 
@@ -23,7 +23,7 @@ export type AiGradingPostPayload = z.infer<typeof aiGradingPostSchema>
 export const aiGradingPutSchema = z.object({
   ujianId: z.string().min(1, 'ujianId is required'),
   useBatching: z.boolean().optional().default(true),
-  useOptimized: z.boolean().optional().default(true),
+  useOptimized: z.boolean().optional().default(false),
   forceAI: z.boolean().optional().default(false),
 })
 
