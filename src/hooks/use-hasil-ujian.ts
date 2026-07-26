@@ -213,6 +213,23 @@ export function useHasilUjianDetail(ujianId: string) {
                     throw jawabanError
                 }
 
+                // Ambil status pengerjaan (ujian_siswa)
+                const { data: ujianSiswaData, error: ujianSiswaError } = await supabase
+                    .from('ujian_siswa')
+                    .select('siswa_id, status')
+                    .eq('ujian_id', ujianId)
+
+                if (ujianSiswaError) {
+                    throw ujianSiswaError
+                }
+
+                const ujianSiswaMap = new Map()
+                if (ujianSiswaData) {
+                    ujianSiswaData.forEach((us: any) => {
+                        ujianSiswaMap.set(us.siswa_id, us.status)
+                    })
+                }
+
                 const siswaMap = new Map()
                 if (allJawaban) {
                     allJawaban.forEach((jawaban: any) => {
@@ -251,6 +268,7 @@ export function useHasilUjianDetail(ujianId: string) {
                 // Process setiap siswa
                 const siswaResults = Array.from(siswaMap.entries()).map(([siswaId, data]: [string, any]) => {
                     const { jawabans, profile } = data
+                    const attemptStatus = ujianSiswaMap.get(siswaId) || null
 
                     if (!jawabans || jawabans.length === 0) {
                         return {
@@ -260,6 +278,7 @@ export function useHasilUjianDetail(ujianId: string) {
                                 email: profile?.email || 'unknown@email.com'
                             },
                             status: 'Belum Mengerjakan',
+                            attemptStatus,
                             totalJawaban: 0,
                             jawabanDinilai: 0,
                             averageScore: null,
@@ -334,6 +353,7 @@ export function useHasilUjianDetail(ujianId: string) {
                             email: profile?.email || 'unknown@email.com'
                         },
                         status: 'Sudah Mengerjakan',
+                        attemptStatus,
                         totalJawaban: bestAttemptJawaban.length, // Hanya hitung yang dijawab
                         jawabanDinilai: scores.length,
                         averageScore,
@@ -429,6 +449,44 @@ export function useUpdateScore() {
             // Invalidate related queries untuk refresh UI
             queryClient.invalidateQueries({ queryKey: ['hasil'] })
             queryClient.invalidateQueries({ queryKey: ['jawaban'] })
+            queryClient.invalidateQueries({ queryKey: ['ujian'] })
+        },
+    })
+}
+
+// Hook untuk memaksa kumpul ujian siswa (Force Submit)
+export function useForceSubmitSiswa() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async ({ ujianId, siswaId }: { ujianId: string, siswaId?: string }) => {
+            if (!ujianId) {
+                throw new Error('ID Ujian tidak boleh kosong')
+            }
+
+            const payload: any = {}
+            if (siswaId) {
+                payload.siswaId = siswaId
+            }
+
+            const response = await fetch(`/api/ujian/${ujianId}/force-submit-siswa`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Gagal melakukan force submit ujian')
+            }
+
+            return data
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['hasil', 'ujian', variables.ujianId] })
             queryClient.invalidateQueries({ queryKey: ['ujian'] })
         },
     })

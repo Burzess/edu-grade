@@ -1,6 +1,9 @@
 import React from 'react'
 import { useUjianStatistics, useUjianStatusChecker } from '@/hooks/use-ujian'
 import { useAuthStore } from '@/store/auth'
+import { useForceSubmitSiswa } from '@/hooks/use-hasil-ujian'
+import { toast } from 'sonner'
+import { AlertTriangle } from 'lucide-react'
 
 // Component untuk menampilkan statistik ujian untuk guru
 export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
@@ -11,6 +14,17 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
   if (!data) return <div className="p-4">Data tidak ditemukan</div>
 
   const { ujian, statistics } = data
+  const forceSubmitSiswa = useForceSubmitSiswa()
+  const isExamEnded = ujian.status === 'completed' || (ujian.end_time && new Date() >= new Date(ujian.end_time))
+
+  const handleForceSubmit = async (siswaId?: string) => {
+    try {
+      await forceSubmitSiswa.mutateAsync({ ujianId, siswaId })
+      toast.success(siswaId ? 'Berhasil mengumpulkan ujian secara paksa' : 'Berhasil mengumpulkan semua ujian yang in-progress')
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal melakukan force submit')
+    }
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -137,8 +151,18 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
 
       {/* Daftar Siswa */}
       <div className="bg-card shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-6 py-4 border-b border-border flex justify-between items-center">
           <h3 className="text-lg font-semibold">Daftar Siswa ({statistics.totalSiswa})</h3>
+          {statistics.siswaInProgress > 0 && isExamEnded && (
+            <button 
+              onClick={() => handleForceSubmit()}
+              disabled={forceSubmitSiswa.isPending}
+              className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-md text-sm font-medium flex items-center transition-colors disabled:opacity-50"
+            >
+              <AlertTriangle className="h-4 w-4 mr-1.5" />
+              Kumpul Paksa Semua
+            </button>
+          )}
         </div>
         
         {statistics.totalSiswa > 0 ? (
@@ -198,6 +222,17 @@ export function UjianStatisticsComponent({ ujianId }: { ujianId: string }) {
                           return `${minutes}m ${seconds}s`
                         })()}
                       </div>
+                    )}
+
+                    {us.status === 'in_progress' && isExamEnded && (
+                      <button 
+                        onClick={() => handleForceSubmit(us.siswa_id)}
+                        disabled={forceSubmitSiswa.isPending}
+                        className="ml-2 px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-md text-xs font-medium flex items-center transition-colors disabled:opacity-50"
+                      >
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Kumpul Paksa
+                      </button>
                     )}
                   </div>
                 </div>

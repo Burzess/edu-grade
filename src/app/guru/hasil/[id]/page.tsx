@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { useHasilUjianDetail, useUpdateScore } from '@/hooks/use-hasil-ujian'
+import { useHasilUjianDetail, useUpdateScore, useForceSubmitSiswa } from '@/hooks/use-hasil-ujian'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { useBatchAIGrading } from '@/hooks/use-jawaban'
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,8 @@ import {
   Download,
   Bot,
   Search,
-  Filter
+  Filter,
+  AlertTriangle
 } from 'lucide-react'
 import {
   Select,
@@ -240,10 +241,14 @@ function ScoringDialog({ jawaban, onScoreUpdate }: ScoringDialogProps) {
 interface SiswaResultCardProps {
   siswaResult: any
   onScoreUpdate: (jawabanId: string, score: number, feedback?: string) => Promise<void>
+  onForceSubmit?: (siswaId: string) => Promise<void>
+  isForceSubmitting?: boolean
+  isExamEnded?: boolean
 }
 
-function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
+function SiswaResultCard({ siswaResult, onScoreUpdate, onForceSubmit, isForceSubmitting, isExamEnded }: SiswaResultCardProps) {
   const isBelumMengerjakan = siswaResult.status === 'Belum Mengerjakan'
+  const isInProgress = siswaResult.attemptStatus === 'in_progress'
 
   return (
     <Card className={isBelumMengerjakan ? "opacity-75" : ""}>
@@ -260,6 +265,8 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
             <div className="flex items-center gap-1 text-sm text-muted-foreground justify-end">
               {isBelumMengerjakan ? (
                 <Badge variant="outline" className="bg-muted text-muted-foreground">Belum Mengerjakan</Badge>
+              ) : isInProgress ? (
+                <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">Sedang Mengerjakan</Badge>
               ) : (
                 <>
                   <Award className="h-4 w-4" />
@@ -267,9 +274,22 @@ function SiswaResultCard({ siswaResult, onScoreUpdate }: SiswaResultCardProps) {
                 </>
               )}
             </div>
-            {!isBelumMengerjakan && (
+            {!isBelumMengerjakan && !isInProgress && (
               <div className="text-2xl font-bold">
                 {siswaResult.averageScore !== null ? siswaResult.averageScore : '-'}
+              </div>
+            )}
+            {isInProgress && isExamEnded && onForceSubmit && (
+              <div className="mt-2">
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={() => onForceSubmit(siswaResult.siswa.id)}
+                  disabled={isForceSubmitting}
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Kumpul Paksa
+                </Button>
               </div>
             )}
           </div>
@@ -373,6 +393,7 @@ export default function HasilUjianDetail() {
   const { data: hasilData, isLoading, refetch } = useHasilUjianDetail(ujianId)
   const updateScoreMutation = useUpdateScore()
   const batchAIGrading = useBatchAIGrading()
+  const forceSubmitSiswa = useForceSubmitSiswa()
   
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -404,6 +425,16 @@ export default function HasilUjianDetail() {
     }
   }
 
+  const handleForceSubmit = async (siswaId?: string) => {
+    try {
+      await forceSubmitSiswa.mutateAsync({ ujianId, siswaId })
+      toast.success(siswaId ? 'Berhasil mengumpulkan ujian siswa secara paksa' : 'Berhasil mengumpulkan semua ujian yang in-progress secara paksa')
+      refetch()
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal melakukan force submit')
+    }
+  }
+
   if (isLoading) {
     return (
       <GuruLayout>
@@ -428,14 +459,16 @@ export default function HasilUjianDetail() {
   }
 
   const { ujian, siswaResults } = hasilData
+  const isExamEnded = ujian.status === 'completed' || (ujian.end_time && new Date() >= new Date(ujian.end_time))
   
   // Calculate statistics
   const totalSiswa = siswaResults.length
-  const siswaMengerjakan = siswaResults.filter(s => s.status === 'Sudah Mengerjakan').length
+  const siswaMengerjakan = siswaResults.filter(s => s.status === 'Sudah Mengerjakan' && s.attemptStatus !== 'in_progress').length
+  const siswaInProgress = siswaResults.filter(s => s.attemptStatus === 'in_progress').length
   const siswaBelumMengerjakan = siswaResults.filter(s => s.status === 'Belum Mengerjakan').length
-  const siswaWithScores = siswaResults.filter(s => s.status === 'Sudah Mengerjakan' && s.averageScore !== null).length
+  const siswaWithScores = siswaResults.filter(s => s.status === 'Sudah Mengerjakan' && s.averageScore !== null && s.attemptStatus !== 'in_progress').length
   const overallAverage = siswaWithScores > 0 
-    ? Math.round(siswaResults.filter((s: any) => s.status === 'Sudah Mengerjakan').reduce((sum: any, s: any) => sum + (s.averageScore || 0), 0) / siswaWithScores)
+    ? Math.round(siswaResults.filter((s: any) => s.status === 'Sudah Mengerjakan' && s.attemptStatus !== 'in_progress').reduce((sum: any, s: any) => sum + (s.averageScore || 0), 0) / siswaWithScores)
     : null
 
   // Filter and search logic
@@ -447,8 +480,9 @@ export default function HasilUjianDetail() {
 
     if (statusFilter === 'all') return true;
     if (statusFilter === 'belum_mengerjakan') return s.status === 'Belum Mengerjakan';
-    if (statusFilter === 'sudah_mengerjakan') return s.status === 'Sudah Mengerjakan';
-    if (statusFilter === 'belum_dinilai') return s.status === 'Sudah Mengerjakan' && s.averageScore === null;
+    if (statusFilter === 'sudah_mengerjakan') return s.status === 'Sudah Mengerjakan' && s.attemptStatus !== 'in_progress';
+    if (statusFilter === 'in_progress') return s.attemptStatus === 'in_progress';
+    if (statusFilter === 'belum_dinilai') return s.status === 'Sudah Mengerjakan' && s.averageScore === null && s.attemptStatus !== 'in_progress';
     
     return true;
   });
@@ -471,7 +505,7 @@ export default function HasilUjianDetail() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Siswa Terdaftar</CardTitle>
@@ -489,6 +523,16 @@ export default function HasilUjianDetail() {
             <CardContent>
               <div className="text-2xl font-bold">{siswaMengerjakan}</div>
               <p className="text-xs text-muted-foreground">Sudah mengerjakan</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Sedang Mengerjakan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{siswaInProgress}</div>
+              <p className="text-xs text-muted-foreground">Masih berlangsung</p>
             </CardContent>
           </Card>
 
@@ -548,12 +592,26 @@ export default function HasilUjianDetail() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="sudah_mengerjakan">Mengerjakan Ujian</SelectItem>
+                    <SelectItem value="sudah_mengerjakan">Selesai Ujian</SelectItem>
+                    <SelectItem value="in_progress">Sedang Mengerjakan</SelectItem>
                     <SelectItem value="belum_mengerjakan">Belum Mengerjakan</SelectItem>
                     <SelectItem value="belum_dinilai">Perlu Penilaian</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              {siswaInProgress > 0 && isExamEnded && (
+                <Button
+                  onClick={() => handleForceSubmit()}
+                  disabled={forceSubmitSiswa.isPending}
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Kumpul Paksa Semua
+                </Button>
+              )}
+              
               <Button
                 onClick={async () => exportHasilUjianToExcel(ujian.name, siswaResults)}
                 disabled={siswaResults.length === 0}
@@ -582,6 +640,9 @@ export default function HasilUjianDetail() {
                   key={siswaResult.siswa.id}
                   siswaResult={siswaResult}
                   onScoreUpdate={handleScoreUpdate}
+                  onForceSubmit={handleForceSubmit}
+                  isForceSubmitting={forceSubmitSiswa.isPending}
+                  isExamEnded={isExamEnded}
                 />
               ))}
             </div>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { gradeMCOnSubmission } from '@/lib/grading/grade-mc-submission'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,8 +45,43 @@ export async function POST(_request: NextRequest) {
       })
     }
 
-    // Update status menjadi completed
     const ujianIds = expiredUjian.map(u => u.id)
+
+    // Step 1: Cari semua siswa yang status ujiannya masih in_progress untuk ujian-ujian yang kedaluwarsa
+    const { data: inProgressAttempts } = await supabase
+      .from('ujian_siswa')
+      .select('id, ujian_id, siswa_id')
+      .in('ujian_id', ujianIds)
+      .eq('status', 'in_progress')
+
+    let autoCompletedSiswaCount = 0
+    if (inProgressAttempts && inProgressAttempts.length > 0) {
+      // Update status menjadi completed
+      const attemptIds = inProgressAttempts.map(a => a.id)
+      const { error: updateAttemptsError } = await supabase
+        .from('ujian_siswa')
+        .update({
+          status: 'completed',
+          submitted_at: now
+        })
+        .in('id', attemptIds)
+
+      if (!updateAttemptsError) {
+        autoCompletedSiswaCount = attemptIds.length
+        // Run auto-grading untuk setiap siswa yang di-force submit
+        for (const attempt of inProgressAttempts) {
+          try {
+            await gradeMCOnSubmission(supabase, attempt.ujian_id, attempt.siswa_id)
+          } catch (err) {
+            logger.error('Auto-complete: gradeMCOnSubmission failed for attempt', { attempt, error: err })
+          }
+        }
+      } else {
+        logger.error('Auto-complete: failed to update ujian_siswa status', { error: updateAttemptsError })
+      }
+    }
+
+    // Update status ujian menjadi completed
     const { data: updatedUjian, error: updateError } = await supabase
       .from('ujian')
       .update({ 
@@ -63,8 +100,9 @@ export async function POST(_request: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
-      message: `Berhasil menyelesaikan ${updatedUjian?.length || 0} ujian yang kedaluwarsa`,
-      completed: updatedUjian || []
+      message: `Berhasil menyelesaikan ${updatedUjian?.length || 0} ujian yang kedaluwarsa (${autoCompletedSiswaCount} siswa otomatis diselesaikan)`,
+      completed: updatedUjian || [],
+      autoCompletedSiswaCount
     })
 
   } catch (_error: unknown) {
