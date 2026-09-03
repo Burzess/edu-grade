@@ -66,19 +66,26 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && profile?.role !== 'guru') {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
 
     const adminSupabase = await createAdminClient()
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '100', 10)
+    const ujianId = searchParams.get('ujianId') || searchParams.get('ujian_id')
 
-    const { data: events, error } = await adminSupabase
+    let query = adminSupabase
       .from('security_events')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit)
+
+    if (ujianId) {
+      query = query.eq('ujian_id', ujianId)
+    }
+
+    const { data: events, error } = await query
 
     if (error) {
       logger.error('Error fetching security events:', error)

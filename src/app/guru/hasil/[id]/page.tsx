@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useHasilUjianDetail, useUpdateScore, useForceSubmitSiswa } from '@/hooks/use-hasil-ujian'
 import { GuruLayout } from '@/components/layout/guru-layout'
 import { useBatchAIGrading } from '@/hooks/use-jawaban'
+import { ExamSecurityMonitor } from '@/components/ujian'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +30,9 @@ import {
   Bot,
   Search,
   Filter,
-  AlertTriangle
+  AlertTriangle,
+  Shield,
+  Sparkles
 } from 'lucide-react'
 import {
   Select,
@@ -397,6 +400,7 @@ export default function HasilUjianDetail() {
   
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showSecurityMonitor, setShowSecurityMonitor] = useState(false)
 
   const handleScoreUpdate = async (jawabanId: string, score: number, feedback?: string) => {
     try {
@@ -501,6 +505,25 @@ export default function HasilUjianDetail() {
               <h1 className="text-2xl font-bold text-foreground">{ujian.name}</h1>
               <p className="text-muted-foreground mt-1">{ujian.description || 'Tidak ada deskripsi'}</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSecurityMonitor(true)}
+            >
+              <Shield className="h-4 w-4 mr-2 text-primary" />
+              Pantau Keamanan
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleBatchAIGrading}
+              disabled={batchAIGrading.isPending}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              {batchAIGrading.isPending ? 'Menilai...' : 'Nilai Semua AI'}
+            </Button>
           </div>
         </div>
 
@@ -648,6 +671,24 @@ export default function HasilUjianDetail() {
             </div>
           )}
         </div>
+
+        {/* Modal Monitoring Keamanan */}
+        <Dialog open={showSecurityMonitor} onOpenChange={setShowSecurityMonitor}>
+          <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Monitoring Keamanan Ujian
+              </DialogTitle>
+              <DialogDescription>
+                Log aktivitas dan deteksi pelanggaran integritas ujian siswa untuk {ujian.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2">
+              <ExamSecurityMonitor ujianId={ujianId} ujianTitle={ujian.name} />
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </GuruLayout>
   )

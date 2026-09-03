@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'admin') {
+    if (profile?.role !== 'admin' && profile?.role !== 'guru') {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 })
     }
 
@@ -50,7 +50,12 @@ export async function GET(request: NextRequest) {
     if (severityFilter !== 'all') {
       query = query.eq('severity', severityFilter)
     }
-    if (search) {
+    const ujianIdParam = searchParams.get('ujianId') || searchParams.get('ujian_id')
+    if (ujianIdParam) {
+      query = query.eq('ujian_id', ujianIdParam)
+    } else if (search && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(search)) {
+      query = query.or(`ujian_id.eq.${search},user_id.eq.${search}`)
+    } else if (search) {
       const sanitized = search.replace(/[%_\\]/g, '\\$&')
 
       // Search user names from profiles table

@@ -320,22 +320,14 @@ export function useExamSecurity(options: UseExamSecurityOptions = {}) {
                 (e.ctrlKey && e.shiftKey && e.key === 'N'), // Incognito
                 (e.altKey && e.key === 'Tab'), // Alt+Tab
                 (e.altKey && e.key === 'F4'), // Alt+F4
-                
-                // Text manipulation that could be used for cheating
-                (e.ctrlKey && e.key === 'a'), // Select all (except in input fields)
-                (e.ctrlKey && e.key === 'c'), // Copy (except in input fields)
-                (e.ctrlKey && e.key === 'v'), // Paste (except in input fields)
-                (e.ctrlKey && e.key === 'x'), // Cut (except in input fields)
-                (e.ctrlKey && e.key === 'z'), // Undo (except in input fields)
-                (e.ctrlKey && e.key === 'y'), // Redo (except in input fields)
             ]
 
-            // Allow copy/paste only in input fields
+            // Allow copy/paste/undo only in input fields
             const isInputField = e.target instanceof HTMLInputElement || 
                                 e.target instanceof HTMLTextAreaElement ||
                                 (e.target as Element)?.getAttribute('contenteditable') === 'true'
 
-            if (!isInputField && (e.ctrlKey && ['a', 'c', 'v', 'x', 'z', 'y'].includes(e.key))) {
+            if (!isInputField && (e.ctrlKey && ['a', 'c', 'v', 'x', 'z', 'y'].includes(e.key.toLowerCase()))) {
                 e.preventDefault()
                 recordSecurityEvent('key_combination', { 
                     key: e.key, 
