@@ -5,13 +5,24 @@ import { parseAIResponse as parseResponse } from '@/lib/grading/parse-response'
 
 const isDebug = process.env.AI_GRADING_DEBUG === 'true'
 
-if (!process.env.OPENROUTER_API_KEY) {
-  throw new Error('OPENROUTER_API_KEY is not set in environment variables')
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY is not set in environment variables')
+    }
+    _openai = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+    })
+  }
+  return _openai
 }
 
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
+const openai = new Proxy({} as OpenAI, {
+  get(_target, prop) {
+    return (getOpenAI() as any)[prop]
+  }
 })
 
 export interface AIGradingResponse {

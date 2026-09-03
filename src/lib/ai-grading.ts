@@ -4,14 +4,25 @@ import { createSemaphore } from '@/lib/concurrency'
 
 const isDebug = process.env.AI_GRADING_DEBUG === 'true'
 
-if (!process.env.OPENROUTER_API_KEY) {
-  throw new Error('OPENROUTER_API_KEY is not set in environment variables')
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY is not set in environment variables')
+    }
+    _openai = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+    })
+  }
+  return _openai
 }
 
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
+const openai = new Proxy({} as OpenAI, {
+  get(_target, prop) {
+    return (getOpenAI() as any)[prop]
+  }
+})
 
 export interface AIGradingResponse {
   score: number | null // 0-100 or null if pending manual grading
@@ -86,7 +97,7 @@ export async function gradeEssayAnswer(
         PERTANYAAN:
         ${question}
 
-        KUNCI JAWABAN/REFERENSI DARI GURU:
+        KUNCI JAWABAN:
         ${correctAnswer}
 
         JAWABAN SISWA:

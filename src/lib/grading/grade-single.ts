@@ -1,8 +1,9 @@
 import { type SupabaseClient } from '@supabase/supabase-js'
-import { gradeEssayAnswer } from '@/lib/ai-grading'
 import { autoGradeQuestion, needsAIGrading } from '@/lib/auto-grading'
 import { inngest } from '@/lib/inngest/client'
 import { aiGradingEventSchema } from '@/lib/grading/event-schema'
+import { isInngestAvailable } from '@/lib/grading/inngest-check'
+import { gradeEssayWithAI } from '@/lib/grading/grade-essay-core'
 import { logger } from '@/lib/logger'
 
 export interface GradeSingleResult {
@@ -38,7 +39,7 @@ interface JawabanWithSoal {
  * - Already graded → skip
  * - Empty answer → score 0
  * - Auto-gradable (MC/TF) → instant grade
- * - Essay → trigger Inngest background job (fallback to sync if Inngest fails)
+ * - Essay → trigger Inngest background job if available, else direct sync grading
  */
 export async function gradeSingleJawaban(
   supabase: SupabaseClient,
@@ -92,7 +93,7 @@ export async function gradeSingleJawaban(
     }
   }
 
-  // Essay → background job via Inngest
+  // Essay → Hybrid grading (Inngest if ready, fallback to direct sync)
   return await triggerEssayGrading(supabase, j, jawabanId)
 }
 
@@ -116,30 +117,75 @@ async function triggerEssayGrading(
   j: JawabanWithSoal,
   jawabanId: string
 ): Promise<GradeSingleResult> {
-  // Mark as pending
-  await supabase
-    .from('jawaban_siswa')
-    .update({ score: null, ai_feedback: 'Sedang dinilai oleh AI... (PENDING)', updated_at: new Date().toISOString() })
-    .eq('id', jawabanId)
+  const inngestReady = await isInngestAvailable()
 
+  if (inngestReady) {
+    try {
+      // Safe fallback strings for required Zod event schema fields
+      const fallbackCorrect = j.soal.correct_answer?.trim() || 'Nilai berdasarkan konsep materi yang relevan.'
+      const fallbackRubric = j.soal.rubric?.trim() || 'Kriteria: Keakuratan konsep (40%), Kelengkapan jawaban (30%), Kejelasan struktur (20%), Bahasa (10%).'
+
+      const eventPayload = aiGradingEventSchema.parse({
+        jawabanId,
+        question: j.soal.question_text || '',
+        answer: j.answer_text || '',
+        correctAnswer: fallbackCorrect,
+        rubric: fallbackRubric,
+      })
+
+      // Mark as pending before sending
+      await supabase
+        .from('jawaban_siswa')
+        .update({ score: null, ai_feedback: 'Sedang dinilai oleh AI... (PENDING)', updated_at: new Date().toISOString() })
+        .eq('id', jawabanId)
+
+      await inngest.send({ name: 'essay/grade.requested', data: eventPayload })
+      return { success: true, status: 'PENDING', message: 'Penilaian sedang diproses di background.', jawabanId }
+    } catch (inngestError) {
+      logger.warn('Inngest send failed, falling back to direct sync grading:', inngestError)
+    }
+  }
+
+  // Direct sync fallback (Inngest offline or failed)
+  return await gradeDirectSync(supabase, j, jawabanId)
+}
+
+async function gradeDirectSync(
+  supabase: SupabaseClient,
+  j: JawabanWithSoal,
+  jawabanId: string
+): Promise<GradeSingleResult> {
   try {
-    const eventPayload = aiGradingEventSchema.parse({
-      jawabanId,
-      question: j.soal.question_text || '',
-      answer: j.answer_text,
-      correctAnswer: j.soal.correct_answer || '',
-      rubric: j.soal.rubric || '',
+    const result = await gradeEssayWithAI({
+      question: j.soal.question_text,
+      answer: j.answer_text || '',
+      correctAnswer: j.soal.correct_answer,
+      rubric: j.soal.rubric,
     })
-    await inngest.send({ name: 'essay/grade.requested', data: eventPayload })
-    return { success: true, status: 'PENDING', message: 'Penilaian sedang diproses di background.', jawabanId }
-  } catch (inngestError) {
-    logger.warn('Inngest failed, falling back to sync grading:', inngestError)
-    const correctAnswer = j.soal.question_type === 'essay' ? j.soal.correct_answer || undefined : undefined
-    const result = await gradeEssayAnswer(j.soal.question_text, j.answer_text!, j.soal.question_type as 'essay' | 'multiple_choice', correctAnswer)
-    await supabase
+
+    const { error: updateError } = await supabase
       .from('jawaban_siswa')
-      .update({ score: result.score, ai_feedback: result.feedback, updated_at: new Date().toISOString() })
+      .update({
+        score: result.score,
+        ai_feedback: result.feedback,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', jawabanId)
-    return { success: true, score: result.score, feedback: result.feedback, method: 'fallback_sync' }
+
+    if (updateError) {
+      logger.error('Failed to update score during direct sync grading:', updateError)
+      return { success: false, error: 'Gagal menyimpan hasil penilaian', httpStatus: 500 }
+    }
+
+    return {
+      success: true,
+      score: result.score,
+      feedback: result.feedback,
+      reasoning: result.reasoning,
+      method: 'direct_ai_sync',
+    }
+  } catch (syncError) {
+    logger.error('Direct sync grading error:', syncError)
+    return { success: false, error: 'Penilaian AI langsung gagal diproses', httpStatus: 500 }
   }
 }

@@ -1,14 +1,16 @@
 import { type SupabaseClient } from '@supabase/supabase-js'
-import { gradeEssayAnswer } from '@/lib/ai-grading'
-import { gradeEssayAnswerOptimized, optimizedBatchGradeAnswers, type PromptConfig } from '@/lib/ai-grading-optimized'
 import { autoGradeQuestion, needsAIGrading } from '@/lib/auto-grading'
 import { logger } from '@/lib/logger'
+import { inngest } from '@/lib/inngest/client'
+import { aiGradingEventSchema } from '@/lib/grading/event-schema'
+import { isInngestAvailable } from '@/lib/grading/inngest-check'
+import { gradeEssayWithAI } from '@/lib/grading/grade-essay-core'
 
 export interface BatchGradeOptions {
   ujianId: string
-  useBatching: boolean
-  useOptimized: boolean
-  forceAI: boolean
+  useBatching?: boolean
+  useOptimized?: boolean
+  forceAI?: boolean
 }
 
 export interface BatchGradeResult {
@@ -34,21 +36,16 @@ interface AnswerData {
   rubric?: string
 }
 
-const DEFAULT_PROMPT_CONFIG: PromptConfig = {
-  mode: 'detailed',
-  maxOutputTokens: 2000,
-  temperature: 0.3,
-}
-
 /**
  * Batch grade all ungraded jawaban for a given ujian.
  * Separates auto-gradable (MC/TF) from AI-needed (essay) questions.
+ * Supports hybrid flow: Inngest queue when available, direct sync fallback when offline.
  */
 export async function gradeBatch(
   supabase: SupabaseClient,
   options: BatchGradeOptions
 ): Promise<BatchGradeResult> {
-  const { ujianId, useBatching, useOptimized, forceAI } = options
+  const { ujianId, forceAI } = options
 
   // Fetch ungraded jawaban
   const { data: jawabanList, error: fetchError } = await supabase
@@ -58,11 +55,32 @@ export async function gradeBatch(
     .is('score', null)
 
   if (fetchError) {
-    return { success: false, autoGradedCount: 0, aiGradedCount: 0, errorCount: 0, totalProcessed: 0, processingTimeMs: 0, method: 'hybrid', costSavingsPercent: 0, error: 'Gagal mengambil data jawaban', httpStatus: 500 }
+    return {
+      success: false,
+      autoGradedCount: 0,
+      aiGradedCount: 0,
+      errorCount: 0,
+      totalProcessed: 0,
+      processingTimeMs: 0,
+      method: 'hybrid',
+      costSavingsPercent: 0,
+      error: 'Gagal mengambil data jawaban',
+      httpStatus: 500,
+    }
   }
 
   if (!jawabanList || jawabanList.length === 0) {
-    return { success: true, autoGradedCount: 0, aiGradedCount: 0, errorCount: 0, totalProcessed: 0, processingTimeMs: 0, method: 'hybrid', costSavingsPercent: 0, message: 'Tidak ada jawaban yang belum dinilai' }
+    return {
+      success: true,
+      autoGradedCount: 0,
+      aiGradedCount: 0,
+      errorCount: 0,
+      totalProcessed: 0,
+      processingTimeMs: 0,
+      method: 'hybrid',
+      costSavingsPercent: 0,
+      message: 'Tidak ada jawaban yang belum dinilai',
+    }
   }
 
   // Classify answers
@@ -81,14 +99,18 @@ export async function gradeBatch(
   const startTime = Date.now()
   let aiGradedCount = 0
   let errorCount = 0
+  let method = 'inngest_hybrid'
 
-  // Phase 1: Auto-grade
+  // Phase 1: Auto-grade MC/TF (instant)
   const autoResults = autoGradable
     .map(ad => {
       try {
         const r = autoGradeQuestion(ad.questionType, ad.studentAnswer, ad.correctAnswer || '', ad.question)
         return r ? { id: ad.id, score: r.score, feedback: r.feedback } : null
-      } catch { errorCount++; return null }
+      } catch {
+        errorCount++
+        return null
+      }
     })
     .filter((r): r is { id: string; score: number; feedback: string } => r !== null)
 
@@ -100,9 +122,79 @@ export async function gradeBatch(
 
   // Phase 2: AI-grade essays
   if (aiNeeded.length > 0) {
-    const aiResult = await gradeEssays(supabase, aiNeeded, useBatching, useOptimized)
-    aiGradedCount += aiResult.graded
-    errorCount += aiResult.errors
+    const inngestReady = await isInngestAvailable()
+    let sentToInngest = false
+
+    if (inngestReady) {
+      try {
+        const events = aiNeeded.map(ad => {
+          const fallbackCorrect = ad.correctAnswer?.trim() || 'Nilai berdasarkan konsep materi yang relevan.'
+          const fallbackRubric = ad.rubric?.trim() || 'Kriteria: Keakuratan konsep (40%), Kelengkapan jawaban (30%), Kejelasan struktur (20%), Bahasa (10%).'
+
+          return {
+            name: 'essay/grade.requested' as const,
+            data: aiGradingEventSchema.parse({
+              jawabanId: ad.id,
+              question: ad.question || '',
+              answer: ad.studentAnswer || '',
+              correctAnswer: fallbackCorrect,
+              rubric: fallbackRubric,
+            }),
+          }
+        })
+
+        // Mark all as pending in DB first
+        const updates = aiNeeded.map(ad =>
+          supabase
+            .from('jawaban_siswa')
+            .update({
+              score: null,
+              ai_feedback: 'Sedang dinilai oleh AI... (PENDING)',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', ad.id)
+        )
+        await Promise.all(updates)
+
+        // Send to Inngest
+        await inngest.send(events)
+        aiGradedCount += events.length
+        sentToInngest = true
+        method = 'inngest_hybrid'
+      } catch (e) {
+        logger.warn('Failed to dispatch batch to Inngest, falling back to direct sync:', e)
+      }
+    }
+
+    // Direct sync fallback if Inngest is offline or dispatch failed
+    if (!sentToInngest) {
+      method = 'direct_sync_fallback'
+      for (const ad of aiNeeded) {
+        try {
+          const result = await gradeEssayWithAI({
+            question: ad.question,
+            answer: ad.studentAnswer || '',
+            correctAnswer: ad.correctAnswer,
+            rubric: ad.rubric,
+          })
+
+          const ok = await updateScore(supabase, ad.id, result.score, result.feedback)
+          if (ok) {
+            aiGradedCount++
+          } else {
+            errorCount++
+          }
+
+          // Small delay to respect API rate limits (15 RPM)
+          if (aiNeeded.length > 1) {
+            await new Promise(resolve => setTimeout(resolve, 300))
+          }
+        } catch (err) {
+          logger.error('Direct sync essay grading error:', err)
+          errorCount++
+        }
+      }
+    }
   }
 
   const processingTimeMs = Date.now() - startTime
@@ -118,7 +210,7 @@ export async function gradeBatch(
     errorCount,
     totalProcessed,
     processingTimeMs,
-    method: 'hybrid_auto_ai_grading',
+    method,
     costSavingsPercent,
   }
 }
@@ -137,14 +229,14 @@ function buildAnswerData(jawaban: Record<string, unknown>): AnswerData {
     const options = soal.options as Array<{ id: string; text: string }> | null
     if (soal.correct_answer) {
       const correct = options?.find(o => String(o.id) === String(soal.correct_answer))
-      ad.correctAnswer = correct?.text || (soal.correct_answer as string)
+      if (correct) ad.correctAnswer = correct.text
     }
-    if (ad.studentAnswer) {
-      const studentOpt = options?.find(o => String(o.id) === String(ad.studentAnswer))
-      if (studentOpt) ad.studentAnswer = studentOpt.text
+    if (jawaban.answer_text) {
+      const student = options?.find(o => String(o.id) === String(jawaban.answer_text))
+      if (student) ad.studentAnswer = student.text
     }
-  } else if (soal.correct_answer) {
-    ad.correctAnswer = soal.correct_answer as string
+  } else {
+    ad.correctAnswer = (soal.correct_answer as string) || undefined
   }
   if (soal.rubric) ad.rubric = soal.rubric as string
   return ad
@@ -156,92 +248,4 @@ async function updateScore(supabase: SupabaseClient, id: string, score: number |
     .update({ score, ai_feedback: feedback, updated_at: new Date().toISOString() })
     .eq('id', id)
   return !error
-}
-
-async function gradeEssays(
-  supabase: SupabaseClient,
-  answers: AnswerData[],
-  useBatching: boolean,
-  useOptimized: boolean
-): Promise<{ graded: number; errors: number }> {
-  let graded = 0
-  let errors = 0
-
-  if (useBatching && answers.length > 1) {
-    try {
-      const results = useOptimized
-        ? await runOptimizedBatch(answers)
-        : await runTraditionalBatch(answers)
-
-      const updates = await Promise.all(
-        results.map(r => updateScore(supabase, r.id, r.score, r.feedback))
-      )
-      graded += updates.filter(Boolean).length
-      errors += updates.filter(x => !x).length
-    } catch (batchError) {
-      logger.warn('Batch grading failed, falling back to individual:', batchError)
-      const fallback = await gradeIndividual(answers, useOptimized)
-      const updates = await Promise.all(
-        fallback.results.map(r => updateScore(supabase, r.id, r.score, r.feedback))
-      )
-      graded += updates.filter(Boolean).length
-      errors += updates.filter(x => !x).length + fallback.errors
-    }
-  } else {
-    const individual = await gradeIndividual(answers, useOptimized)
-    const updates = await Promise.all(
-      individual.results.map(r => updateScore(supabase, r.id, r.score, r.feedback))
-    )
-    graded += updates.filter(Boolean).length
-    errors += updates.filter(x => !x).length + individual.errors
-  }
-
-  return { graded, errors }
-}
-
-async function runOptimizedBatch(answers: AnswerData[]): Promise<Array<{ id: string; score: number | null; feedback: string }>> {
-  const essayAnswers = answers.map(a => ({
-    id: a.id, question: a.question, studentAnswer: a.studentAnswer,
-    questionType: a.questionType as 'essay' | 'multiple_choice',
-    correctAnswer: a.correctAnswer, rubric: a.rubric,
-  }))
-  const results = await optimizedBatchGradeAnswers(essayAnswers, DEFAULT_PROMPT_CONFIG)
-  return results.map(r => ({ id: r.id, score: r.result.score, feedback: r.result.feedback }))
-}
-
-async function runTraditionalBatch(answers: AnswerData[]): Promise<Array<{ id: string; score: number | null; feedback: string }>> {
-  const { smartBatchGradeAnswers } = await import('@/lib/ai-grading')
-  const essayAnswers = answers.map(a => ({
-    id: a.id, question: a.question, studentAnswer: a.studentAnswer,
-    questionType: a.questionType as 'essay' | 'multiple_choice',
-    correctAnswer: a.correctAnswer,
-  }))
-  const results = await smartBatchGradeAnswers(essayAnswers, 3)
-  return results.map(r => ({ id: r.id, score: r.result.score, feedback: r.result.feedback }))
-}
-
-async function gradeIndividual(
-  answers: AnswerData[],
-  useOptimized: boolean
-): Promise<{ results: Array<{ id: string; score: number | null; feedback: string }>; errors: number }> {
-  const results: Array<{ id: string; score: number | null; feedback: string }> = []
-  let errors = 0
-
-  for (const ad of answers) {
-    try {
-      if (!ad.studentAnswer?.trim()) {
-        results.push({ id: ad.id, score: 0, feedback: 'Tidak ada jawaban yang diberikan.' })
-        continue
-      }
-      const gradingResult = useOptimized
-        ? await gradeEssayAnswerOptimized(ad.question, ad.studentAnswer, ad.questionType as 'essay' | 'multiple_choice', ad.correctAnswer, DEFAULT_PROMPT_CONFIG, 0, ad.rubric)
-        : await gradeEssayAnswer(ad.question, ad.studentAnswer, ad.questionType as 'essay' | 'multiple_choice', ad.correctAnswer)
-      results.push({ id: ad.id, score: gradingResult.score, feedback: gradingResult.feedback })
-      await new Promise(resolve => setTimeout(resolve, useOptimized ? 800 : 1000))
-    } catch {
-      errors++
-    }
-  }
-
-  return { results, errors }
 }
