@@ -23,19 +23,8 @@ export async function getCurrentUser(): Promise<User | null> {
       return null;
     }
 
-    // Coba ambil dari user metadata terlebih dahulu (lebih cepat)
-    const metadata = user.user_metadata || {};
-    if (metadata.role && metadata.full_name) {
-      return {
-        id: user.id,
-        email: user.email!,
-        role: metadata.role as User['role'],
-        full_name: metadata.full_name,
-        created_at: user.created_at,
-      };
-    }
-
-    // Fallback ke database query dengan timeout
+    // Selalu ambil role dari tabel profiles (database) demi keamanan (SECURITY 2.32, 2.33)
+    // Jangan pernah mempercayai user_metadata.role yang dapat dimanipulasi klien
     try {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -47,21 +36,22 @@ export async function getCurrentUser(): Promise<User | null> {
         return {
           id: profile.id,
           email: profile.email,
-          role: profile.role as User['role'],
-          full_name: profile.full_name,
+          role: (['guru', 'siswa', 'admin'].includes(profile.role) ? profile.role : 'siswa') as User['role'],
+          full_name: profile.full_name || user.email?.split('@')[0] || 'User',
           created_at: profile.created_at,
         };
       }
     } catch (dbError) {
-      logger.error('Database query failed, using fallback:', dbError);
+      logger.error('Database query failed in getCurrentUser:', dbError);
     }
 
-    // Emergency fallback - buat user object minimal
+    // Emergency fallback jika database bermasalah - selalu gunakan role siswa (safest default)
+    const metadata = user.user_metadata || {};
     return {
       id: user.id,
       email: user.email!,
-      role: (metadata.role as User['role']) || 'siswa',
-      full_name: metadata.full_name || user.email?.split('@')[0] || 'User',
+      role: 'siswa',
+      full_name: (metadata.full_name as string) || user.email?.split('@')[0] || 'User',
       created_at: user.created_at,
     };
 

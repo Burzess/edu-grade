@@ -232,12 +232,13 @@ export function useRoleCheck() {
   }
 }
 
-/**
- * Utility function untuk clear auth cache
- * Gunakan saat logout atau refresh auth
- */
 export function clearAuthCache() {
   if (typeof window !== 'undefined') {
-    sessionStorage.removeItem('auth-quick-cache')
+    try {
+      sessionStorage.removeItem('auth-state-cache')
+      sessionStorage.removeItem('auth-quick-cache')
+    } catch {
+      // Ignore storage errors
+    }
   }
 }

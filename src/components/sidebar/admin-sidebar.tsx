@@ -91,11 +91,8 @@ export function AdminSidebar({ className }: SidebarProps) {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-
-      await Promise.all([
-        signOut(),
-        new Promise(resolve => setTimeout(resolve, 800))
-      ])
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await signOut()
     } catch (_error: unknown) {
       window.location.href = '/login'
     }

@@ -13,17 +13,10 @@ export default function SiswaLogoutButton() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-      
-      // Tambahkan delay minimal agar modal terlihat
-      await Promise.all([
-        signOut(),
-        new Promise(resolve => setTimeout(resolve, 800))
-      ])
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await signOut()
     } catch (_error: unknown) {
-      // Jika ada error, tetap redirect ke login
       window.location.href = '/login'
-    } finally {
-      // Note: setIsLoggingOut(false) tidak diperlukan karena halaman akan redirect
     }
   }
 

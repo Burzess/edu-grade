@@ -7,12 +7,13 @@ import {
   enforceRoleAccess,
   resolveUserRole,
 } from '@/lib/middleware'
+import { getDashboardPathForRole } from '@/lib/auth/dashboard-path'
 
 /**
  * Next.js Edge Middleware — orchestrator.
  *
- * Pipeline: refreshSession → assertAuthenticated → resolveUserRole →
- * enforceRoleAccess → forward with x-user-id header.
+ * Pipeline: refreshSession → handle public/root → assertAuthenticated →
+ * resolveUserRole → enforceRoleAccess → forward with x-user-id header & preserved cookies.
  *
  * Performance (2.22): 1 getClaims() + 1 profiles SELECT = 2 round-trips.
  */
@@ -23,32 +24,60 @@ export async function middleware(request: NextRequest) {
   const { response, supabase, claims, claimsError, userId } =
     await updateSession(request)
 
-  // 2. Public routes — no auth needed
+  const isAuthenticated = !claimsError && !!claims && !!userId
+
+  // 2. Root route: Landing page for guests, direct dashboard redirect for authenticated users
+  if (pathname === '/') {
+    if (isAuthenticated && userId) {
+      const userRole = await resolveUserRole(supabase, userId)
+      const url = request.nextUrl.clone()
+      url.pathname = getDashboardPathForRole(userRole)
+      const redirectResponse = NextResponse.redirect(url)
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie)
+      })
+      return redirectResponse
+    }
+    return response
+  }
+
+  // 3. Public routes (e.g. /login, /auth/callback, /unauthorized) — no auth needed
   if (isPublicRoute(pathname)) {
     return response
   }
 
   try {
-    // 3. Assert authenticated
+    // 5. Assert authenticated (redirects to /login with redirect param if unauthenticated)
     const authResult = assertAuthenticated(request, claims, claimsError, userId)
     if (!authResult.authenticated) {
+      response.cookies.getAll().forEach((cookie) => {
+        authResult.redirect.cookies.set(cookie)
+      })
       return authResult.redirect
     }
 
-    // 4. Resolve role from DB (single profiles SELECT)
+    // 6. Resolve role from DB (single profiles SELECT)
     const userRole = await resolveUserRole(supabase, authResult.userId)
 
-    // 5. Enforce role-based access
+    // 7. Enforce role-based access
     const roleRedirect = enforceRoleAccess(request, pathname, userRole)
     if (roleRedirect) {
+      response.cookies.getAll().forEach((cookie) => {
+        roleRedirect.cookies.set(cookie)
+      })
       return roleRedirect
     }
 
-    // 6. Forward request with x-user-id header only (2.33)
+    // 8. Forward request with x-user-id header & preserved session cookies (2.33)
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', authResult.userId)
+
     const modifiedResponse = NextResponse.next({
-      request: { headers: request.headers },
+      request: { headers: requestHeaders },
     })
-    modifiedResponse.headers.set('x-user-id', authResult.userId)
+    response.cookies.getAll().forEach((cookie) => {
+      modifiedResponse.cookies.set(cookie)
+    })
     return modifiedResponse
   } catch (error) {
     logger.error('Middleware error:', error)

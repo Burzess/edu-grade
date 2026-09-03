@@ -24,6 +24,9 @@ export function assertAuthenticated(
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('message', 'Silakan login terlebih dahulu')
+    if (request.nextUrl.pathname !== '/' && request.nextUrl.pathname !== '/login') {
+      url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search)
+    }
     return { authenticated: false, redirect: NextResponse.redirect(url) }
   }
   return { authenticated: true, userId }

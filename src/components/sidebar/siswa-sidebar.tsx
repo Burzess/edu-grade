@@ -84,18 +84,11 @@ export function SiswaSidebar({ className }: SidebarProps) {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-
-      // Tambahkan delay minimal agar modal terlihat
-      await Promise.all([
-        signOut(),
-        new Promise(resolve => setTimeout(resolve, 800))
-      ])
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await signOut()
     } catch (error: unknown) {
       console.error('Logout error:', error)
-      // Jika ada error, tetap redirect ke login
       window.location.href = '/login'
-    } finally {
-      // Note: setIsLoggingOut(false) tidak diperlukan karena halaman akan redirect
     }
   }
 
