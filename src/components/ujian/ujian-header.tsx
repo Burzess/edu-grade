@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Send, CheckCircle, BookOpen, Loader2 } from 'lucide-react'
+import { ExamSecurityStatus } from './exam-security-status'
 
 interface UjianHeaderProps {
     ujian: any
@@ -55,8 +56,13 @@ export const UjianHeader = memo(({
                         </div>
                     </div>
 
-                    {/* Right: Progress, Timer, Submit */}
+                    {/* Right: Security Status, Progress, Timer, Submit */}
                     <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        {/* Security Status Badge */}
+                        <div className="hidden md:flex items-center">
+                            <ExamSecurityStatus showDetails={false} />
+                        </div>
+
                         {/* Progress Badge */}
                         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/80 border border-border/50">
                             <CheckCircle className="h-3.5 w-3.5 text-green-500" />

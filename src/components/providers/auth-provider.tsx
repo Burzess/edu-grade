@@ -11,9 +11,10 @@ import {
   buildFallbackProfile,
 } from '@/lib/auth/profile-fetcher'
 import { User } from '@supabase/supabase-js'
-import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useRef } from 'react'
 import { AuthErrorBoundary } from '@/components/auth/auth-error-boundary'
+import { useQueryClient } from '@tanstack/react-query'
+import { clearAuthCache } from '@/hooks/use-middleware-auth'
 
 interface AuthContextType {
     signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<{ user: any; session: any }>
@@ -31,7 +32,7 @@ export function AuthProvider({
     initialUser?: { id: string; email: string; role: string; full_name: string } | null;
 }) {
     const supabase = createClient()
-    const router = useRouter()
+    const queryClient = useQueryClient()
     const { setUser, setProfile, setLoading, logout, getCachedProfile, setCachedProfile } = useAuthStore()
     const wasAuthenticatedRef = useRef(!!initialUser)
 
@@ -286,10 +287,32 @@ export function AuthProvider({
     }
 
     const signOut = async () => {
-        const { error } = await supabase.auth.signOut()
-        if (error) throw error
-        logout()
-        router.push('/login')
+        try {
+            // 1. Bersihkan state lokal dan cache
+            logout()
+            clearAuthCache()
+            queryClient.clear()
+
+            // 2. Best-effort Supabase client sign-out
+            try {
+                await supabase.auth.signOut()
+            } catch (err) {
+                console.warn('Supabase client signOut error (continuing cleanup):', err)
+            }
+
+            // 3. Best-effort panggil endpoint server untuk menghapus cookie HTTP-only
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                })
+            } catch (err) {
+                console.warn('Server logout endpoint error (continuing cleanup):', err)
+            }
+        } finally {
+            // 4. Hard redirect ke /login untuk memastikan browser state benar-benar bersih
+            window.location.href = '/login'
+        }
     }
 
     return (

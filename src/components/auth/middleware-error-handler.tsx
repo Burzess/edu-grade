@@ -13,7 +13,8 @@ export function MiddlewareErrorHandler() {
   const message = searchParams.get('message')
   const redirect = searchParams.get('redirect')
 
-  if (!error) return null
+  // Only display for actual middleware system errors
+  if (error !== 'middleware_error') return null
 
   const getErrorDetails = (errorType: string) => {
     switch (errorType) {

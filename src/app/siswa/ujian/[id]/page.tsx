@@ -663,7 +663,7 @@ function UjianSiswaWithSecurity() {
     return (
         <ExamSecurityProvider
             examTitle="Ujian Online"
-            autoEnable={false}
+            autoEnable={true}
             onSecurityViolation={handleSecurityViolation}
             isSubmitted={isSubmitted}
             ujianId={ujianId}
